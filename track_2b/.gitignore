@@ -25,3 +25,30 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Audio — never commit
+*.wav
+*.mp3
+*.flac
+*.ogg
+*.opus
+*.m4a
+*.aac
+
+# More weight formats
+*.pth
+*.onnx
+*.h5
+*.npz
+
+# Caches
+.cache/
+.uv-cache/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hf_cache/
+huggingface/
+
+# Raw experiment outputs
+results/raw/
