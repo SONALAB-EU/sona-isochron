@@ -1,0 +1,24 @@
+# Data
+
+The data files in this directory are licensed **CC BY-SA 4.0**. The code in
+this repository stays **Apache-2.0** (see [LICENSE](../../LICENSE)).
+
+The sentences come from FLEURS (Conneau et al., 2022; CC BY 4.0), whose text
+is taken from FLoRes-101 (Goyal et al., 2022; CC BY-SA 4.0). That ShareAlike
+licence carries over to these files. Sources, revisions and full attribution
+are in [docs/licences.md](../docs/licences.md). No audio is stored here.
+
+| Files | Content | Schema (`src/isochron/schema.py`) |
+|-------|---------|-----------------------------------|
+| `fleurs_{de,fr,it}_{dev,test}.jsonl` | One line per FLEURS sentence: English source and human reference translation | `SentenceRecord` |
+| `overlong_{de,fr,it}_{dev,test}.jsonl` | Lines with `ref_tgt_s > 1.10 × slot_s`, plus `overrun` | `OverlongRecord` |
+
+Built by `uv run python -m isochron.data.build_fleurs`. Statistics:
+[results/fleurs_stats.md](../results/fleurs_stats.md).
+
+**The audio fields are not valid yet.** `slot_s`, `ref_tgt_s` and the
+`overlong_*` files come from silence-trimmed human recordings, and trimming
+fails on noisy ones. `noisy_src` and `noisy_tgt` mark recordings whose noise
+floor is above −30 dB (5th percentile of frame RMS, in dB relative to the
+loudest frame); there, trimming leaves the noise in place. The main
+experiments use only the text fields.

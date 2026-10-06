@@ -1,22 +1,25 @@
 # FLEURS line statistics
 
-- Date: 2026-10-06 14:11 UTC
-- Git commit: 773a6edbbc79f83c3a22a15733d81b2c3507f000
+> **Warning.** The audio-based numbers in this file (`slot_s`, `ref_tgt_s`, their ratios and
+> the over-long counts) are not valid until trimming is fixed. With `top_db=30`, trimming leaves
+> noise in place on recordings whose noise floor is above −30 dB (flagged `noisy_src` /
+> `noisy_tgt`; see the end of this file). The fix, VAD trimming, is planned for the isochrony
+> step. The `ref_tgt_s / slot_s` ratios also mix two different speakers' tempos. The main
+> experiments (steps 1–4 in `docs/eval_protocol.md`) use none of these numbers.
+
+- Date: 2026-10-06 15:20 UTC
+- Git commit: c37afddf346df5f6d9d8c27599c961dfb80583e1
 - Built by: `uv run python -m isochron.data.build_fleurs` (in `track_2b/`)
-- Data: [google/fleurs](https://huggingface.co/datasets/google/fleurs) at revision `70bb2e84b976b7e960aa89f1c648e09c59f894dd`, licence CC BY 4.0; configs en_us, de_de, fr_fr, it_it; FLEURS splits `validation` (our `dev`) and `test`
+- Data: [google/fleurs](https://huggingface.co/datasets/google/fleurs) at revision `70bb2e84b976b7e960aa89f1c648e09c59f894dd`; configs en_us, de_de, fr_fr, it_it; FLEURS splits `validation` (our `dev`) and `test`
+- Licence: FLEURS is CC BY 4.0; its text comes from FLoRes-101 (CC BY-SA 4.0), so our data files are CC BY-SA 4.0
 - Trimming: `librosa.effects.trim(top_db=30, ref=np.max, frame_length=2048, hop_length=512)` at the native 16000 Hz, no resampling; durations rounded to 1 ms
+- Noisy flag: noise floor above −30 dB, where noise floor = 5th percentile of frame RMS (frame 2048, hop 512, the frames trim uses) in dB relative to the loudest frame
 - Recording choice: per sentence and language, the recording with the smallest numeric recording id
 - Over-long: `ref_tgt_s > 1.10 × slot_s`, on the rounded durations
 - Model + quantisation, endpoint, TTS engine + voice: none. No model or TTS is involved; every duration here is measured on a human FLEURS recording
 - Seeds: 0 (only used to pick the sample pairs printed to the console)
 - n: 1456 joined lines (dev 431, test 1025)
 - Libraries: librosa 0.11.0, numpy 2.4.6, soundfile 0.14.0, pyarrow 25.0.1, huggingface_hub 2.1.1
-
-`ref_tgt_s / slot_s` compares two different speakers, each reading at their own pace,
-so it mixes the length of the language with the tempo of the speaker.
-
-**Known issue:** for recordings whose noise floor is above −30 dB, trim removes little
-or nothing, so their durations are too long. See the end of this file.
 
 ## Lines per split and language
 
@@ -70,8 +73,7 @@ or nothing, so their durations are too long. See the end of this file.
 
 ## Over-long lines, `ref_tgt_s > 1.10 × slot_s`
 
-The last column counts over-long lines where the EN or the target recording has a noise floor above −30 dB
-(see the known issue at the end).
+The last column counts over-long lines flagged `noisy_src` or `noisy_tgt`.
 
 | Pair | Split | Lines | Over-long | Share | Over-long with a noisy recording |
 |------|-------|------:|----------:|------:|---------------------------------:|
@@ -99,16 +101,26 @@ The last column counts over-long lines where the EN or the target recording has 
 
 `top_db=30` only removes frames more than 30 dB below the loudest frame. When a
 recording's background noise is louder than that, trim leaves the leading and trailing
-non-speech in place, and its duration comes out too long. Noise floor = 5th percentile of
-frame RMS in dB relative to the loudest frame, on the same frames trim uses. Characters per
-second (text length incl. spaces ÷ trimmed duration) is a rough tempo check; it also varies
-by speaker and language. The trimming method is an open item in `docs/eval_protocol.md`.
+non-speech in place, and its duration comes out too long. Characters per second (text
+length incl. spaces ÷ trimmed duration) is a rough tempo check; it also varies by speaker
+and language. VAD trimming is planned for the isochrony step in `docs/eval_protocol.md`.
 
 | Language | Noise floor | Recordings | Median removed (s) | Nothing removed | Median chars/s |
 |----------|-------------|-----------:|-------------------:|----------------:|---------------:|
 | en | ≤ −30 dB | 330 | 0.58 | 8 (2.4 %) | 14.1 |
-| en | > −30 dB | 170 | 0.03 | 78 (45.9 %) | 15.5 |
+| en | > −30 dB (noisy) | 170 | 0.03 | 78 (45.9 %) | 15.5 |
 | de | ≤ −30 dB | 439 | 1.22 | 1 (0.2 %) | 16.6 |
-| de | > −30 dB | 55 | 0.03 | 25 (45.5 %) | 7.4 |
+| de | > −30 dB (noisy) | 55 | 0.03 | 25 (45.5 %) | 7.4 |
 | fr | ≤ −30 dB | 469 | 1.52 | 0 (0.0 %) | 19.9 |
 | it | ≤ −30 dB | 493 | 2.11 | 1 (0.2 %) | 12.5 |
+
+Noisy flags per data file:
+
+| Pair | Split | Lines | `noisy_src` | `noisy_tgt` | Either |
+|------|-------|------:|------------:|------------:|-------:|
+| en→de | dev | 147 | 52 | 18 | 63 |
+| en→de | test | 347 | 114 | 37 | 138 |
+| en→fr | dev | 137 | 47 | 0 | 47 |
+| en→fr | test | 332 | 111 | 0 | 111 |
+| en→it | dev | 147 | 51 | 0 | 51 |
+| en→it | test | 346 | 116 | 0 | 116 |
