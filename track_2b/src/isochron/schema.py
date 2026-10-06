@@ -70,7 +70,23 @@ class OverlongRecord(SentenceRecord):
     """ref_tgt_s / slot_s."""
 
 
-R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord)
+@dataclass
+class ControlPair:
+    """One line of data/nli_controls.jsonl: a hand-made check for the NLI metric."""
+
+    id: str
+    lang: str
+    fleurs_id: str
+    """FLEURS train sentence id of the source."""
+    control: str
+    """identity, paraphrase, clause_deleted, clause_inserted or negation."""
+    source: str
+    output: str
+    """The source itself (identity) or a variant written by hand."""
+    license: str
+
+
+R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord, ControlPair)
 
 
 def from_dict(cls: type[R], d: dict[str, Any]) -> R:
@@ -94,7 +110,7 @@ def read_jsonl(path: str | Path, cls: type[R]) -> Iterator[R]:
 
 def write_jsonl(
     path: str | Path,
-    records: Iterable[InputRecord | OutputRecord | SentenceRecord | OverlongRecord],
+    records: Iterable[InputRecord | OutputRecord | SentenceRecord | OverlongRecord | ControlPair],
 ) -> int:
     n = 0
     with open(path, "w", encoding="utf-8") as f:

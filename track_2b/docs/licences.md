@@ -1,11 +1,14 @@
 # Data and model licences
 
-Every dataset and model used by this project, with its licence and source.
+Every dataset, model and external program used by this project, with its
+licence and source.
 
 | Item | Kind | Source | Licence | Used for |
 |------|------|--------|---------|----------|
 | FLEURS: configs `en_us`, `de_de`, `fr_fr`, `it_it`; splits `validation` (our `dev`), `test` | Dataset: read speech with transcripts | [huggingface.co/datasets/google/fleurs](https://huggingface.co/datasets/google/fleurs), revision `70bb2e84b976b7e960aa89f1c648e09c59f894dd` | CC BY 4.0 | Source sentences and reference translations in `data/fleurs_*.jsonl`; the audio fields there (stretch goal only) |
 | FLoRes-101: `dev` and `devtest`, with their article metadata | Dataset: multi-way parallel sentences | [dl.fbaipublicfiles.com/flores101/dataset/flores101_dataset.tar.gz](https://dl.fbaipublicfiles.com/flores101/dataset/flores101_dataset.tar.gz) (Meta's public archive, no login; SHA-256 `49fa80207b09fcc0eca8253ed13303b3a0ae0f16081af862601c73ac76f2cba6`) | CC BY-SA 4.0 | Origin of the FLEURS text; step 1 texts (sentences grouped by article) |
+| mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (Moritz Laurer) | Model: multilingual NLI classifier | [huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7](https://huggingface.co/MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7), revision `b5113eb38ab63efdd7f280f8c144ea8b13f978ce` | MIT | Meaning metric: bidirectional NLI (`src/isochron/metrics/meaning.py`) |
+| eSpeak NG 1.52.0 | External program: text to phonemes | [github.com/espeak-ng/espeak-ng](https://github.com/espeak-ng/espeak-ng), installed with Homebrew (`espeak-ng`) | GPL-3.0-or-later | Syllable counts (`src/isochron/metrics/length.py`). Run as a separate program; its IPA output is parsed. It is never imported, linked or redistributed, so our code stays Apache-2.0. |
 
 **Our data files** (`data/*.jsonl`) contain FLoRes text, so they are
 licensed **CC BY-SA 4.0** (see [data/README.md](../data/README.md)). The code

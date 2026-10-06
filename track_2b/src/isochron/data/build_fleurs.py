@@ -39,7 +39,6 @@ import argparse
 import io
 import random
 import re
-import subprocess
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -51,12 +50,11 @@ import librosa
 import numpy as np
 import pyarrow.parquet as pq
 import soundfile as sf
-from huggingface_hub import hf_hub_download
 
+from isochron.data.fleurs import REPO_ID, REVISION, fetch
+from isochron.provenance import git_commit
 from isochron.schema import OverlongRecord, SentenceRecord, write_jsonl
 
-REPO_ID = "google/fleurs"
-REVISION = "70bb2e84b976b7e960aa89f1c648e09c59f894dd"
 LICENSE = "CC-BY-SA-4.0"
 SRC_LANG, SRC_CONFIG = "en", "en_us"
 TGT_CONFIGS = {"de": "de_de", "fr": "fr_fr", "it": "it_it"}
@@ -94,10 +92,6 @@ class Split:
     sentences: dict[int, Sentence]
     recordings: set[tuple[int, str]]
     """Every (sentence id, recording id) in the parquet split."""
-
-
-def fetch(filename: str) -> Path:
-    return Path(hf_hub_download(REPO_ID, filename, repo_type="dataset", revision=REVISION))
 
 
 def recording_id(path: str) -> str:
@@ -195,20 +189,6 @@ def read_tsv(config: str, raw_split: str) -> set[tuple[int, str]]:
     with open(fetch(f"data/{config}/{raw_split}.tsv"), encoding="utf-8") as f:
         cols = (line.rstrip("\n").split("\t") for line in f if line.strip())
         return {(int(c[0]), recording_id(c[1])) for c in cols}
-
-
-def git_commit() -> str:
-    try:
-        sha = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
-        ).stdout.strip()
-        dirty = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=no"],
-            capture_output=True, text=True, check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown (not a git checkout)"
-    return f"{sha} (with uncommitted changes to tracked files)" if dirty else sha
 
 
 def digit_runs(text: str) -> list[str]:
