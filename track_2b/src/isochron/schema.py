@@ -37,7 +37,40 @@ class OutputRecord:
     meta: dict[str, Any] = field(default_factory=dict)
 
 
-R = TypeVar("R", InputRecord, OutputRecord)
+@dataclass
+class SentenceRecord:
+    """One line of data/fleurs_{lang}_{split}.jsonl (see data/README.md)."""
+
+    id: str
+    """FLEURS sentence id."""
+    src_lang: str
+    tgt_lang: str
+    src_text: str
+    ref_text: str
+    """Human reference translation (FLEURS transcription of the target recording)."""
+    slot_s: float
+    """Trimmed duration of the EN recording. Not valid until trimming is fixed."""
+    ref_tgt_s: float
+    """Trimmed duration of the target recording. Not valid until trimming is fixed."""
+    noisy_src: bool
+    """EN recording's noise floor is above -30 dB, so trimming left noise in place."""
+    noisy_tgt: bool
+    """Same for the target recording."""
+    src_recording_id: str
+    tgt_recording_id: str
+    license: str
+    source: str
+
+
+@dataclass
+class OverlongRecord(SentenceRecord):
+    """One line of data/overlong_{lang}_{split}.jsonl: ref_tgt_s > 1.10 × slot_s."""
+
+    overrun: float
+    """ref_tgt_s / slot_s."""
+
+
+R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord)
 
 
 def from_dict(cls: type[R], d: dict[str, Any]) -> R:
@@ -59,7 +92,10 @@ def read_jsonl(path: str | Path, cls: type[R]) -> Iterator[R]:
                 raise ValueError(f"{path}:{lineno}: {e}") from e
 
 
-def write_jsonl(path: str | Path, records: Iterable[InputRecord | OutputRecord]) -> int:
+def write_jsonl(
+    path: str | Path,
+    records: Iterable[InputRecord | OutputRecord | SentenceRecord | OverlongRecord],
+) -> int:
     n = 0
     with open(path, "w", encoding="utf-8") as f:
         for r in records:
