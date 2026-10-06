@@ -101,3 +101,8 @@ https://hackapertus.ch/terms-and-conditions
 
 ## Contact
 💬 In case you have questions, join the conversation on Discord or send an email to “hello@hackapertus.ch”
+
+## Licence
+
+- Code: Apache-2.0, see [LICENSE](../LICENSE).
+- Technical report and documentation: CC-BY-4.0, as set by the organisers' template.
