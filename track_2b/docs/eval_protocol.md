@@ -28,6 +28,15 @@ the reason.
   `results/fleurs_stats.md`).
 - **Model.** Apertus 1.5 8B (`swiss-ai/Apertus-v1.5-8B`), reached through
   `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`.
+  - Locally it runs as the Q4_K_M GGUF of a text-only conversion of the
+    official weights: `Colby/apertus-v1.5-8b-text-Q4_K_M-GGUF`, made from
+    `andreasmartin/apertus-v1.5-8b-text`, file SHA-256 `a037df8d…5f299`.
+  - It is served by llama.cpp build 11429 with every layer on Metal and an
+    8,192-token context (`docs/local_llm.md`).
+  - This is a deviation from the official checkpoint. The official model has
+    no GGUF, and llama.cpp cannot convert `Apertus1p5ForConditionalGeneration`.
+    The conversion copies the text backbone bit for bit, but its author did
+    not check that the outputs match the official model.
 - **Generation settings, for every system:** temperature 0.7, top_p 0.95,
   seeds 0, 1 and 2, thinking mode off. Thinking is switched off by sending the
   chat-template argument `enable_thinking: false`, which is Apertus 1.5's
@@ -60,6 +69,9 @@ the reason.
   merge clauses.
 - The output is JSON with 4 candidates and no explanations.
 - If examples are added later, they come from FLEURS train only.
+- **Frozen on 2026-10-09, before the go/no-go run:** `shorten_syllables_v1.txt`,
+  SHA-256 `fe4fbfdd800d69b613fd49ba747507aa44a9a868556ceca15421d33edd661a5c`.
+  Any change makes a new version (v2), and every run records the hash it used.
 
 ## Length units
 
@@ -239,6 +251,17 @@ Fixed before any output has been seen (`src/isochron/gonogo.py`).
   2. of those, at least 80 % keep meaning (entailment holds both ways).
 - **Otherwise NO-GO.** We report it as a null result and do not lower the
   thresholds after the fact.
+- **Smoke test before the run** (2026-10-09, run `20261009T131902Z`): the same
+  5 other dev sentences as the dry run, all 4 levels, seed 0, 20 requests.
+  The three required checks passed:
+  - every answer is JSON with 4 candidates;
+  - all 80 candidates are non-empty German, by the character n-gram
+    identifier in `src/isochron/langid.py` (trained on FLEURS train; 578/578
+    dev sentences right) and by reading each one;
+  - the NLI scored all 40 pairs.
+
+  A first, function-word version of the language check wrongly failed 16
+  short German candidates and was replaced before the go/no-go run.
 
 ## Stretch: isochrony
 
@@ -279,3 +302,6 @@ used.
   not 4 samples.
 - 2026-10-09, v2.2: German years are counted as spoken years. The
   syllable-counter accuracy and its remaining errors are documented.
+- 2026-10-09, v2.3, before the go/no-go run: prompt v1 frozen (hash above);
+  the local model artefact recorded; smoke test passed; the language check now
+  uses a character n-gram identifier.

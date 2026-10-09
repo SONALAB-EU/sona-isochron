@@ -1,8 +1,10 @@
 """Smoke-test checks on a scored run, before any larger run is started.
 
 1. Every response parses as JSON with exactly 4 candidates.
-2. Every candidate is non-empty and in the run's language (function-word
-   vote over de / en / fr / it; ties and texts without function words fail).
+2. Every candidate is non-empty and in the run's language, by the character
+   n-gram classifier in isochron.langid (trained on FLEURS train; 578/578 dev
+   sentences right). A first version voted on function words and wrongly
+   failed short German phrases such as "Fünf CEP in vier Jahren – Martelly".
 3. The NLI scored every (input, selected output) pair, in both directions.
 
 Prints every candidate for reading by eye, then the three verdicts. Exit
@@ -14,29 +16,15 @@ status 1 if any check fails. Run from track_2b/:
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
 from isochron.candidates import N_CANDIDATES, parse_candidates
-
-FUNCTION_WORDS = {
-    "de": set("der die das und ist ein eine einen einem einer nicht mit von zu den im für auf sich des dem auch es an "
-              "wird werden wurde wurden sind als bei nach aus oder wie dass sie er hat haben zum zur über vom".split()),
-    "en": set("the and is of to in a that it for on with as was are be by this from or an which have has were not "
-              "its at".split()),
-    "fr": set("le la les et est de des du un une en que qui dans pour pas sur au aux il elle ce sont par avec "
-              "ne se son sa ses".split()),
-    "it": set("il lo gli e è di del della dei delle che un una per non con sono nel nella alla da si".split()),
-}
+from isochron.langid import fleurs_lid
 
 
 def guess_language(text: str) -> str:
-    words = re.findall(r"[^\W\d_]+", text.lower())
-    votes = {lang: sum(w in fw for w in words) for lang, fw in FUNCTION_WORDS.items()}
-    best = max(votes.values())
-    winners = [lang for lang, v in votes.items() if v == best]
-    return winners[0] if best > 0 and len(winners) == 1 else "unknown"
+    return fleurs_lid().predict(text)
 
 
 def main(argv: list[str] | None = None) -> int:

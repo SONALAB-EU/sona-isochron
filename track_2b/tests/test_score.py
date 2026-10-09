@@ -5,9 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from huggingface_hub import try_to_load_from_cache
 
 from isochron import gonogo
 from isochron.checks import guess_language
+from isochron.data.fleurs import REPO_ID, REVISION
 from isochron.score import gonogo_lines, pooled_ci
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,8 +54,18 @@ def test_gonogo_lines_skip_mock_and_other_runs(monkeypatch: pytest.MonkeyPatch) 
     assert gonogo_lines({**cfg, "mock": False, "seeds": [0]}, _records(True, True)) == []
 
 
+train_cached = all(
+    isinstance(try_to_load_from_cache(REPO_ID, f"data/{cfg}/train.tsv", revision=REVISION, repo_type="dataset"), str)
+    for cfg in ("en_us", "de_de", "fr_fr", "it_it")
+)
+
+
+@pytest.mark.skipif(not train_cached, reason="FLEURS train transcriptions not in the local Hugging Face cache")
 def test_guess_language() -> None:
     assert guess_language("Die Vereinten Nationen hoffen, einen Fonds einzurichten.") == "de"
+    assert guess_language("Fünf CEP in vier Jahren – Martelly") == "de"  # short, no function words
+    assert guess_language("Argentinien besitzt Weltklasse-Polo-Spieler") == "de"
     assert guess_language("Le train est parti de Berne à neuf heures.") == "fr"
+    assert guess_language("Il treno è partito da Berna alle nove.") == "it"
     assert guess_language("The train left Bern at nine.") == "en"
     assert guess_language("") == "unknown"
