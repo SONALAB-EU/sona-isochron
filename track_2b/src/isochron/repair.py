@@ -13,8 +13,12 @@ directions. The best candidate so far is ranked by:
 If the best one is not accepted, a revision prompt with specific feedback asks
 for 4 new candidates: how many syllables too long or short (with the word
 equivalent), missing information, added information. There are at most
-MAX_REVISIONS revision rounds. If a round yields no usable candidates, the
-next round repeats the round-0 prompt. Every round is logged.
+MAX_REVISIONS rounds after round 0. If no round has yet given a usable
+candidate, the next round repeats the round-0 prompt; such a round is logged
+as a retry. Every round is logged.
+
+Each round is generated with its own seed (the caller derives it from the
+round number). Otherwise an unchanged prompt would be replayed byte for byte.
 
 "Without the loop" is the closest round-0 candidate in syllables (the v1 rule).
 """
@@ -33,7 +37,7 @@ from isochron.prompts import Prompt
 
 MAX_REVISIONS = 2
 
-Generate = Callable[[str], tuple[str, dict[str, Any]]]  # prompt -> (raw answer, call info)
+Generate = Callable[[str, int], tuple[str, dict[str, Any]]]  # (prompt, round) -> (raw answer, call info)
 Judge = Callable[[Sequence[str], Sequence[str]], list[Meaning]]  # the NLI, not the final judge
 Count = Callable[[str, str], int]  # (text, unit) -> length
 
@@ -106,10 +110,10 @@ def run_loop(
     target_words = max(1, round(target * words_in / syllables_in))
     log: dict[str, Any] = {"rounds": [], "target": target, "target_words": target_words}
     best: Candidate | None = None
-    prompt = first_prompt
+    prompt, retry = first_prompt, False
     t_start = time.monotonic()
     for rnd in range(max_revisions + 1 if repair else 1):
-        raw, info = generate(prompt)
+        raw, info = generate(prompt, rnd)
         texts, error = parse_candidates(raw)
         t_nli = time.monotonic()
         cands = evaluate(texts, rnd, source, target, nli, count)
@@ -117,7 +121,7 @@ def run_loop(
         for c in cands:
             if best is None or rank(c, target) < rank(best, target):
                 best = c
-        entry = {"round": rnd, "prompt": prompt, "raw": raw, "parse_error": error,
+        entry = {"round": rnd, "retry": retry, "prompt": prompt, "raw": raw, "parse_error": error,
                  "candidates": [asdict(c) for c in cands], "llm": info, "nli_s": round(nli_s, 3),
                  "best_after": {"round": best.round, "index": best.index} if best else None}
         log["rounds"].append(entry)
@@ -129,14 +133,15 @@ def run_loop(
             break
         if best is None:
             entry["feedback"] = ["(no usable answer: the round-0 prompt is sent again)"]
-            prompt = first_prompt
+            prompt, retry = first_prompt, True
         else:
             lines = feedback(best, target, words_in, syllables_in)
             entry["feedback"] = lines
-            prompt = revise.render(lang, target, source, current=best.text,
-                                   feedback="\n".join(lines), target_words=target_words)
+            prompt, retry = revise.render(lang, target, source, current=best.text,
+                                          feedback="\n".join(lines), target_words=target_words), False
     log["final"] = asdict(best) if best else None
     log["final_accepted"] = bool(best and best.accepted)
-    log["revisions"] = len(log["rounds"]) - 1
+    log["revisions"] = len(log["rounds"]) - 1  # rounds after round 0, retries included
+    log["retries"] = sum(r["retry"] for r in log["rounds"])
     log["time_total_s"] = round(time.monotonic() - t_start, 3)
     return log

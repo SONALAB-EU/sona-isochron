@@ -54,13 +54,24 @@ DATA = Path("data/fleurs_de_dev.jsonl")
 N_PILOT, PILOT_SEED = 30, 0
 LEVELS = (90, 80)
 GRADES = (15, 10, 5, 0)
+ROUND_SEED_STEP = 1000  # round r of an item with seed s is generated with seed s + 1000 * r
+
+
+def tuning_pool(path: Path = DATA) -> list[SentenceRecord]:
+    """The German dev sentences outside the go/no-go 50, in file order."""
+    excluded = set(gonogo_ids(path))
+    return [r for r in read_jsonl(path, SentenceRecord) if r.id not in excluded]
 
 
 def pilot_ids(path: Path = DATA) -> list[str]:
-    excluded = set(gonogo_ids(path))
-    rest = [r for r in read_jsonl(path, SentenceRecord) if r.id not in excluded]
+    rest = tuning_pool(path)
     picked = {r.id for r in random.Random(PILOT_SEED).sample(rest, N_PILOT)}
     return [r.id for r in rest if r.id in picked]
+
+
+def selection_text(path: Path = DATA) -> str:
+    return (f"random.Random({PILOT_SEED}).sample of {N_PILOT} of the {len(tuning_pool(path))} German dev "
+            "sentences outside the go/no-go 50, kept in file order")
 
 
 def graded_targets(level: int, n_syllables: int) -> list[int]:
@@ -132,6 +143,7 @@ def main(argv: list[str] | None = None) -> None:
         "seeds": args.seeds,
         "repair": not args.no_repair,
         "max_revisions": MAX_REVISIONS,
+        "round_seed": f"item seed + {ROUND_SEED_STEP} × round (round 0 uses the item seed)",
         "mock": args.mock,
         "model": "mock (word-prefix cuts, no LLM)" if args.mock else config.name,
         "quantisation": "n/a (mock)" if args.mock else args.quantisation,
@@ -144,8 +156,8 @@ def main(argv: list[str] | None = None) -> None:
         "nli": nli.describe(),
         "loop_uses": "syllable counter and NLI only; never the final judge",
         "data": {"file": str(DATA), "sha256": hashlib.sha256(DATA.read_bytes()).hexdigest()},
-        "items": {"selection": f"random.Random({PILOT_SEED}).sample of the {N_PILOT} dev sentences outside the go/no-go 50"
-                  + (f", first {args.limit}" if args.limit else ""), "n": len(records), "ids": [r.id for r in records]},
+        "items": {"selection": selection_text() + (f", first {args.limit}" if args.limit else ""),
+                  "n": len(records), "ids": [r.id for r in records]},
         "tts": "none",
     }
     (out / "config.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -161,14 +173,16 @@ def main(argv: list[str] | None = None) -> None:
                 for level in args.levels:
                     text, targets = first_prompt(args.variant, prompt, lang, level, r.ref_text, counter)
 
-                    def generate(p: str, seed: int = seed, level: int = level) -> tuple[str, dict[str, Any]]:
+                    def generate(p: str, rnd: int, seed: int = seed) -> tuple[str, dict[str, Any]]:
+                        s = seed + ROUND_SEED_STEP * rnd
                         t0 = time.monotonic()
                         if args.mock:
-                            raw = mock_answer(r.ref_text, "syllables", lang, targets["target"], seed, counter)
-                            return raw, {"latency_s": round(time.monotonic() - t0, 3), "finish_reason": "stop"}
-                        res = client.chat([{"role": "user", "content": p}], seed=seed, **GENERATION, **extra)
-                        return res.text, {"latency_s": round(time.monotonic() - t0, 3), "finish_reason": res.finish_reason,
-                                          "usage": res.usage, "timings": res.raw.get("timings")}
+                            raw = mock_answer(r.ref_text, "syllables", lang, targets["target"], s, counter)
+                            return raw, {"seed": s, "latency_s": round(time.monotonic() - t0, 3), "finish_reason": "stop"}
+                        res = client.chat([{"role": "user", "content": p}], seed=s, **GENERATION, **extra)
+                        return res.text, {"seed": s, "latency_s": round(time.monotonic() - t0, 3),
+                                          "finish_reason": res.finish_reason, "usage": res.usage,
+                                          "timings": res.raw.get("timings")}
 
                     log = run_loop(text, r.ref_text, lang, targets["target"], generate, nli.meaning, count, revise,
                                    repair=not args.no_repair)

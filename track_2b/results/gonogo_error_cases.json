@@ -1,0 +1,302 @@
+[
+ {
+  "case": 1,
+  "id": "1522",
+  "seed": 1,
+  "input": "Virtuelle Exkursionen stellen eine technische Lösung dar. Die Schüler können vom Klassenzimmer aus Museumsstücke betrachten, ein Aquarium besuchen oder schöne Kunstwerke bewundern.",
+  "output": "Technische Ausflüge ermöglichen Museums-Besuche. Schüler bewundern Kunst, Tiere oder Ausstellungsstücke ohne physische Anwesenheit.",
+  "target": 42,
+  "syllables": 40,
+  "nli_added": false
+ },
+ {
+  "case": 2,
+  "id": "1536",
+  "seed": 1,
+  "input": "Die lokalen Behörden ermahnen die Einwohner in der Nähe der Anlage dazu, sich innerhalb von Gebäuden aufzuhaltem, Klimaanlagen auszuschalten und kein Leitungswasser zu trinken.",
+  "output": "Die Behörden warnen Bewohner, Gebäude zu nutzen, Klimaanlagen auszuschalten und kein Leitungswasser zu trinken.",
+  "target": 42,
+  "syllables": 32,
+  "nli_added": false
+ },
+ {
+  "case": 3,
+  "id": "1536",
+  "seed": 2,
+  "input": "Die lokalen Behörden ermahnen die Einwohner in der Nähe der Anlage dazu, sich innerhalb von Gebäuden aufzuhaltem, Klimaanlagen auszuschalten und kein Leitungswasser zu trinken.",
+  "output": "Die Behörden fordern die Bewohner an, sich in Gebäuden aufzuhalten, Klimaanlagen auszustellen und kein Leitungswasser zu trinken.",
+  "target": 42,
+  "syllables": 37,
+  "nli_added": false
+ },
+ {
+  "case": 4,
+  "id": "1546",
+  "seed": 0,
+  "input": "Die Struktur der Federn lässt vermuten, dass sie nicht zum Fliegen,, sondern eher zur Temperaturregulierung oder zum Herzeigen verwendet wurden. Die Forscher vermuteten, dass die Probe, obwohl es sich um den Schwanz eines jungen Dinosauriers handelt, das Gefieder eines Ausgewachsenen zeigt und nicht die Daunen eines Kükens.",
+  "output": "Die Federstruktur deutet auf Temperaturregulierung statt Flug hin. Die Probe zeigt Erwachsenengefieder, nicht Kükenfedern.",
+  "target": 71,
+  "syllables": 35,
+  "nli_added": false
+ },
+ {
+  "case": 5,
+  "id": "1546",
+  "seed": 1,
+  "input": "Die Struktur der Federn lässt vermuten, dass sie nicht zum Fliegen,, sondern eher zur Temperaturregulierung oder zum Herzeigen verwendet wurden. Die Forscher vermuteten, dass die Probe, obwohl es sich um den Schwanz eines jungen Dinosauriers handelt, das Gefieder eines Ausgewachsenen zeigt und nicht die Daunen eines Kükens.",
+  "output": "Die Federstruktur weist auf Temperaturregulierung hin, nicht auf Flugfähigkeit. Die Probe, ein junger Dinosaurierschwanz, zeigt Erwachsenengefieder statt Kükendaunen.",
+  "target": 71,
+  "syllables": 46,
+  "nli_added": false
+ },
+ {
+  "case": 6,
+  "id": "1551",
+  "seed": 2,
+  "input": "Sie versuchen immer noch herauszufinden, wie umfangreich der Zusammenstoß war und wie die Erde davon beeinträchtigt werden wird.",
+  "output": "Die Ausmaße des Zusammenstoßes und dessen Auswirkungen werden noch untersucht",
+  "target": 29,
+  "syllables": 23,
+  "nli_added": false
+ },
+ {
+  "case": 7,
+  "id": "1556",
+  "seed": 1,
+  "input": "Seine tausendste Briefmarke, aus dem Jahr 2000,  zeigt das prächtige Gemälde „Rühmliche Heldentaten schwedischer Könige“ von David Klöcker Ehrenstrahl und ist im Guinness-Buch der Rekorde verzeichnet.",
+  "output": "Seine tausendste Briefmarke aus 2000 zeigt Ehrenstrahßs Gemälde schwedischer Könige und ist im Guinness-Buch verzeichnet.",
+  "target": 45,
+  "syllables": 34,
+  "nli_added": false
+ },
+ {
+  "case": 8,
+  "id": "1562",
+  "seed": 0,
+  "input": "Dies wurde üblich, doch das Eisen sorgte für mehr Verschleiß an den hölzernen Rädern der Wagen.",
+  "output": "Die hölzernen Wagenräder tragen stärkeren Eisenverschleiß",
+  "target": 20,
+  "syllables": 17,
+  "nli_added": false
+ },
+ {
+  "case": 9,
+  "id": "1562",
+  "seed": 1,
+  "input": "Dies wurde üblich, doch das Eisen sorgte für mehr Verschleiß an den hölzernen Rädern der Wagen.",
+  "output": "Eisen verursacht verstärkten Verschleiß der hölzernen Wagenräder.",
+  "target": 20,
+  "syllables": 18,
+  "nli_added": false
+ },
+ {
+  "case": 10,
+  "id": "1567",
+  "seed": 0,
+  "input": "Das größte Turnier des Jahres findet im Dezember auf Las Cañitas Polofeldern statt.",
+  "output": "Im Dezember stattet das Turnier Las Cañitas Polofeldern",
+  "target": 19,
+  "syllables": 17,
+  "nli_added": false
+ },
+ {
+  "case": 11,
+  "id": "1567",
+  "seed": 1,
+  "input": "Das größte Turnier des Jahres findet im Dezember auf Las Cañitas Polofeldern statt.",
+  "output": "Das Jahresturnier spielt Dezember auf Las Cañitas",
+  "target": 19,
+  "syllables": 14,
+  "nli_added": false
+ },
+ {
+  "case": 12,
+  "id": "1571",
+  "seed": 2,
+  "input": "Die Araber brachten auch den Islam ins Land, und auf den Komoren und in Mayotte war er sehr erfolgreich.",
+  "output": "Der Islam gelangte durch Araber nach Komoren und Mayotte.",
+  "target": 23,
+  "syllables": 18,
+  "nli_added": false
+ },
+ {
+  "case": 13,
+  "id": "1575",
+  "seed": 2,
+  "input": "Israel verlangt  eine Militärpräsenz im Jordantal von zehn Jahren ab der Unterzeichnung der Vereinbarung, die Palästinenserbehörde hingegen will eine solche Präsenz nur für fünf Jahre akzeptieren.",
+  "output": "Israel fordert zehn Jahre Militärpräsenz im Jordantal, Palästinenserbehörde akzeptiert nur fünf Jahre.",
+  "target": 47,
+  "syllables": 32,
+  "nli_added": false
+ },
+ {
+  "case": 14,
+  "id": "1577",
+  "seed": 0,
+  "input": "Das erschien mir nicht sinnvoll; es war ganz gewiss nicht fair.",
+  "output": "Es war nicht gerecht",
+  "target": 11,
+  "syllables": 5,
+  "nli_added": false
+ },
+ {
+  "case": 15,
+  "id": "1582",
+  "seed": 0,
+  "input": "Der größte Teil des Lebens der hebräischen Familie spielte sich unter freiem Himmel ab.",
+  "output": "Im Freien spielte sich das meiste jüdische Familienleben ab.",
+  "target": 20,
+  "syllables": 18,
+  "nli_added": true
+ },
+ {
+  "case": 16,
+  "id": "1582",
+  "seed": 1,
+  "input": "Der größte Teil des Lebens der hebräischen Familie spielte sich unter freiem Himmel ab.",
+  "output": "Im Freien lebte die Familie den Großteil ihrer Zeit",
+  "target": 20,
+  "syllables": 15,
+  "nli_added": false
+ },
+ {
+  "case": 17,
+  "id": "1582",
+  "seed": 2,
+  "input": "Der größte Teil des Lebens der hebräischen Familie spielte sich unter freiem Himmel ab.",
+  "output": "Vieles vom Leben der Familie ereignete sich unter freiem Himmel.",
+  "target": 20,
+  "syllables": 20,
+  "nli_added": false
+ },
+ {
+  "case": 18,
+  "id": "1583",
+  "seed": 2,
+  "input": "Zu dieser Schlussfolgerung kam sie aufgrund der zahlreichen positiven Kommentare und der Ermutigung, die sie sowohl von Männern als auch von Frauen erhielt, die darauf drängten, dass Verhütungsmittel als medizinische Notwendigkeit angesehen werden sollten.",
+  "output": "Die zahlreichen positiven Kommentare und beiderseitige Ermutigung führten zu ihrer Schlussfolgerung über die medizinische Notwendigkeit von Verhütungsmitteln.",
+  "target": 58,
+  "syllables": 49,
+  "nli_added": false
+ },
+ {
+  "case": 19,
+  "id": "1588",
+  "seed": 0,
+  "input": "Laut Polizei wird der Fahrer des Fahrzeugs, das den Fotografen angefahren hat, wahrscheinlich nicht angeklagt werden.",
+  "output": "Wahrscheinlich wird der Fahrer des Fahrzeugs, das den Fotografen angefahren hat, nicht angeklagt",
+  "target": 25,
+  "syllables": 25,
+  "nli_added": false
+ },
+ {
+  "case": 20,
+  "id": "1588",
+  "seed": 1,
+  "input": "Laut Polizei wird der Fahrer des Fahrzeugs, das den Fotografen angefahren hat, wahrscheinlich nicht angeklagt werden.",
+  "output": "Wahrscheinlich wird der Fahrer des Fahrzeugs, das den Fotografen angefahren hat, nicht angeklagt.",
+  "target": 25,
+  "syllables": 25,
+  "nli_added": false
+ },
+ {
+  "case": 21,
+  "id": "1601",
+  "seed": 1,
+  "input": "Wissenschaftler denken, dass Ozelote Tiere zum Fressen (Beute) mit ihrem Geruchssinn verfolgen und aufspüren. Sie schnuppern danach, wo sie sich am Boden aufgehalten haben.",
+  "output": "Wissenschaftler sehen Ozeloten als Duftjäger, verfolgen und finden Beute",
+  "target": 38,
+  "syllables": 22,
+  "nli_added": false
+ },
+ {
+  "case": 22,
+  "id": "1602",
+  "seed": 2,
+  "input": "Die mallorquinische Küche basiert, wie die in ähnlichen Gebieten des Mittelmeers, auf Brot, Gemüse und Fleisch (insbesondere Schweinefleisch) und verwendet stets Olivenöl.",
+  "output": "Die mallorquinische Küche basiert auf Brot, Gemüse, Fleisch und Olivenöl wie im Mittelmeergebiet",
+  "target": 38,
+  "syllables": 28,
+  "nli_added": false
+ },
+ {
+  "case": 23,
+  "id": "1603",
+  "seed": 2,
+  "input": "Flugunfälle sind im Iran, der über eine veraltete Flotte verfügt, die sowohl für zivile als auch für militärische Einsätze schlecht gewartet wird, häufig.",
+  "output": "Veraltete, schlecht gewartete Flotte verursacht häufig Flugunfälle im Iran",
+  "target": 37,
+  "syllables": 23,
+  "nli_added": false
+ },
+ {
+  "case": 24,
+  "id": "1609",
+  "seed": 0,
+  "input": "Robin Uthappa erreichte die höchste Punktzahl der Innings, 70 Punkte bei nur 41 Bällen, indem er 11 Vierer und 2 Sechser schlug.",
+  "output": "Robin Uthappa erzielte 70 Punkte in nur 41 Bällen, 11 Vierer und 2 Sechser",
+  "target": 31,
+  "syllables": 27,
+  "nli_added": false
+ },
+ {
+  "case": 25,
+  "id": "1609",
+  "seed": 2,
+  "input": "Robin Uthappa erreichte die höchste Punktzahl der Innings, 70 Punkte bei nur 41 Bällen, indem er 11 Vierer und 2 Sechser schlug.",
+  "output": "Robin Uthappa erzielte 70 Punkte in 41 Bällen durch 11 Vierer und 2 Sechser",
+  "target": 31,
+  "syllables": 27,
+  "nli_added": false
+ },
+ {
+  "case": 26,
+  "id": "1627",
+  "seed": 0,
+  "input": "Gerichte des alten Roms konnten keine Nahrungsmittel enthalten, die in späteren Jahrhunderten aus Amerika oder Asien nach Europa kamen.",
+  "output": "Die römischen Gerichte enthielten keine amerikanischen oder asiatischen Lebensmittel",
+  "target": 34,
+  "syllables": 28,
+  "nli_added": false
+ },
+ {
+  "case": 27,
+  "id": "1641",
+  "seed": 0,
+  "input": "Die Wälder sind jedoch nicht nur Mangrovensümpfe – sie umfassen auch einige der letzten verbliebenen Bestände des mächtigen Dschungels, der einst die Gangesebene bedeckte.",
+  "output": "Die Wälder beinhalten Mangrovensümpfe und einige der letzten Dschungelbestände, die einst die Gangesebene bedeckten.",
+  "target": 38,
+  "syllables": 35,
+  "nli_added": false
+ },
+ {
+  "case": 28,
+  "id": "1642",
+  "seed": 0,
+  "input": "Die Kriegsausgaben der US-Imperialisten bei der Eroberung der Philippinen wurden vom philippinischen Volk selbst getragen.",
+  "output": "Die US-Kriegsausgaben für die Philippinen wurden vom philippinischen Volk getragen.",
+  "target": 30,
+  "syllables": 25,
+  "nli_added": false
+ },
+ {
+  "case": 29,
+  "id": "1656",
+  "seed": 1,
+  "input": "Die Polizei sagte, der Körper schien seit etwa einem Tag dort gelegen zu haben.",
+  "output": "Der Körper lag seit einem Tag dort.",
+  "target": 18,
+  "syllables": 9,
+  "nli_added": true
+ },
+ {
+  "case": 30,
+  "id": "1656",
+  "seed": 2,
+  "input": "Die Polizei sagte, der Körper schien seit etwa einem Tag dort gelegen zu haben.",
+  "output": "Der Körper schien seit etwa einem Tag dort zu liegen.",
+  "target": 18,
+  "syllables": 14,
+  "nli_added": true
+ }
+]

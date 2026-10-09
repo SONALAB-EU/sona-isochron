@@ -1,0 +1,716 @@
+{
+ "annotators": {
+  "annotator-A": [
+   {
+    "case": 1,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'Virtuelle Exkursionen stellen eine technische Lösung dar' gone and 'virtuelle' became 'Technische Ausflüge'; 'schöne' and 'vom Klassenzimmer aus' lost; 'ein Aquarium besuchen' became 'Tiere'; modal 'können' dropped"
+   },
+   {
+    "case": 2,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' lost; 'ermahnen ... dazu' became 'warnen' (can read as warn against); 'sich innerhalb von Gebäuden aufzuhalten' became 'Gebäude zu nutzen'"
+   },
+   {
+    "case": 3,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' lost; 'ermahnen' became the wrong verb 'fordern ... an' (anfordern = requisition, not auffordern)"
+   },
+   {
+    "case": 4,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "List item 'oder zum Herzeigen' and clause 'obwohl es sich um den Schwanz eines jungen Dinosauriers handelt' lost; hedges 'eher' and 'Die Forscher vermuteten' lost; 'Daunen' generalised to 'Kükenfedern'"
+   },
+   {
+    "case": 5,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "List item 'oder zum Herzeigen' lost; 'eher' and 'Die Forscher vermuteten' lost; concessive 'obwohl' reduced to apposition 'ein junger Dinosaurierschwanz'; 'nicht zum Fliegen verwendet' became 'nicht auf Flugfähigkeit'"
+   },
+   {
+    "case": 6,
+    "lost": [
+     "name"
+    ],
+    "what": "'die Erde' lost: 'wie die Erde davon beeinträchtigt werden wird' became generic 'dessen Auswirkungen'"
+   },
+   {
+    "case": 7,
+    "lost": [
+     "name",
+     "qualifier"
+    ],
+    "what": "Title 'Rühmliche Heldentaten schwedischer Könige' became 'Gemälde schwedischer Könige'; 'David Klöcker' dropped, 'Ehrenstrahl' misspelt 'Ehrenstrahß'; 'Guinness-Buch der Rekorde' cut to 'Guinness-Buch'; 'prächtige' lost"
+   },
+   {
+    "case": 8,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich' (with 'doch') lost; 'das Eisen sorgte für mehr Verschleiß an den hölzernen Rädern' became 'Wagenräder tragen stärkeren Eisenverschleiß' (wear of the iron); past became present"
+   },
+   {
+    "case": 9,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich' lost; past, specific 'das Eisen sorgte' became present, generic 'Eisen verursacht'"
+   },
+   {
+    "case": 10,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'größte ... des Jahres' lost; 'findet ... auf ... statt' became the wrong verb 'stattet' (garbled, 'auf' lost)"
+   },
+   {
+    "case": 11,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'größte' and 'Polofeldern' lost; 'Turnier des Jahres' became 'Jahresturnier' (annual); 'findet im Dezember statt' became 'spielt Dezember'"
+   },
+   {
+    "case": 12,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'auf den Komoren und in Mayotte war er sehr erfolgreich' lost; 'auch' lost; destination 'ins Land' replaced by 'nach Komoren und Mayotte'"
+   },
+   {
+    "case": 13,
+    "lost": [
+     "date",
+     "other"
+    ],
+    "what": "'ab der Unterzeichnung der Vereinbarung' lost; 'will ... akzeptieren' became 'akzeptiert'; 'hingegen' dropped"
+   },
+   {
+    "case": 14,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'Das erschien mir nicht sinnvoll' lost; 'ganz gewiss' lost"
+   },
+   {
+    "case": 15,
+    "lost": [
+     "other"
+    ],
+    "what": "'der hebräischen Familie' became 'jüdische Familienleben' (Hebrew changed to Jewish)"
+   },
+   {
+    "case": 16,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' lost ('der hebräischen Familie' became 'die Familie')"
+   },
+   {
+    "case": 17,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' lost; 'Der größte Teil' weakened to 'Vieles'"
+   },
+   {
+    "case": 18,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'die darauf drängten, dass Verhütungsmittel als medizinische Notwendigkeit angesehen werden sollten' lost, its content moved into her 'Schlussfolgerung'; 'sowohl von Männern als auch von Frauen' became 'beiderseitige'"
+   },
+   {
+    "case": 19,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Laut Polizei' lost"
+   },
+   {
+    "case": 20,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Laut Polizei' lost"
+   },
+   {
+    "case": 21,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "Second sentence 'Sie schnuppern danach, wo sie sich am Boden aufgehalten haben' lost; 'verfolgen und finden Beute' now grammatically has 'Wissenschaftler' as subject"
+   },
+   {
+    "case": 22,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'(insbesondere Schweinefleisch)', 'stets' and 'ähnlichen' lost"
+   },
+   {
+    "case": 23,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'sowohl für zivile als auch für militärische Einsätze' lost; implied link stated as explicit causation 'verursacht'"
+   },
+   {
+    "case": 24,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' lost"
+   },
+   {
+    "case": 25,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' and 'nur' lost"
+   },
+   {
+    "case": 26,
+    "lost": [
+     "name",
+     "date",
+     "qualifier",
+     "other"
+    ],
+    "what": "'in späteren Jahrhunderten' and 'nach Europa' lost (claim now covers all American or Asian food); 'alten' lost; 'konnten ... enthalten' became 'enthielten'"
+   },
+   {
+    "case": 27,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'mächtigen', 'verbliebenen', 'jedoch' and 'nicht nur ... auch' lost; relative clause now makes the 'Dschungelbestände', not the 'Dschungel', cover the 'Gangesebene'"
+   },
+   {
+    "case": 28,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'Eroberung' lost ('bei der Eroberung der Philippinen' became 'für die Philippinen'); 'Imperialisten' and 'selbst' lost"
+   },
+   {
+    "case": 29,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Die Polizei sagte' and hedges 'schien' and 'etwa' lost"
+   },
+   {
+    "case": 30,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Die Polizei sagte' lost"
+   }
+  ],
+  "annotator-B": [
+   {
+    "case": 1,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'Virtuelle Exkursionen stellen eine technische Lösung dar' became 'Technische Ausflüge' ('virtuelle' and the 'Lösung' claim lost); 'vom Klassenzimmer aus' and 'schöne' dropped; 'ein Aquarium besuchen' became 'Tiere'; 'können' lost"
+   },
+   {
+    "case": 2,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' dropped; 'sich innerhalb von Gebäuden aufzuhalten' became 'Gebäude zu nutzen' (use buildings)"
+   },
+   {
+    "case": 3,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' dropped ('fordern ... an' is a slip for 'auffordern', meaning recoverable)"
+   },
+   {
+    "case": 4,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'oder zum Herzeigen' and 'obwohl es sich um den Schwanz eines jungen Dinosauriers handelt' dropped; hedges 'eher' and 'Die Forscher vermuteten' dropped; 'Daunen' generalised to 'Kükenfedern'"
+   },
+   {
+    "case": 5,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'oder zum Herzeigen' dropped; hedges 'eher' and 'Die Forscher vermuteten' dropped; concessive 'obwohl' reduced to a plain apposition"
+   },
+   {
+    "case": 6,
+    "lost": [
+     "name",
+     "other"
+    ],
+    "what": "'wie die Erde davon beeinträchtigt werden wird' reduced to 'dessen Auswirkungen' ('die Erde' lost); agent 'Sie' dropped by passive 'werden ... untersucht'"
+   },
+   {
+    "case": 7,
+    "lost": [
+     "name",
+     "qualifier"
+    ],
+    "what": "Title 'Rühmliche Heldentaten schwedischer Könige' cut to 'Gemälde schwedischer Könige'; 'David Klöcker' dropped and 'Ehrenstrahl' misspelt 'Ehrenstrahß'; 'der Rekorde' dropped; 'prächtige' dropped"
+   },
+   {
+    "case": 8,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich, doch' dropped; 'das Eisen sorgte für mehr Verschleiß an den hölzernen Rädern' became 'tragen stärkeren Eisenverschleiß' (iron no longer the cause); past 'sorgte' became present"
+   },
+   {
+    "case": 9,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich, doch' dropped; past 'das Eisen sorgte' became generic present 'Eisen verursacht'"
+   },
+   {
+    "case": 10,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'größte' and 'des Jahres' dropped; 'findet ... auf ... statt' garbled into 'stattet' with no preposition"
+   },
+   {
+    "case": 11,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'größte' dropped; 'Turnier des Jahres' became 'Jahresturnier' (annual tournament); 'Polofeldern' dropped"
+   },
+   {
+    "case": 12,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'auf den Komoren und in Mayotte war er sehr erfolgreich' dropped; 'auch' dropped; 'ins Land' replaced by 'nach Komoren und Mayotte'"
+   },
+   {
+    "case": 13,
+    "lost": [
+     "date"
+    ],
+    "what": "'ab der Unterzeichnung der Vereinbarung' (start point of the ten years) dropped"
+   },
+   {
+    "case": 14,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'Das erschien mir nicht sinnvoll' dropped; 'ganz gewiss' dropped"
+   },
+   {
+    "case": 15,
+    "lost": [
+     "other"
+    ],
+    "what": "'hebräischen' changed to 'jüdische' (Hebrew became Jewish)"
+   },
+   {
+    "case": 16,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' dropped"
+   },
+   {
+    "case": 17,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' dropped; 'Der größte Teil' weakened to 'Vieles'"
+   },
+   {
+    "case": 18,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'sowohl von Männern als auch von Frauen' became 'beiderseitige' (mutual); 'die darauf drängten, dass ...' dropped and its content recast as the topic of 'ihrer Schlussfolgerung'"
+   },
+   {
+    "case": 19,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Laut Polizei' dropped"
+   },
+   {
+    "case": 20,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Laut Polizei' dropped"
+   },
+   {
+    "case": 21,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "Second sentence 'Sie schnuppern danach, wo sie sich am Boden aufgehalten haben' dropped; 'verfolgen und finden Beute' now grammatically has 'Wissenschaftler' as subject"
+   },
+   {
+    "case": 22,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'(insbesondere Schweinefleisch)', 'stets' and 'ähnlichen' dropped"
+   },
+   {
+    "case": 23,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'sowohl für zivile als auch für militärische Einsätze' dropped; background relative clause turned into an explicit cause 'verursacht'"
+   },
+   {
+    "case": 24,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' dropped"
+   },
+   {
+    "case": 25,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' and 'nur' dropped"
+   },
+   {
+    "case": 26,
+    "lost": [
+     "date",
+     "qualifier",
+     "other"
+    ],
+    "what": "'in späteren Jahrhunderten ... nach Europa kamen' dropped (now excludes all American or Asian food); 'alten' dropped; 'konnten ... enthalten' became 'enthielten'"
+   },
+   {
+    "case": 27,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'mächtigen' and 'verbliebenen' dropped; 'der einst die Gangesebene bedeckte' re-attached from the jungle to the 'Dschungelbestände'; 'jedoch' dropped"
+   },
+   {
+    "case": 28,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'bei der Eroberung der Philippinen' became 'für die Philippinen'; 'Imperialisten' and 'selbst' dropped"
+   },
+   {
+    "case": 29,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Die Polizei sagte' and hedges 'schien' and 'etwa' dropped"
+   },
+   {
+    "case": 30,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "Attribution 'Die Polizei sagte' dropped"
+   }
+  ],
+  "annotator-C": [
+   {
+    "case": 1,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'stellen eine technische Lösung dar' lost; 'Virtuelle' became 'Technische'; 'vom Klassenzimmer aus', 'schöne' and modal 'können' lost; 'ein Aquarium besuchen' became 'Tiere'"
+   },
+   {
+    "case": 2,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' lost; 'ermahnen … sich innerhalb von Gebäuden aufzuhalten' became 'warnen …, Gebäude zu nutzen'"
+   },
+   {
+    "case": 3,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'lokalen' and 'in der Nähe der Anlage' lost ('fordern … an' is a slip for 'auffordern', meaning kept)"
+   },
+   {
+    "case": 4,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'oder zum Herzeigen', 'Die Forscher vermuteten' and the whole 'obwohl … Schwanz eines jungen Dinosauriers' clause lost; 'eher' lost; 'Daunen' became generic 'Federn'"
+   },
+   {
+    "case": 5,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'oder zum Herzeigen' and 'Die Forscher vermuteten' lost; 'eher' lost; concessive 'obwohl' reduced to an apposition ('ein junger Dinosaurierschwanz')"
+   },
+   {
+    "case": 6,
+    "lost": [
+     "name",
+     "other"
+    ],
+    "what": "'die Erde' lost (effects on what is unstated); subject 'Sie' dropped via passive; future 'beeinträchtigt werden wird' lost"
+   },
+   {
+    "case": 7,
+    "lost": [
+     "name",
+     "qualifier"
+    ],
+    "what": "painting title 'Rühmliche Heldentaten …' and 'David Klöcker' lost, 'Ehrenstrahl' misspelt 'Ehrenstrahß'; 'prächtige' lost"
+   },
+   {
+    "case": 8,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich' lost; 'das Eisen sorgte für mehr Verschleiß an den … Rädern' became 'Wagenräder tragen stärkeren Eisenverschleiß' (cause garbled, past became present)"
+   },
+   {
+    "case": 9,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "'Dies wurde üblich' lost; past 'das Eisen sorgte' became generic present 'Eisen verursacht'"
+   },
+   {
+    "case": 10,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'größte … des Jahres' lost ('stattet' is a garbled 'findet … statt', meaning still recoverable)"
+   },
+   {
+    "case": 11,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'größte' and 'Polofeldern' lost (only 'Las Cañitas' remains)"
+   },
+   {
+    "case": 12,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'war er sehr erfolgreich' and 'auch' lost; 'ins Land' replaced by 'nach Komoren und Mayotte' (destination changed)"
+   },
+   {
+    "case": 13,
+    "lost": [
+     "date"
+    ],
+    "what": "'ab der Unterzeichnung der Vereinbarung' lost (start point of the ten years)"
+   },
+   {
+    "case": 14,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'Das erschien mir nicht sinnvoll' and intensifier 'ganz gewiss' lost"
+   },
+   {
+    "case": 15,
+    "lost": [
+     "other"
+    ],
+    "what": "'hebräischen' changed to 'jüdische'"
+   },
+   {
+    "case": 16,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' lost"
+   },
+   {
+    "case": 17,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'hebräischen' lost; 'Der größte Teil' weakened to 'Vieles'"
+   },
+   {
+    "case": 18,
+    "lost": [
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'sowohl von Männern als auch von Frauen' became vague 'beiderseitige'; 'die darauf drängten, dass … angesehen werden sollten' lost, its content moved into 'ihrer Schlussfolgerung'"
+   },
+   {
+    "case": 19,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "attribution 'Laut Polizei' lost"
+   },
+   {
+    "case": 20,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "attribution 'Laut Polizei' lost"
+   },
+   {
+    "case": 21,
+    "lost": [
+     "clause",
+     "other"
+    ],
+    "what": "second sentence 'Sie schnuppern danach, wo sie sich am Boden aufgehalten haben' lost; 'verfolgen und finden Beute' now has 'Wissenschaftler' as grammatical subject"
+   },
+   {
+    "case": 22,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'(insbesondere Schweinefleisch)', 'stets' and 'ähnlichen' lost"
+   },
+   {
+    "case": 23,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'sowohl für zivile als auch für militärische Einsätze' lost; implied link stated as explicit cause 'verursacht'"
+   },
+   {
+    "case": 24,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' lost"
+   },
+   {
+    "case": 25,
+    "lost": [
+     "qualifier"
+    ],
+    "what": "'die höchste Punktzahl der Innings' and 'nur' lost"
+   },
+   {
+    "case": 26,
+    "lost": [
+     "name",
+     "date",
+     "clause",
+     "qualifier",
+     "other"
+    ],
+    "what": "'in späteren Jahrhunderten … nach Europa kamen' lost; 'alten' lost; 'konnten … enthalten' became 'enthielten'"
+   },
+   {
+    "case": 27,
+    "lost": [
+     "qualifier",
+     "other"
+    ],
+    "what": "'mächtigen', 'verbliebenen', 'nicht nur … auch' and 'jedoch' lost; 'die einst … bedeckten' now refers to the stands, not the jungle"
+   },
+   {
+    "case": 28,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'Eroberung' lost ('bei der Eroberung der' became 'für die'); 'Imperialisten' and 'selbst' lost"
+   },
+   {
+    "case": 29,
+    "lost": [
+     "clause",
+     "qualifier"
+    ],
+    "what": "'Die Polizei sagte' lost; hedge 'schien' and 'etwa' lost"
+   },
+   {
+    "case": 30,
+    "lost": [
+     "clause"
+    ],
+    "what": "attribution clause 'Die Polizei sagte' lost"
+   }
+  ]
+ },
+ "who": "Three independent LLM annotators (Claude agents), each reading all 30 cases in a different order, without seeing the others; not native speakers.",
+ "definitions": "Categories (choose all that apply; \"lost\" also covers information that is changed into something with a different meaning): number: a quantity, count, measurement, percentage or other numeral (e.g. \"40\", \"zehn\", \"Millionen\"). name: a proper name of a person, place, organisation, event, work or title. date: a date, year, time of day, period or duration (\"1979\", \"seit drei Jahren\", \"im Sommer\"). clause: a whole proposition that is gone entirely: an event, action, reason, purpose, condition, consequence, or an item of a list. qualifier: a word or phrase that grades, limits or specifies a claim that is otherwise kept: adjectives, adverbs, hedges, quantifiers, comparatives (\"fast\", \"sehr\", \"lokal\", \"insbesondere\", \"vor allem\", \"relativ\"). other: anything else lost or changed in meaning (e.g. a changed agent or relation, a modality such as \"verlangt\" becoming \"sieht vor\", a wrong word). none: nothing from the input is missing or changed in the output (the NLI \"dropped\" flag is a false alarm). Use \"none\" only alone."
+}

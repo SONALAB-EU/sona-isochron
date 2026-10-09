@@ -333,6 +333,11 @@ numbers are reported on test, as before. The work goes in this order.
      was added.
    - At most 2 revision rounds. The best candidate over all rounds is kept,
      and every round is logged.
+   - Each round uses its own seed: the item seed plus 1000 × the round
+     number. Without that, an unchanged prompt would be replayed byte for
+     byte.
+   - If no round has given a usable answer yet, the round-0 prompt is sent
+     again, and that round is logged as a retry.
    - The loop uses only the syllable counter and the NLI, never the final
      judge.
    - "Without the loop" means the closest candidate of round 0 of the same
@@ -355,6 +360,11 @@ numbers are reported on test, as before. The work goes in this order.
    - v1, v2a, v2b and v2c, each with and without the repair loop.
    - Table: fit rate, fact recall, added-fact rate, average rounds and time
      per sentence.
+   - A first pilot generation was superseded before any of it was judged
+     (`results/raw/20261009T151900Z_pilot_v1_de_dev`, complete, and
+     `…T153417Z_pilot_v2a_de_dev`, partial). A code review found that every
+     round reused the item seed, so an unchanged revision prompt was replayed.
+     The runs are kept in `results/raw/` but never judged or reported.
 
 ## Stretch: isochrony
 
@@ -410,3 +420,8 @@ used.
   analysis, prompt v2 variants, the repair loop, a final meaning judge
   (Qwen3-8B, evaluation only) and a pilot on dev sentences outside the
   go/no-go 50. Final numbers stay on test.
+- 2026-10-09, v2.6, before any pilot output was judged: each repair round gets
+  its own seed, and retries are logged. The first pilot generation is
+  superseded. Fixes from the code review: no-output handling, reproducible
+  intervals, the judge's placeholder and server guards, and the record of the
+  NLI used in judge validation.

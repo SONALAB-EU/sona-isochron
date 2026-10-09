@@ -35,10 +35,12 @@ def test_graded_targets() -> None:
 def test_pilot_ids_avoid_gonogo(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(ROOT)
     from isochron.gonogo import gonogo_ids
+    from isochron.pilot import selection_text
 
     ids = pilot_ids()
     assert len(ids) == 30 and len(set(ids)) == 30
     assert not set(ids) & set(gonogo_ids())
+    assert "30 of the 97" in selection_text()
 
 
 def _cand(syllables: int, kept: bool, rnd: int = 0, index: int = 0, target: int = 40) -> Candidate:
@@ -67,12 +69,15 @@ def test_feedback_lines() -> None:
 class FakeWorld:
     """Counts words as syllables; the NLI keeps a text iff it contains 'KEEP'."""
 
-    def __init__(self, answers: list[list[str]]) -> None:
-        self.answers, self.prompts = answers, []
+    def __init__(self, answers: list[list[str] | str]) -> None:
+        self.answers, self.prompts, self.rounds = answers, [], []
 
-    def generate(self, prompt: str):
+    def generate(self, prompt: str, rnd: int):
         self.prompts.append(prompt)
-        return json.dumps({"candidates": self.answers[len(self.prompts) - 1]}), {"latency_s": 0.1}
+        self.rounds.append(rnd)
+        answer = self.answers[len(self.prompts) - 1]
+        raw = answer if isinstance(answer, str) else json.dumps({"candidates": answer})
+        return raw, {"latency_s": 0.1}
 
     @staticmethod
     def nli(sources, outputs):
@@ -104,6 +109,26 @@ def test_loop_revises_with_feedback_and_keeps_the_best() -> None:
     assert (log["closest_round0"]["index"], log["closest_round0"]["syllables"]) == (0, 3)  # 3, 8, 1, 2 vs target 5
 
 
+def test_unchanged_best_gives_the_same_prompt_but_a_new_round() -> None:
+    w = FakeWorld([
+        ["a b c d e f g h KEEP", "a", "a b", "a b c"],   # round 0: best is kept but too long
+        ["a b c d e", "a b c d", "a b c", "a b c d e f"],  # round 1: hits, but all dropped
+        ["a b c d e f g h i KEEP", "x", "y", "z"],        # round 2
+    ])
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    assert w.prompts[1] == w.prompts[2]  # best did not change, so the feedback is the same ...
+    assert w.rounds == [0, 1, 2]         # ... but each call knows its round, so the caller can vary the seed
+    assert log["retries"] == 0 and not any(r["retry"] for r in log["rounds"])
+
+
+def test_no_answer_is_retried_and_logged_as_retry() -> None:
+    w = FakeWorld(["not json", ["a b c d KEEP", "a", "b", "c"]])
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    assert w.prompts == ["P0", "P0"] and w.rounds == [0, 1]
+    assert log["retries"] == 1 and log["rounds"][1]["retry"] and log["final_accepted"]
+    assert log["closest_round0"] is None
+
+
 def test_loop_without_repair_makes_one_call() -> None:
     w = FakeWorld([["a b c", "a b", "a", "a b c d e f"]])
     log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"), repair=False)
@@ -119,6 +144,8 @@ def test_judge_parsing_and_verdict() -> None:
     assert err is None
     assert verdict(obj) == {"recall": 0.5, "n_facts": 2, "dropped": 0, "changed": 1, "added": 1, "added_any": True}
     assert "instead of 3" in first_object(good, check_compare(3))[1]
+    placeholder = {"facts": [{"fact": "A", "status": "kept"}], "added": ["...", "…", " "]}
+    assert verdict(placeholder)["added_any"] is False
 
 
 def test_config_prefix(monkeypatch: pytest.MonkeyPatch) -> None:

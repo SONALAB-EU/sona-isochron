@@ -86,7 +86,7 @@ def check_compare(n_facts: int):
 
 def verdict(judged: dict) -> dict[str, Any]:
     statuses = [f["status"] for f in judged["facts"]]
-    added = [a for a in judged.get("added", []) if a.strip()]
+    added = [a for a in judged.get("added", []) if a.strip(" .…")]  # ignore empty and "..." placeholders
     return {"recall": statuses.count("kept") / len(statuses), "n_facts": len(statuses),
             "dropped": statuses.count("dropped"), "changed": statuses.count("changed"),
             "added": len(added), "added_any": bool(added)}
@@ -100,9 +100,12 @@ class Judge:
             sys.exit(f"{e}: the judge needs JUDGE_NAME, JUDGE_BASE_URL and JUDGE_API_KEY")
         self._refuse_if_apertus_is_up()
         self.backend = backend_info(self.config)
+        self.backend.pop("samplers", None)  # judge requests send no sampler order; temperature 0 is greedy
         path = str(self.backend.get("model_path") or "") + " " + self.config.name
         if "apertus" in path.lower():
             sys.exit(f"the judge endpoint serves {path!r}: the judge must not be Apertus")
+        quant = re.search(r"(?i)(Q\d_K_[MSL]|Q\d_\d|Q\d_K|F16|BF16)", str(self.backend.get("model_path") or ""))
+        self.quantisation = quant.group(1).upper() if quant else "unknown"
         self.client = ChatClient(self.config, timeout=300)
         self.facts_prompt, self.compare_prompt = Prompt.load("judge_facts_v1"), Prompt.load("judge_compare_v1")
         self.cache = self._load_cache()
@@ -115,9 +118,9 @@ class Judge:
         if apertus.base_url == self.config.base_url:
             sys.exit("JUDGE_BASE_URL equals LLM_BASE_URL: the judge must be a separate server")
         try:
-            httpx.get(f"{apertus.base_url}/models", timeout=3).raise_for_status()
-        except httpx.HTTPError:
-            return
+            httpx.get(f"{apertus.base_url}/models", headers={"Authorization": f"Bearer {apertus.api_key}"}, timeout=3)
+        except httpx.TransportError:
+            return  # nothing listens: the Apertus server is stopped
         sys.exit(f"the Apertus endpoint {apertus.base_url} still answers: stop it before running the judge")
 
     def _load_cache(self) -> dict[str, dict]:
@@ -127,7 +130,8 @@ class Judge:
 
     def _ask(self, kind: str, prompt: Prompt, check, lang: str, text: str, **values: Any) -> dict:
         rendered = prompt.render(lang, None, text, **values)
-        key = hashlib.sha256(f"{kind}\0{self.config.name}\0{prompt.sha256}\0{rendered}".encode()).hexdigest()
+        served = f"{self.config.name}\0{self.backend.get('model_path')}\0{self.backend.get('build_info')}"
+        key = hashlib.sha256(f"{kind}\0{served}\0{prompt.sha256}\0{rendered}".encode()).hexdigest()
         if key in self.cache:
             return self.cache[key]
         res = self.client.chat([{"role": "user", "content": rendered}], seed=SEED, **GENERATION)
@@ -153,7 +157,7 @@ class Judge:
 
     def describe(self) -> dict[str, Any]:
         return {"model": self.config.name, "endpoint": self.config.base_url, "backend": self.backend,
-                "quantisation": "Q4_K_M", "generation": GENERATION, "seed": SEED,
+                "quantisation": self.quantisation, "generation": GENERATION, "seed": SEED,
                 "prompts": {p.name: p.sha256 for p in (self.facts_prompt, self.compare_prompt)}}
 
 
@@ -184,7 +188,8 @@ def controls(out_path: Path) -> None:
         rows.append((p, facts, v))
         print(f"  {i}/{len(pairs)} {p.id}: {v.get('recall', '-')} added {v.get('added', '-')}"
               f"{'' if v['valid'] else ' INVALID ' + v['error']}", flush=True)
-    meanings = NLI().meaning([p.source for p in pairs], [p.output for p in pairs])
+    nli = NLI()
+    meanings = nli.meaning([p.source for p in pairs], [p.output for p in pairs])
 
     langs = sorted({p.lang for p in pairs})
     table = ["| Control | Expected (judge) | " + " | ".join(lang.upper() for lang in langs) + " | All | NLI, all |",
@@ -204,6 +209,7 @@ def controls(out_path: Path) -> None:
 
     valid = [(p, v, m) for (p, _, v), m in zip(rows, meanings) if v["valid"]]
     agree = sum((v["recall"] == 1 and not v["added_any"]) == m.kept for _, v, m in valid)
+    agree_text = f"{agree}/{len(valid)} = {100 * agree / len(valid):.0f} %" if valid else "– (no valid judge answers)"
     invalid = [(p, v) for p, _, v in rows if not v["valid"]]
     wrong = [(p, v) for p, _, v in rows if v["valid"] and not EXPECTED[p.control](v)]
     lines = [
@@ -212,6 +218,7 @@ def controls(out_path: Path) -> None:
         f"- Date: {started:%Y-%m-%d %H:%M} UTC",
         f"- Git commit: {git_commit()}",
         f"- Judge: {json.dumps(judge.describe(), ensure_ascii=False)}",
+        f"- NLI (last column and agreement): {nli.describe()}",
         "- TTS: none. Seeds: judge seed 0 at temperature 0 (greedy)",
         f"- n: {len(pairs)} pairs (data/nli_controls.jsonl: 20 German and 20 French FLEURS train sentences × 5 control types)",
         f"- Invalid judge answers: {len(invalid)}",
@@ -223,7 +230,7 @@ def controls(out_path: Path) -> None:
         *table,
         "",
         f"Agreement between the judge and the NLI on \"kept\" (judge: recall 1 and nothing added; NLI: entailment both "
-        f"ways): {agree}/{len(valid)} = {100 * agree / len(valid):.0f} %.",
+        f"ways): {agree_text}.",
         "",
         f"## Pairs judged wrong ({len(wrong)}) or invalid ({len(invalid)})",
         "",
@@ -246,10 +253,10 @@ def pilot(runs: list[Path]) -> None:
             facts = judge.facts(it["input"], cfg["lang"])
             res: dict[str, Any] = {"id": it["id"], "level": it["level"], "seed": it["seed"], "facts": facts}
             for cond, cand in (("without", it.get("closest_round0")), ("with", it.get("final"))):
-                if not cand:
-                    res[cond] = {"valid": True, "no_output": True, "recall": 0.0, "added_any": False}
-                elif not facts:
+                if not facts:
                     res[cond] = {"valid": False, "error": "no facts for the source"}
+                elif not cand:  # no output keeps no fact; whether it adds any is undefined
+                    res[cond] = {"valid": True, "no_output": True, "recall": 0.0, "added_any": None}
                 else:
                     res[cond] = judge.compare(facts, cand["text"], cfg["lang"])
             out.append(res)

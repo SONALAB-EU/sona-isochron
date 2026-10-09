@@ -113,6 +113,30 @@ The first command lists the alias with `n_vocab` 131272 and `ftype`
   JSON answer).
 - Requests run one at a time, with one server slot.
 
+## The meaning judge (phase 2, evaluation only)
+
+The final meaning judge is Qwen3-8B. It runs as a second llama-server on
+port 8081, only after generation and only while the Apertus server is
+stopped: the two models do not fit in 16 GB together. `isochron.judge`
+refuses to run while the Apertus endpoint answers.
+
+```
+mkdir -p ~/models/Qwen3-8B-GGUF
+uv run python -c "from huggingface_hub import hf_hub_download; print(hf_hub_download('Qwen/Qwen3-8B-GGUF', 'Qwen3-8B-Q4_K_M.gguf', revision='7c41481f57cb95916b40956ab2f0b139b296d974', local_dir='$HOME/models/Qwen3-8B-GGUF'))"
+shasum -a 256 ~/models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf
+llama-server -m ~/models/Qwen3-8B-GGUF/Qwen3-8B-Q4_K_M.gguf --alias qwen3-8b-q4_k_m --host 127.0.0.1 --port 8081 -c 8192 -np 1 -ngl all --reasoning off
+```
+
+The SHA-256 must be
+`d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785`. The
+judge is reached through three more variables in `.env`:
+
+```
+JUDGE_NAME=<the --alias above>
+JUDGE_BASE_URL=http://<--host>:<--port>/v1
+JUDGE_API_KEY=<any non-empty string>
+```
+
 ## Warnings you will see
 
 - `special_eos_id is not in special_eog_ids`: generation still ends at
