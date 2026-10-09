@@ -1,7 +1,7 @@
 # NLI sanity suite
 
-- Date: 2026-10-06 15:57 UTC
-- Git commit: 326758c67d1199547ec10b8058243694b5d6bdec
+- Date: 2026-10-09 14:46 UTC
+- Git commit: 6edfd205825aea97195a4e753e639e6fba8e765f
 - NLI model: MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, mps, float32, argmax label
 - Data: `data/nli_controls.jsonl` (SHA-256 `73647308cacd2c204fb5adfda0318594244c43b42f1552a047c34ebb853aa827`), 200 pairs: 40 FLEURS train sentences × 5 control types; variants written by hand by Claude (AI assistant), not yet reviewed by a native speaker
 - LLM, endpoint, TTS: none. Seeds: none (deterministic inference)

@@ -220,7 +220,9 @@ clause deleted, one with a made-up clause inserted, and a negation. The
 variants were written by hand by Claude (AI assistant).
 
 The rule: if any control type scores below 80 %, the NLI metric is not used.
-Result on 2026-10-06 at commit `326758c` (`results/nli_sanity.md`): **pass**.
+Result: **pass**. It was first run on 2026-10-06 at commit `326758c` and
+re-run in float32 on 2026-10-09 at commit `6edfd20` with the same scores
+(`results/nli_sanity.md`).
 
 | Control | Expected | DE | FR | All |
 |---------|----------|---:|---:|----:|
@@ -234,6 +236,15 @@ Notes:
 - Two long German sentences are judged "neutral" even against themselves.
   CPU and mps agree, so this is the model, not the device.
 - Deletions are the weakest type: the metric under-reports dropped content.
+- An audit of 20 go/no-go outputs, read by an LLM rather than a native
+  speaker, confirms this. The NLI judged 11 of them "kept" although a
+  modifier or detail was dropped or changed, and two of those are clear
+  meaning errors. So NLI "kept" rates are upper bounds for "every piece of
+  information kept". The native-speaker check is needed before relying on
+  them (`results/gonogo_step2_de.md`).
+- The model runs in float32. Until commit `6edfd20` it ran in the
+  checkpoint's float16 although reports said float32. Re-running in float32
+  changed no label in the sanity suite or the go/no-go.
 
 ## Statistics
 
@@ -280,6 +291,13 @@ Fixed before any output has been seen (`src/isochron/gonogo.py`).
   - Both were fixed (commit `0ddd55f`), the smoke test was re-run (run
     `20261009T141025Z`, all three checks pass), and the go/no-go was
     generated again. The superseded run is not scored for the decision.
+- **Result (2026-10-09, run `20261009T141318Z`; `results/gonogo_step2_de.md`):
+  NO-GO.**
+  - Fit was 40.7 % [31.3, 50.0] (61/150); 60 % was needed.
+  - Kept among fits was 62.3 % [46.6, 77.0] (38/61); 80 % was needed.
+  - Both criteria fail, each on its own. Three independent agents reproduced
+    the numbers. As pre-registered, this is reported as a null result, and
+    the thresholds stay as they are.
 
 ## Stretch: isochrony
 
@@ -328,3 +346,5 @@ used.
   decade forms are read as years. The first go/no-go generation is superseded
   and the go/no-go is generated again. The scorer only decides for a
   complete, frozen-prompt run with unchanged targets.
+- 2026-10-09, v2.5: go/no-go result recorded (NO-GO). The NLI now loads in
+  float32 explicitly. The NLI-leniency caveat is added.
