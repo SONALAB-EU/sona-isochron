@@ -1,0 +1,16 @@
+Shorten the following $language sentence. Write in $language.
+
+Write 4 versions of different lengths, in this order:
+1. $t1 syllables when spoken
+2. $t2 syllables when spoken
+3. $t3 syllables when spoken
+4. $t4 syllables when spoken
+
+Keep every piece of information. Add nothing.
+You may reorder, use shorter synonyms, drop filler words and merge clauses.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form:
+{"candidates": ["...", "...", "...", "..."]}

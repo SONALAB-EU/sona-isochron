@@ -2,6 +2,10 @@
 
 Real environment variables take precedence over .env. Nothing is hardcoded:
 if a required variable is missing, LLMConfig.from_env() raises.
+
+The system under test (Apertus) uses LLM_NAME, LLM_BASE_URL and LLM_API_KEY.
+The evaluation-only meaning judge uses the same three names with the JUDGE_
+prefix: LLMConfig.from_env(prefix="JUDGE").
 """
 
 from __future__ import annotations
@@ -26,20 +30,18 @@ class LLMConfig:
     api_key: str
 
     @classmethod
-    def from_env(cls, env_file: str | Path | None = ".env") -> LLMConfig:
+    def from_env(cls, env_file: str | Path | None = ".env", prefix: str = "LLM") -> LLMConfig:
         if env_file is not None:
             load_dotenv(env_file, override=False)
-        missing = [k for k in REQUIRED if not os.environ.get(k)]
+        keys = [k.replace("LLM", prefix, 1) for k in REQUIRED]
+        missing = [k for k in keys if not os.environ.get(k)]
         if missing:
             raise ConfigError(
                 f"missing environment variables: {', '.join(missing)} "
                 "(set them or copy .env.example to .env)"
             )
-        return cls(
-            name=os.environ["LLM_NAME"],
-            base_url=os.environ["LLM_BASE_URL"].rstrip("/"),
-            api_key=os.environ["LLM_API_KEY"],
-        )
+        name, base_url, api_key = (os.environ[k] for k in keys)
+        return cls(name=name, base_url=base_url.rstrip("/"), api_key=api_key)
 
     def __repr__(self) -> str:
         return f"LLMConfig(name={self.name!r}, base_url={self.base_url!r}, api_key='***')"

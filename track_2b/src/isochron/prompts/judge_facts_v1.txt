@@ -1,0 +1,12 @@
+List every piece of information that the following $language sentence states, as separate short facts in $language.
+
+Rules:
+- One fact per item: who or what, does or is what, when, where, how much, why, under which condition.
+- Keep numbers, names, dates and qualifiers (such as "almost", "very", "local") inside the fact they belong to.
+- Do not add anything the sentence does not say.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form:
+{"facts": ["...", "..."]}

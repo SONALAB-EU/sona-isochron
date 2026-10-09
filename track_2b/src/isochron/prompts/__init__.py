@@ -33,5 +33,6 @@ class Prompt:
     def sha256(self) -> str:
         return hashlib.sha256(self.text.encode("utf-8")).hexdigest()
 
-    def render(self, lang: str, target: int, text: str) -> str:
-        return Template(self.text).substitute(language=LANGUAGES[lang], target=target, text=text)
+    def render(self, lang: str, target: int | None, text: str, **values: object) -> str:
+        """Fill $language, $target, $text and any further $placeholders from values."""
+        return Template(self.text).substitute(language=LANGUAGES[lang], target=target, text=text, **values)

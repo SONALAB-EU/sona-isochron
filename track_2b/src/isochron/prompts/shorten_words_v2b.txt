@@ -1,0 +1,13 @@
+Shorten the following $language sentence. Write in $language.
+
+The sentence has $source_words words.
+Each version must be $target words long.
+
+Keep every piece of information. Add nothing.
+You may reorder, use shorter synonyms, drop filler words and merge clauses.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form, with 4 different versions:
+{"candidates": ["...", "...", "...", "..."]}

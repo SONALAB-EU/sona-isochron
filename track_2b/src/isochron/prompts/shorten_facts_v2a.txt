@@ -1,0 +1,14 @@
+Shorten the following $language sentence. Write in $language.
+
+First list every fact the sentence states, one short item each.
+Then write 4 different versions of the shortest sentence that keeps all of these facts.
+Each version must be $target syllables long when spoken.
+
+Keep every piece of information. Add nothing.
+You may reorder, use shorter synonyms, drop filler words and merge clauses.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form:
+{"facts": ["...", "..."], "candidates": ["...", "...", "...", "..."]}

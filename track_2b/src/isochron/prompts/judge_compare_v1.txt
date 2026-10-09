@@ -1,0 +1,16 @@
+Compare a new version with the facts of an original $language sentence.
+
+Facts of the original:
+$facts
+
+New version:
+$text
+
+For each fact, decide:
+- "kept": the new version states it with the same meaning (other words are fine);
+- "changed": the new version states it, but with a different meaning (a different number, name or date, a negation, a stronger or weaker claim, a lost qualifier);
+- "dropped": the new version does not state it.
+Then list every piece of information in the new version that is not among the facts of the original ("added"). Rewording is not added information.
+
+Answer with JSON only, no explanations, in exactly this form, with the facts in the same order:
+{"facts": [{"fact": "...", "status": "kept"}], "added": ["..."]}

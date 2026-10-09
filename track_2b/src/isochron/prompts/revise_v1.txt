@@ -1,0 +1,16 @@
+You shortened a $language sentence. Revise your version. Write in $language.
+
+Original sentence:
+$text
+
+Your version:
+$current
+
+What is wrong with it:
+$feedback
+
+Each new version must be $target syllables long when spoken (about $target_words words).
+Keep every piece of information from the original. Add nothing.
+
+Answer with JSON only, no explanations, in exactly this form, with 4 different versions:
+{"candidates": ["...", "...", "...", "..."]}
