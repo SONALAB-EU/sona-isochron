@@ -1,8 +1,8 @@
 """Does an output keep the meaning of its source? Bidirectional NLI.
 
 Model: MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (MIT licence),
-pinned to REVISION, run locally on CPU or Apple's mps, in batches. The
-predicted label is the argmax over entailment / neutral / contradiction.
+pinned to REVISION, run locally in float32 on CPU or Apple's mps, in batches.
+The predicted label is the argmax over entailment / neutral / contradiction.
 
 For a source s and an output o:
 - added content:   s ⇒ o fails (premise s, hypothesis o is not "entailment"),
@@ -61,7 +61,9 @@ class NLI:
         self.device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
         self.batch_size = batch_size
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=REVISION)
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID, revision=REVISION)
+        # The checkpoint is stored in float16, and transformers 5 loads the stored
+        # dtype by default; ask for float32 explicitly.
+        model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID, revision=REVISION, dtype=torch.float32)
         self.model = model.to(self.device).eval()
         config = self.model.config
         self.labels = [config.id2label[i].lower() for i in range(config.num_labels)]
@@ -88,4 +90,5 @@ class NLI:
         return judge(self.predict, sources, outputs)
 
     def describe(self) -> str:
-        return f"{MODEL_ID} @ {REVISION[:7]}, {self.device}, float32, argmax label"
+        dtype = str(next(self.model.parameters()).dtype).removeprefix("torch.")
+        return f"{MODEL_ID} @ {REVISION[:7]}, {self.device}, {dtype}, argmax label"
