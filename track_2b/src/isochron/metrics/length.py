@@ -13,6 +13,11 @@ syllables  espeak-ng turns the text into IPA as it would be spoken, so numbers
            espeak-ng is GPL-3.0 and is only run as an external program, never
            imported.
 
+German years: espeak-ng reads 1959 as a plain number ("eintausendneunhundert…",
+10 syllables). Before calling it, German 4-digit numbers 1100–1999 that are not
+next to a unit or currency are rewritten as years: 1959 -> "19 hundert 59",
+1900 -> "19 hundert". French reads years as full numbers, so it is unchanged.
+
 Two corrections for how espeak-ng writes glides (checked by hand on its output):
 - fr: "y" before "i" is the glide [ɥ] (nuit, lui, depuis), not a vowel.
 - de: an unstressed i before another vowel in the same word is [i̯]
@@ -42,6 +47,15 @@ SYLLABIC_MARKS = ("̩", "̍")  # combining vertical line below / above
 NON_SYLLABIC = "̯"  # combining inverted breve below
 STRESS = "ˈˌ"
 LANG_SWITCH = re.compile(r"\([a-z]{2,3}(?:-[a-z0-9]+)?\)")  # e.g. "(en)" around a foreign word
+
+UNITS_AND_CURRENCIES = (
+    r"%|‰|°|€|\$|£|¥|Prozent|Grad|Euro|Cent|Dollar|US-Dollar|Pfund|Franken|CHF|USD|EUR|GBP|Yen|"
+    r"km²|m²|km|cm|mm|m|kg|g|mg|t|l|ml|ha|kWh|MW|kW|W|Meter|Kilometer|Meilen|Fuß|Kilogramm|Gramm|"
+    r"Tonnen|Liter|Hektar"
+)
+GERMAN_YEAR = re.compile(
+    rf"(?<![\d.,$€£¥])(?<![$€£¥] )\b(1[1-9])(\d\d)\b(?![.,]\d)(?!\s*(?:{UNITS_AND_CURRENCIES})(?![^\W\d_]))"
+)
 
 VOWEL_LETTERS = {
     "en": "aeiouy",
@@ -73,6 +87,16 @@ def espeak_version() -> str:
     return out.split("Data at")[0].strip()
 
 
+def spoken_years(text: str) -> str:
+    """German: 1959 -> "19 hundert 59", unless a unit or currency is attached."""
+
+    def year(m: re.Match[str]) -> str:
+        rest = int(m.group(2))
+        return f"{m.group(1)} hundert" + (f" {rest}" if rest else "")
+
+    return GERMAN_YEAR.sub(year, text)
+
+
 @lru_cache(maxsize=1 << 16)
 def phonemes(text: str, lang: str) -> str:
     """espeak-ng's IPA for text: phonemes joined by "_", words by whitespace."""
@@ -80,7 +104,7 @@ def phonemes(text: str, lang: str) -> str:
     # drops the last character ("petite" is read as "petit").
     result = subprocess.run(
         [ESPEAK, "-q", "--ipa", "--sep=_", "-v", VOICES[lang], "--stdin"],
-        input=" ".join(normalise(text).split()) + "\n",
+        input=" ".join((spoken_years(normalise(text)) if lang == "de" else normalise(text)).split()) + "\n",
         capture_output=True,
         text=True,
         check=True,

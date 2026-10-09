@@ -9,6 +9,7 @@ from isochron.metrics.length import (
     count_nuclei,
     espeak_available,
     hit,
+    spoken_years,
     syllables,
     syllables_heuristic,
     target,
@@ -80,6 +81,33 @@ def test_count_nuclei(ipa: str, lang: str, expected: int) -> None:
 )
 def test_syllables_espeak(text: str, lang: str, expected: int) -> None:
     assert syllables(text, lang) == expected
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("im Jahr 1959", "im Jahr 19 hundert 59"),
+        ("1900 und 1905", "19 hundert und 19 hundert 5"),
+        ("1500 km", "1500 km"),  # unit
+        ("1500 Euro", "1500 Euro"),  # currency
+        ("€ 1500", "€ 1500"),
+        ("$1500", "$1500"),
+        ("1250%", "1250%"),
+        ("1.959", "1.959"),  # part of a larger number
+        ("11500", "11500"),
+        ("2011", "2011"),  # outside 1100–1999
+        ("1099", "1099"),
+    ],
+)
+def test_spoken_years(text: str, expected: str) -> None:
+    assert spoken_years(text) == expected
+
+
+@needs_espeak
+def test_german_years_counted_as_years_french_unchanged() -> None:
+    assert syllables("1959", "de") == 8  # neunzehnhundertneunundfünfzig
+    assert syllables("1500 km", "de") == 8  # unit: not a year, eintausendfünfhundert ka em
+    assert syllables("1959", "fr") == 6  # mille neuf cent cinquante-neuf
 
 
 def test_syllables_heuristic() -> None:

@@ -79,9 +79,23 @@ More on syllables:
   (*Familie*, *Region*).
 - If eSpeak NG is missing, a vowel-group heuristic is used as a fallback. Each
   run records which counter it used.
-- Known limits, from `results/syllable_spotcheck.md`: some words are wrong
-  inside eSpeak NG itself (*naiv* 1, *Zoologie* 3, *Melodien* 3), and German
-  years are read as plain numbers (*1959* gets 10 syllables, spoken 8).
+- German years are read as years. Before eSpeak NG runs, 4-digit numbers
+  1100–1999 not followed by a unit or currency are rewritten (1959 →
+  "19 hundert 59"). French is unchanged, because French reads years as full
+  numbers.
+- **Documented limitation.** On the spot-check list (`results/syllable_spotcheck.md`:
+  40 words and 10 sentences with numbers, against hand counts not yet
+  checked by a native speaker), eSpeak NG gets 46 of 50 items exact (92 %).
+  The vowel-group heuristic gets 21 of 50. The remaining errors:
+  - German hiatus words, where eSpeak NG's own transcription merges two
+    vowels: *naiv* 1 instead of 2, *Zoologie* 3 instead of 4, *Melodien* 3
+    instead of 4.
+  - German ordinals read as cardinals: "15." is counted as *fünfzehn* (2), not
+    *fünfzehnten* (3).
+  - A number next to a noun that is not a unit is read as a year (*1500 Mann*
+    becomes *fünfzehnhundert*).
+  Inputs and outputs are counted the same way, so these errors mostly cancel
+  in hit rates.
 
 A target T is a whole number: the share or budget, rounded half up. An output
 **hits** T when |length − T| ≤ 0.10 × T.
@@ -263,3 +277,5 @@ used.
   and (b)/(c) inherit the better step 3 setting. Added: the go/no-go scores
   the closest candidate. Step 3's 4 candidates now come from one JSON answer,
   not 4 samples.
+- 2026-10-09, v2.2: German years are counted as spoken years. The
+  syllable-counter accuracy and its remaining errors are documented.

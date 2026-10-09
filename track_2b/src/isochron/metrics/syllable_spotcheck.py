@@ -30,6 +30,16 @@ WORDS = {
         "depuis", "cuisine", "aujourd'hui", "juillet",
     ],
 }
+# Reference counts by hand (Claude, standard pronunciation, Duden for German;
+# not yet checked by a native speaker). Studium is 2 per Duden [ˈʃtuːdi̯ʊm].
+EXPECTED_WORDS = {
+    "de": [1, 2, 2, 2, 3, 2, 2, 1, 3, 4, 3, 2, 2, 2, 3, 3, 3, 2, 4, 4],
+    "fr": [4, 2, 2, 2, 2, 2, 2, 1, 2, 4, 3, 2, 1, 1, 2, 1, 2, 2, 3, 2],
+}
+EXPECTED_SENTENCES = {
+    "de": {860: 51, 1048: 40, 45: 68, 421: 25, 1320: 50},  # 421: "15." is "fünfzehnten"
+    "fr": {1221: 42, 1013: 43, 478: 49, 1189: 44, 713: 30},
+}
 CONFIGS = {"de": "de_de", "fr": "fr_fr"}
 SEED = 0
 N_SENTENCES = 5
@@ -50,26 +60,46 @@ def main() -> None:
         "- Model, endpoint, TTS: none",
         f"- n: {sum(len(w) for w in WORDS.values())} words, {N_SENTENCES * len(WORDS)} sentences",
         "",
-        "To verify by hand: count the syllables as the text is normally spoken.",
+        "Reference: hand counts by Claude (standard pronunciation, Duden for German), "
+        "not yet checked by a native speaker.",
     ]
+    tally = {"espeak-ng": [0, 0], "heuristic": [0, 0]}  # [exact, total]
+    errors: list[str] = []
+
+    def record(item: str, ref: int, e: int, h: int) -> None:
+        for name, n in (("espeak-ng", e), ("heuristic", h)):
+            tally[name][0] += n == ref
+            tally[name][1] += 1
+        if e != ref:
+            errors.append(f"{item}: espeak-ng {e}, reference {ref}")
+
+    sections = []
     for lang, words in WORDS.items():
-        print(f"\n=== {lang.upper()} words: espeak | heuristic | word | espeak IPA")
-        out += ["", f"## {lang.upper()} words", "", "| Word | espeak-ng | Heuristic | espeak-ng IPA |",
-                "|------|----------:|----------:|---------------|"]
-        for w in words:
+        print(f"\n=== {lang.upper()} words: reference | espeak | heuristic | word | espeak IPA")
+        sections += ["", f"## {lang.upper()} words", "", "| Word | Reference | espeak-ng | Heuristic | espeak-ng IPA |",
+                     "|------|----------:|----------:|----------:|---------------|"]
+        for w, ref in zip(words, EXPECTED_WORDS[lang]):
             e, h, ipa = syllables(w, lang), syllables_heuristic(w, lang), phonemes(w, lang).strip()
-            print(f"{e:3d} {h:3d}  {w:14s} {ipa}")
-            out.append(f"| {w} | {e} | {h} | `{ipa}` |")
+            record(w, ref, e, h)
+            print(f"{ref:3d} {e:3d} {h:3d}  {w:14s} {ipa}")
+            sections.append(f"| {w} | {ref} | {e} | {h} | `{ipa}` |")
 
         pool = sorted((sid, s) for sid, s in train_sentences(CONFIGS[lang]).items() if any(c.isdigit() for c in s))
-        print(f"\n=== {lang.upper()} train sentences with digits: espeak | heuristic | id | text")
-        out += ["", f"## {lang.upper()} sentences with digits", "",
-                "| FLEURS id | espeak-ng | Heuristic | Sentence | espeak-ng IPA |",
-                "|----------:|----------:|----------:|----------|---------------|"]
+        print(f"\n=== {lang.upper()} train sentences with digits: reference | espeak | heuristic | id | text")
+        sections += ["", f"## {lang.upper()} sentences with digits", "",
+                     "| FLEURS id | Reference | espeak-ng | Heuristic | Sentence | espeak-ng IPA |",
+                     "|----------:|----------:|----------:|----------:|----------|---------------|"]
         for sid, s in rng.sample(pool, N_SENTENCES):
+            ref = EXPECTED_SENTENCES[lang][sid]
             e, h, ipa = syllables(s, lang), syllables_heuristic(s, lang), " ".join(phonemes(s, lang).split())
-            print(f"{e:3d} {h:3d}  [{sid}] {s}")
-            out.append(f"| {sid} | {e} | {h} | {s} | `{ipa}` |")
+            record(f"{lang} sentence {sid}", ref, e, h)
+            print(f"{ref:3d} {e:3d} {h:3d}  [{sid}] {s}")
+            sections.append(f"| {sid} | {ref} | {e} | {h} | {s} | `{ipa}` |")
+
+    summary = [f"- {name}: {k}/{n} items exact ({100 * k / n:.0f} %)" for name, (k, n) in tally.items()]
+    out += ["", "## Accuracy against the reference", "", *summary, "", "espeak-ng misses:", "",
+            *[f"- {x}" for x in errors], *sections]
+    print("\n" + "\n".join(summary + ["espeak-ng misses: " + "; ".join(errors)]))
 
     path = Path("results") / "syllable_spotcheck.md"
     path.parent.mkdir(exist_ok=True)
