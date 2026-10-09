@@ -13,23 +13,29 @@ SELECTIONS = ("closest", "first")
 def parse_candidates(raw: str) -> tuple[list[str], str | None]:
     """Candidates from a JSON answer like {"candidates": [...]}, and a parse error if any.
 
-    Tolerates code fences and text around the JSON object. A wrong number of
-    candidates is reported as an error but the candidates are kept.
+    Tries a JSON decode at every "{" and takes the first object that holds a
+    "candidates" list of strings, so code fences and text around the object
+    (even with braces in it) are ignored. A wrong number of candidates is
+    reported as an error but the candidates are kept.
     """
-    match = re.search(r"\{.*\}", raw, re.DOTALL)
-    if not match:
-        return [], "no JSON object"
-    try:
-        obj = json.loads(match.group(0))
-    except json.JSONDecodeError as e:
-        return [], f"invalid JSON: {e.msg}"
-    cands = obj.get("candidates") if isinstance(obj, dict) else None
-    if not isinstance(cands, list) or not all(isinstance(c, str) for c in cands):
-        return [], 'no "candidates" list of strings'
-    cands = [c.strip() for c in cands if c.strip()]
-    if len(cands) != N_CANDIDATES:
-        return cands, f"{len(cands)} candidates instead of {N_CANDIDATES}"
-    return cands, None
+    decoder = json.JSONDecoder()
+    error = "no JSON object"
+    for match in re.finditer(r"\{", raw):
+        try:
+            obj, _ = decoder.raw_decode(raw, match.start())
+        except json.JSONDecodeError as e:
+            if error == "no JSON object":
+                error = f"invalid JSON: {e.msg}"
+            continue
+        cands = obj.get("candidates") if isinstance(obj, dict) else None
+        if not isinstance(cands, list) or not all(isinstance(c, str) for c in cands):
+            error = 'no "candidates" list of strings'
+            continue
+        cands = [c.strip() for c in cands if c.strip()]
+        if len(cands) != N_CANDIDATES:
+            return cands, f"{len(cands)} candidates instead of {N_CANDIDATES}"
+        return cands, None
+    return [], error
 
 
 def select(candidates: Sequence[str], how: str, measure: Callable[[str], int], target: int) -> int | None:

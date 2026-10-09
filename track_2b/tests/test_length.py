@@ -88,6 +88,9 @@ def test_syllables_espeak(text: str, lang: str, expected: int) -> None:
     [
         ("im Jahr 1959", "im Jahr 19 hundert 59"),
         ("1900 und 1905", "19 hundert und 19 hundert 5"),
+        ("der 1970er Jahre", "der 19 hundert 70er Jahre"),  # decades
+        ("in den 1980er-Jahren", "in den 19 hundert 80er-Jahren"),
+        ("1959km", "1959km"),  # unit glued to the number
         ("1500 km", "1500 km"),  # unit
         ("1500 Euro", "1500 Euro"),  # currency
         ("€ 1500", "€ 1500"),

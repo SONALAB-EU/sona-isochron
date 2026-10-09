@@ -54,7 +54,7 @@ UNITS_AND_CURRENCIES = (
     r"Tonnen|Liter|Hektar"
 )
 GERMAN_YEAR = re.compile(
-    rf"(?<![\d.,$€£¥])(?<![$€£¥] )\b(1[1-9])(\d\d)\b(?![.,]\d)(?!\s*(?:{UNITS_AND_CURRENCIES})(?![^\W\d_]))"
+    rf"(?<![\d.,$€£¥])(?<![$€£¥] )\b(1[1-9])(\d\d)(?!\d)(?![.,]\d)(?!\s*(?:{UNITS_AND_CURRENCIES})(?![^\W\d_]))"
 )
 
 VOWEL_LETTERS = {

@@ -20,6 +20,7 @@ SAMPLE_SEED = 0
 LANG, SPLIT, UNIT, LEVEL = "de", "dev", "syllables", 80
 SEEDS = (0, 1, 2)
 SELECTION = "closest"
+PROMPT_SHA256 = "fe4fbfdd800d69b613fd49ba747507aa44a9a868556ceca15421d33edd661a5c"  # shorten_syllables_v1, frozen 2026-10-09
 MIN_HIT = 0.60
 MIN_KEPT_AMONG_HITS = 0.80
 

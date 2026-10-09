@@ -43,12 +43,19 @@ from isochron.schema import SentenceRecord, read_jsonl
 STEP = 2
 LEVELS = (90, 80, 70, 60)
 SEEDS = (0, 1, 2)
+# Temperature 0.7, then nucleus top_p 0.95, nothing else (the vLLM / transformers
+# order). top_k 0 and min_p 0 switch off llama-server's defaults (top_k 40,
+# min_p 0.05); its "samplers" field sets the order, since by default it applies
+# temperature last.
 GENERATION: dict[str, Any] = {
     "temperature": 0.7,
     "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.0,
     "max_tokens": 1024,
     "chat_template_kwargs": {"enable_thinking": False},
 }
+LLAMACPP_SAMPLERS = ["temperature", "top_p"]
 
 
 def mock_answer(text: str, unit: str, lang: str, goal: int, seed: int, counter: str) -> str:
@@ -59,6 +66,29 @@ def mock_answer(text: str, unit: str, lang: str, goal: int, seed: int, counter: 
     picks = [prefixes[max(best - 1, 0)], prefixes[best], prefixes[min(best + 1, len(prefixes) - 1)], text]
     random.Random(seed).shuffle(picks)
     return json.dumps({"candidates": picks}, ensure_ascii=False)
+
+
+def backend_info(config: LLMConfig) -> dict[str, Any]:
+    """What serves the model. llama-server answers /props; other backends do not."""
+    try:
+        r = httpx.get(
+            f"{config.base_url.removesuffix('/v1')}/props",
+            headers={"Authorization": f"Bearer {config.api_key}"},
+            timeout=10,
+        )
+        r.raise_for_status()
+        props = r.json()
+    except (httpx.HTTPError, ValueError):
+        return {"type": "unknown (no llama-server /props)"}
+    if "build_info" not in props:
+        return {"type": "unknown (no llama-server /props)"}
+    return {
+        "type": "llama.cpp llama-server",
+        "build_info": props.get("build_info"),
+        "model_path": props.get("model_path"),
+        "n_ctx": (props.get("default_generation_settings") or {}).get("n_ctx"),
+        "samplers": LLAMACPP_SAMPLERS,
+    }
 
 
 def check_endpoint(config: LLMConfig) -> None:
@@ -121,12 +151,17 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit("no sentences selected")
 
     client = None
+    backend: dict[str, Any] = {"type": "none (mock)"}
+    extra: dict[str, Any] = {}
     if not args.mock:
         try:
             config = LLMConfig.from_env()
         except ConfigError as e:
             sys.exit(f"{e}; use --mock for a dry run")
         check_endpoint(config)
+        backend = backend_info(config)
+        if backend["type"] == "llama.cpp llama-server":
+            extra = {"samplers": LLAMACPP_SAMPLERS}
         client = ChatClient(config, timeout=120)
 
     counter = default_counter()
@@ -150,7 +185,8 @@ def main(argv: list[str] | None = None) -> None:
         "model": "mock (word-prefix cuts, no LLM)" if args.mock else config.name,
         "quantisation": "n/a (mock)" if args.mock else args.quantisation,
         "endpoint": "none (mock)" if args.mock else config.base_url,
-        "generation": GENERATION,
+        "generation": {**GENERATION, **extra},
+        "backend": backend,
         "candidates_per_request": N_CANDIDATES,
         "prompt": {"name": prompt.name, "version": prompt.version, "sha256": prompt.sha256},
         "length_counter": {"syllables": counter_description(counter), "counter": counter},
@@ -174,7 +210,7 @@ def main(argv: list[str] | None = None) -> None:
                     if args.mock:
                         raw, finish, usage, model = mock_answer(r.ref_text, args.unit, args.lang, goal, seed, counter), "stop", {}, "mock"
                     else:
-                        res = client.chat([{"role": "user", "content": text}], seed=seed, **GENERATION)
+                        res = client.chat([{"role": "user", "content": text}], seed=seed, **GENERATION, **extra)
                         raw, finish, usage, model = res.text, res.finish_reason, res.usage, res.model
                         timings = res.raw.get("timings")  # llama-server: prompt/predicted tokens and speed
                     cands, error = parse_candidates(raw)

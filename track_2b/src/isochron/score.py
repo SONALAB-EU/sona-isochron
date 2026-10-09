@@ -73,16 +73,19 @@ def score_rows(rows: list[dict[str, Any]], lang: str, unit: str, counter: str) -
         inp = row["input"]
         in_len = {u: n(inp, u) for u in UNITS}
         goals = {u: target(row["level"], in_len[u]) for u in UNITS}
-        if goals[unit] != row["target"]:
+        mismatch = goals[unit] != row["target"]
+        if mismatch:
             print(f"warning: {row['id']} level {row['level']}: target {row['target']} at run time, "
                   f"{goals[unit]} now (has the counter changed?)", file=sys.stderr)
         for how in SELECTIONS:
-            idx = select(cands, how, lambda c: n(c, unit), row["target"])
+            # Select and judge against the same target: the one recomputed now.
+            idx = select(cands, how, lambda c: n(c, unit), goals[unit])
             out = cands[idx] if idx is not None else None
             out_len = {u: n(out, u) for u in UNITS} if out else None
             scored.append({
                 "id": row["id"], "level": row["level"], "seed": row["seed"], "selection": how,
                 "candidate": idx, "n_candidates": len(cands), "parse_error": error,
+                "target_run": row["target"], "target_mismatch": mismatch,
                 "input": inp, "output": out, "input_len": in_len, "target": goals, "output_len": out_len,
                 "hit": {u: bool(out_len) and hit(out_len[u], goals[u]) for u in UNITS},
                 "ratio": {u: round(out_len[u] / in_len[u], 4) for u in UNITS} if out_len else None,
@@ -131,10 +134,14 @@ def summarise(cfg: dict[str, Any], scored: list[dict[str, Any]], nli_desc: str |
     if self_kept is not None:
         bad = sum(not k for k in self_kept.values())
         out.append(f"- Inputs the NLI does not accept as entailing themselves: {bad} of {len(self_kept)}")
+    requests = [r for r in scored if r["selection"] == SELECTIONS[0]]
     out += [
+        f"- Answers without exactly {cfg['candidates_per_request']} candidates: "
+        f"{sum(r['n_candidates'] != cfg['candidates_per_request'] for r in requests)} of {len(requests)}; "
+        f"targets that differ from run time: {sum(r['target_mismatch'] for r in requests)}",
         "",
         f"| Level | Selection | Outputs | No usable answer | Hit {unit} (95 % CI) | Hit words | Hit chars "
-        "| Ratio syll / words / chars | Kept (95 % CI) | Added | Dropped |",
+        "| Ratio syll / words / chars | Kept (95 % CI) | Added* | Dropped* |",
         "|------:|-----------|--------:|-----------------:|------------------|----------:|----------:"
         "|----------------------------|----------------|------:|--------:|",
     ]
@@ -156,35 +163,53 @@ def summarise(cfg: dict[str, Any], scored: list[dict[str, Any]], nli_desc: str |
             kept = added = dropped = "–"
         out.append(f"| {level} | {how} | {len(recs)} | {none} | {hit_unit} | {hit_other[0]} | {hit_other[1]} "
                    f"| {ratio} | {kept} | {added} | {dropped} |")
+    out += ["", "\\* Added and dropped are shares of the outputs with a usable answer (seed-averaged per sentence)."]
 
     decision = gonogo_lines(cfg, scored)
     return out + ([""] + decision if decision else []), decision
 
 
 def gonogo_lines(cfg: dict[str, Any], scored: list[dict[str, Any]]) -> list[str]:
+    """The pre-registered go/no-go block, or a line saying why there is no decision.
+
+    Only a run of exactly the 50 go/no-go sentences in German dev, with
+    syllable targets, level 80 and seeds 0-2, is considered at all. It gets a
+    decision only if it is not a mock, used the frozen prompt, has every
+    (sentence, seed) output exactly once, has the same targets as at run
+    time, and was scored with NLI.
+    """
     ids = set(gonogo.gonogo_ids())
-    if not (cfg["lang"], cfg["split"], cfg["unit"]) == (gonogo.LANG, gonogo.SPLIT, gonogo.UNIT):
+    if (cfg["lang"], cfg["split"], cfg["unit"]) != (gonogo.LANG, gonogo.SPLIT, gonogo.UNIT):
         return []
-    if gonogo.LEVEL not in cfg["levels"] or not set(gonogo.SEEDS) <= set(cfg["seeds"]) or not ids <= set(cfg["items"]["ids"]):
+    if set(cfg["items"]["ids"]) != ids or gonogo.LEVEL not in cfg["levels"] or not set(gonogo.SEEDS) <= set(cfg["seeds"]):
         return []
     if cfg["mock"]:
         return ["Go/no-go: mock run, no decision."]
+    if cfg["prompt"]["sha256"] != gonogo.PROMPT_SHA256:
+        return [f"Go/no-go: prompt {cfg['prompt']['name']} is not the frozen v1 "
+                f"(sha256 {gonogo.PROMPT_SHA256[:12]}…), no decision."]
+    expected = sorted((i, s) for i in ids for s in gonogo.SEEDS)
+    n_out = len(expected)
     lines = [
-        f"## Go/no-go (50 sentences × seeds {list(gonogo.SEEDS)}, level {gonogo.LEVEL} % of the input's syllables)",
+        f"## Go/no-go ({len(ids)} sentences × seeds {list(gonogo.SEEDS)}, level {gonogo.LEVEL} % of the input's syllables)",
         "",
-        "Shares are pooled over the 150 outputs, as pre-registered. The 95 % intervals are descriptive:",
-        f"sentences resampled with replacement (each with its 3 outputs), {N_BOOT} resamples, seed {BOOT_SEED}.",
+        f"Shares are pooled over the {n_out} outputs, as pre-registered. The 95 % intervals are descriptive:",
+        f"sentences resampled with replacement (each with its {len(gonogo.SEEDS)} outputs), {N_BOOT} resamples, "
+        f"seed {BOOT_SEED}. Added and dropped are shares of the outputs with a usable answer.",
         "",
-        "| Selection | Role | Outputs | Fit ±10 % | Kept both ways, among fits | Added (all outputs) "
-        "| Dropped (all outputs) | Decision |",
-        "|-----------|------|--------:|-----------|----------------------------|---------------------"
-        "|-----------------------|----------|",
+        "| Selection | Role | Outputs | Fit ±10 % | Kept both ways, among fits | Added | Dropped | Decision |",
+        "|-----------|------|--------:|-----------|----------------------------|-------|---------|----------|",
     ]
+    decision = "none"
     for how in SELECTIONS:
         recs = [r for r in scored if r["selection"] == how and r["id"] in ids
                 and r["level"] == gonogo.LEVEL and r["seed"] in gonogo.SEEDS]
-        if not recs:
-            return []
+        if sorted((r["id"], r["seed"]) for r in recs) != expected:
+            return [f"Go/no-go: {len(recs)} outputs instead of the pre-registered {n_out} "
+                    "(each sentence once per seed); incomplete or duplicated run, no decision."]
+        if any(r["target_mismatch"] for r in recs):
+            return ["Go/no-go: syllable targets differ between generation and scoring "
+                    "(the counter changed), no decision."]
         if "nli" not in recs[0]:
             return lines + ["NLI not run: no decision."]
         go, hit_share, kept_share = gonogo.decide([r["hit"]["syllables"] for r in recs], [r["nli"]["kept"] for r in recs])
@@ -199,11 +224,15 @@ def gonogo_lines(cfg: dict[str, Any], scored: list[dict[str, Any]]) -> list[str]
                         sum(r["nli"][k] is not None for r in rs)) for rs in by_id.values()])
             for k in ("added", "dropped")
         )
-        role = "decides" if how == gonogo.SELECTION else "reported only"
-        lines.append(f"| {how} | {role} | {len(recs)} | {fit} | {kept} | {added} | {dropped} "
-                     f"| **{'GO' if go else 'NO-GO'}** |")
+        decides = how == gonogo.SELECTION
+        verdict = f"**{'GO' if go else 'NO-GO'}**" if decides else "– (does not decide)"
+        lines.append(f"| {how} | {'decides' if decides else 'reported only'} | {len(recs)} | {fit} | {kept} "
+                     f"| {added} | {dropped} | {verdict} |")
+        if decides:
+            decision = "GO" if go else "NO-GO"
     lines += ["", f"GO needs fit ≥ {100 * gonogo.MIN_HIT:.0f} % and kept among fits ≥ "
-              f"{100 * gonogo.MIN_KEPT_AMONG_HITS:.0f} %; the closest candidate decides."]
+              f"{100 * gonogo.MIN_KEPT_AMONG_HITS:.0f} %; the closest candidate decides.",
+              "", f"**Decision: {decision}**"]
     return lines
 
 
