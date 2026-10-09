@@ -169,7 +169,17 @@ def gonogo_lines(cfg: dict[str, Any], scored: list[dict[str, Any]]) -> list[str]
         return []
     if cfg["mock"]:
         return ["Go/no-go: mock run, no decision."]
-    lines = [f"## Go/no-go (50 sentences × seeds {list(gonogo.SEEDS)}, level {gonogo.LEVEL})", ""]
+    lines = [
+        f"## Go/no-go (50 sentences × seeds {list(gonogo.SEEDS)}, level {gonogo.LEVEL} % of the input's syllables)",
+        "",
+        "Shares are pooled over the 150 outputs, as pre-registered. The 95 % intervals are descriptive:",
+        f"sentences resampled with replacement (each with its 3 outputs), {N_BOOT} resamples, seed {BOOT_SEED}.",
+        "",
+        "| Selection | Role | Outputs | Fit ±10 % | Kept both ways, among fits | Added (all outputs) "
+        "| Dropped (all outputs) | Decision |",
+        "|-----------|------|--------:|-----------|----------------------------|---------------------"
+        "|-----------------------|----------|",
+    ]
     for how in SELECTIONS:
         recs = [r for r in scored if r["selection"] == how and r["id"] in ids
                 and r["level"] == gonogo.LEVEL and r["seed"] in gonogo.SEEDS]
@@ -178,11 +188,37 @@ def gonogo_lines(cfg: dict[str, Any], scored: list[dict[str, Any]]) -> list[str]
         if "nli" not in recs[0]:
             return lines + ["NLI not run: no decision."]
         go, hit_share, kept_share = gonogo.decide([r["hit"]["syllables"] for r in recs], [r["nli"]["kept"] for r in recs])
+        by_id: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for r in recs:
+            by_id[r["id"]].append(r)
+        fit = pooled_ci([(sum(r["hit"]["syllables"] for r in rs), len(rs)) for rs in by_id.values()])
+        kept = pooled_ci([(sum(r["hit"]["syllables"] and r["nli"]["kept"] for r in rs),
+                           sum(r["hit"]["syllables"] for r in rs)) for rs in by_id.values()])
+        added, dropped = (
+            pooled_ci([(sum(bool(r["nli"][k]) for r in rs if r["nli"][k] is not None),
+                        sum(r["nli"][k] is not None for r in rs)) for rs in by_id.values()])
+            for k in ("added", "dropped")
+        )
         role = "decides" if how == gonogo.SELECTION else "reported only"
-        lines.append(f"- {how} ({role}): {len(recs)} outputs, hit {100 * hit_share:.1f} % (need ≥ "
-                     f"{100 * gonogo.MIN_HIT:.0f} %), kept among hits {100 * kept_share:.1f} % (need ≥ "
-                     f"{100 * gonogo.MIN_KEPT_AMONG_HITS:.0f} %) → **{'GO' if go else 'NO-GO'}**")
+        lines.append(f"| {how} | {role} | {len(recs)} | {fit} | {kept} | {added} | {dropped} "
+                     f"| **{'GO' if go else 'NO-GO'}** |")
+    lines += ["", f"GO needs fit ≥ {100 * gonogo.MIN_HIT:.0f} % and kept among fits ≥ "
+              f"{100 * gonogo.MIN_KEPT_AMONG_HITS:.0f} %; the closest candidate decides."]
     return lines
+
+
+def pooled_ci(per_item: list[tuple[float, float]]) -> str:
+    """Pooled share sum(num) / sum(den) with a 95 % bootstrap interval over items."""
+    num = np.array([a for a, _ in per_item], dtype=float)
+    den = np.array([b for _, b in per_item], dtype=float)
+    if den.sum() == 0:
+        return "–"
+    idx = np.random.default_rng(BOOT_SEED).integers(0, len(num), size=(N_BOOT, len(num)))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        shares = num[idx].sum(axis=1) / den[idx].sum(axis=1)
+    shares = shares[np.isfinite(shares)]
+    lo, hi = np.percentile(shares, [2.5, 97.5])
+    return f"{100 * num.sum() / den.sum():.1f} % [{100 * lo:.1f}, {100 * hi:.1f}] ({int(num.sum())}/{int(den.sum())})"
 
 
 def main(argv: list[str] | None = None) -> None:

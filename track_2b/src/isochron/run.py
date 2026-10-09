@@ -170,17 +170,19 @@ def main(argv: list[str] | None = None) -> None:
                     goal = target(level, n_in)
                     text = prompt.render(args.lang, goal, r.ref_text)
                     t0 = time.monotonic()
+                    timings = None
                     if args.mock:
                         raw, finish, usage, model = mock_answer(r.ref_text, args.unit, args.lang, goal, seed, counter), "stop", {}, "mock"
                     else:
                         res = client.chat([{"role": "user", "content": text}], seed=seed, **GENERATION)
                         raw, finish, usage, model = res.text, res.finish_reason, res.usage, res.model
+                        timings = res.raw.get("timings")  # llama-server: prompt/predicted tokens and speed
                     cands, error = parse_candidates(raw)
                     f.write(json.dumps({
                         "id": r.id, "lang": args.lang, "split": args.split, "unit": args.unit,
                         "level": level, "seed": seed, "input": r.ref_text, "input_len": n_in, "target": goal,
                         "prompt": text, "raw": raw, "candidates": cands, "parse_error": error,
-                        "finish_reason": finish, "usage": usage, "model": model,
+                        "finish_reason": finish, "usage": usage, "timings": timings, "model": model,
                         "latency_s": round(time.monotonic() - t0, 3),
                     }, ensure_ascii=False) + "\n")
                     f.flush()
