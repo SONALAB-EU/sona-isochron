@@ -2,8 +2,8 @@
 
 Analysis only: the go/no-go result is final and is not re-scored.
 
-- Date: 2026-10-09 15:27 UTC
-- Git commit: c0dcbcbcbd50f060d8d6b80ee13fa288c2bb2270
+- Date: 2026-10-09 15:56 UTC
+- Git commit: 1b5096dfbe84886aeee48623b4229da082495c05
 - Run: `results/raw/20261009T141318Z_step2_de_dev_syllables` (Apertus 1.5 8B Q4_K_M, prompt v1, seeds 0/1/2, level 80 %); model, endpoint and generation settings as in `results/gonogo_step2_de.md`; TTS: none
 - n: 149 outputs with a usable answer; 67 flagged as dropped by the NLI; 30 of those drawn with `random.Random(0)` after sorting by (id, seed)
 - Annotators: annotator-A, annotator-B, annotator-C. Three independent LLM annotators (Claude agents), each reading all 30 cases in a different order, without seeing the others; not native speakers.
