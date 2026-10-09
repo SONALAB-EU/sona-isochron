@@ -1,7 +1,7 @@
 """Phase 2 pilot table: one row per variant × repair condition.
 
 Reads each pilot run's items.jsonl (generation log) and judge.jsonl (final
-meaning judge, evaluation only) and writes results/pilot_phase2.md.
+meaning judge, evaluation only) and writes results/phase2_pilot.md.
 
 - Fit: the chosen output is within ±10 % of T in syllables (T = level % of the
   input syllables). A missing output is a miss.
@@ -10,6 +10,11 @@ meaning judge, evaluation only) and writes results/pilot_phase2.md.
   counted under "Judge invalid".
 - Added-fact rate: the share of outputs with an answer for which the judge
   marks at least one fact as added.
+- Fit & complete: the output fits AND the judge keeps every fact (recall 1) and
+  finds nothing added. This is the success measure the recommendation uses
+  (fixed before any judge output was seen): the condition with the highest
+  rate is recommended, and near-ties (overlapping 95 % intervals) are broken by
+  time per output. Outputs the judge could not parse count as not complete.
 - Achieved ÷ target: syllables ÷ T over outputs with an answer; missing outputs
   are counted under "No output".
 - Rounds: rounds after round 0 (0 to 2; always 0 without the loop), retries
@@ -36,7 +41,7 @@ from isochron.pilot import selection_text
 from isochron.provenance import git_commit
 
 N_BOOT, BOOT_SEED = 10_000, 0
-OUT = Path("results/pilot_phase2.md")
+OUT = Path("results/phase2_pilot.md")
 
 
 def ci(values_by_sentence: dict[str, list[float]]) -> str:
@@ -76,9 +81,9 @@ def rows_for(run: Path) -> tuple[dict, list[dict]]:
 
 def table(rows: list[dict], title: str) -> list[str]:
     out = [f"### {title}", "",
-           "| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | NLI kept | "
+           "| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | "
            "Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Judge invalid |",
-           "|---------|-------------|--------:|-----------|-------------|-----------------|---------:|"
+           "|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|"
            "------------------:|------------:|--------:|------------------:|----------:|--------------:|"]
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for r in rows:
@@ -95,10 +100,14 @@ def table(rows: list[dict], title: str) -> list[str]:
         def answered(r):
             return valid(r) and not r["no_output"]
 
+        def complete(r):
+            return bool(r["fit"] and answered(r) and r["recall"] == 1 and not r["added"])
+
         ratios = [r["ratio"] for r in rs if r["ratio"] is not None]
         out.append(
             f"| {variant} | {cond} | {len(rs)} | {ci(by(lambda r: r['fit']))} | {ci(by(lambda r: r['recall'], valid))} "
-            f"| {ci(by(lambda r: r['added'], answered))} | {100 * np.mean([r['nli_kept'] for r in rs]):.0f} % "
+            f"| {ci(by(lambda r: r['added'], answered))} | {ci(by(complete))} "
+            f"| {100 * np.mean([r['nli_kept'] for r in rs]):.0f} % "
             f"| {f'{np.mean(ratios):.2f}' if ratios else '–'} | {np.mean([r['rounds'] for r in rs]):.2f} "
             f"| {sum(r['retries'] for r in rs)} | {np.mean([r['secs'] for r in rs]):.1f} "
             f"| {sum(r['no_output'] for r in rs)} | {sum(not valid(r) for r in rs)} |"
@@ -136,7 +145,9 @@ def main() -> None:
         f"round seeds: {c0.get('round_seed', 'the item seed in every round')}; TTS: none",
         f"- 95 % intervals: bootstrap over sentences, {N_BOOT} resamples, seed {BOOT_SEED}. Exploratory: not a decision.",
         "",
-        "Fit, fact recall and added-fact rate are in %. Time is per output (one sentence at one level).",
+        "Fit, fact recall, added-fact rate and fit & complete are in %. Time is per output (one sentence at one",
+        "level). Fit & complete = fits, and the judge keeps every fact and finds nothing added; the recommendation",
+        "rule (fixed before any judge output was seen) picks the highest fit & complete rate, near-ties broken by time.",
         "",
         *table(rows, "Both levels (90 % and 80 %)"),
         "",
