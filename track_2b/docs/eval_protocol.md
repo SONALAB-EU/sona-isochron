@@ -298,6 +298,63 @@ Fixed before any output has been seen (`src/isochron/gonogo.py`).
   - Both criteria fail, each on its own. Three independent agents reproduced
     the numbers. As pre-registered, this is reported as a null result, and
     the thresholds stay as they are.
+- **This result is final:** prompt v1 with Apertus 1.5 8B Q4_K_M is NO-GO. It
+  is not re-run or re-scored.
+
+## Phase 2 (exploratory, from 2026-10-09)
+
+Everything after the go/no-go is exploratory. Tuning uses only the 97 German
+dev sentences outside the go/no-go 50, which are never used for tuning. Final
+numbers are reported on test, as before. The work goes in this order.
+
+1. **Error analysis** of the go/no-go outputs, closest candidate only. It is
+   analysis, not re-scoring:
+   - a histogram of achieved ÷ target syllables;
+   - 30 "dropped" cases (NLI) drawn with seed 0, each classified by what was
+     lost: number, name, date, clause, qualifier or other.
+
+   Saved to `results/gonogo_error_analysis.md`.
+2. **Prompt v2 variants**, versioned files in `src/isochron/prompts/`. Fit
+   and closest selection are still measured in syllables, against level % of
+   the input's syllables.
+   - *v2a facts-first:* list the sentence's facts, then write the shortest
+     sentence that keeps all of them, near the syllable target.
+   - *v2b word target:* give the source word count and an equivalent word
+     target, level % of the source words rounded half up.
+   - *v2c graded candidates:* 4 candidates at level +15, +10, +5 and +0
+     percentage points of the input's syllables, capped at 100 %. That is
+     95/90/85/80 % at level 80 and 100/100/95/90 % at level 90.
+3. **Repair loop (our method).**
+   - Selection prefers a candidate that is both within ±10 % and kept by the
+     NLI, then one that is kept, then the closest.
+   - If the selected candidate fails either test, Apertus gets one revision
+     prompt with specific feedback: how many syllables too long or short (with
+     the word equivalent), that information is missing, or that information
+     was added.
+   - At most 2 revision rounds. The best candidate over all rounds is kept,
+     and every round is logged.
+   - The loop uses only the syllable counter and the NLI, never the final
+     judge.
+   - "Without the loop" means the closest candidate of round 0 of the same
+     run.
+4. **Final meaning judge, for evaluation only.**
+   - Model: Qwen3-8B (`Qwen/Qwen3-8B-GGUF`, Q4_K_M, Apache-2.0), a different
+     model family from Apertus.
+   - It runs on llama-server port 8081, only after generation and with the
+     Apertus server stopped. Thinking is off, temperature 0. It is reached
+     through `JUDGE_NAME`, `JUDGE_BASE_URL` and `JUDGE_API_KEY`.
+   - It lists each source sentence's facts once; the list is stored and reused
+     for every system. For each output it then marks each fact as kept,
+     dropped or changed, and lists any added facts, as JSON.
+   - Metrics: *fact recall* (kept facts ÷ facts, per output, averaged) and the
+     *added-fact rate* (share of outputs with at least one added fact).
+   - It is validated on the NLI control suite before use.
+5. **Pilot.**
+   - 30 German dev sentences outside the go/no-go 50
+     (`random.Random(0).sample` of the other 97), seed 0, levels 90 % and 80 %.
+   - v1, v2a, v2b and v2c, each with and without the repair loop.
+   - Table: fit rate, fact recall, added-fact rate, average rounds and time
+     per sentence.
 
 ## Stretch: isochrony
 
@@ -310,7 +367,8 @@ used.
 ## Still open
 
 - The Apertus endpoint and quantisation (HPC). Each run records them.
-- The final judge model (HPC).
+- The judge for the final runs: Qwen3-8B Q4_K_M locally in phase 2; a larger
+  model on the HPC is still possible.
 - Which outputs the 50 native-speaker lines come from, and who checks them.
 - A native-speaker review of the NLI control pairs.
 
@@ -346,5 +404,9 @@ used.
   decade forms are read as years. The first go/no-go generation is superseded
   and the go/no-go is generated again. The scorer only decides for a
   complete, frozen-prompt run with unchanged targets.
-- 2026-10-09, v2.5: go/no-go result recorded (NO-GO). The NLI now loads in
-  float32 explicitly. The NLI-leniency caveat is added.
+- 2026-10-09, v2.5: go/no-go result recorded (NO-GO) and declared final: it
+  is not re-run or re-scored. The NLI now loads in float32 explicitly. The
+  NLI-leniency caveat is added. Phase 2 (exploratory) is defined: error
+  analysis, prompt v2 variants, the repair loop, a final meaning judge
+  (Qwen3-8B, evaluation only) and a pilot on dev sentences outside the
+  go/no-go 50. Final numbers stay on test.
