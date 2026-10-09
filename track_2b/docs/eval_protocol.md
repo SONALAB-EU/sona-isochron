@@ -41,6 +41,12 @@ the reason.
   seeds 0, 1 and 2, thinking mode off. Thinking is switched off by sending the
   chat-template argument `enable_thinking: false`, which is Apertus 1.5's
   switch. At most 1024 new tokens.
+  - Sampling means temperature first, then the nucleus (top_p), with no other
+    truncation. This is the vLLM / transformers order.
+  - Requests therefore also send `top_k: 0` and `min_p: 0`, and on
+    llama-server `samplers: ["temperature", "top_p"]`. Without these,
+    llama-server adds top_k 40 and min_p 0.05 and applies temperature last.
+  - Every run records its backend in `config.json`.
 - **Independent models.** These are open-weights models other than Apertus,
   with their licences in `docs/licences.md`; the technical report describes
   their role.
@@ -93,8 +99,8 @@ More on syllables:
   run records which counter it used.
 - German years are read as years. Before eSpeak NG runs, 4-digit numbers
   1100–1999 not followed by a unit or currency are rewritten (1959 →
-  "19 hundert 59"). French is unchanged, because French reads years as full
-  numbers.
+  "19 hundert 59", and decades too: 1970er → "19 hundert 70er"). French is
+  unchanged, because French reads years as full numbers.
 - **Documented limitation.** On the spot-check list (`results/syllable_spotcheck.md`:
   40 words and 10 sentences with numbers, against hand counts not yet
   checked by a native speaker), eSpeak NG gets 46 of 50 items exact (92 %).
@@ -262,6 +268,18 @@ Fixed before any output has been seen (`src/isochron/gonogo.py`).
 
   A first, function-word version of the language check wrongly failed 16
   short German candidates and was replaced before the go/no-go run.
+- **A first go/no-go generation was superseded before anyone scored or read
+  it** (run `20261009T132800Z`, kept in `results/raw/`).
+  - A blind review of the scoring code found that every request so far had
+    sampled with llama-server's defaults: top_k 40 and min_p 0.05, with
+    temperature applied last. The server log shows this for all 171 requests.
+    That is not the decided sampling.
+  - The review also found that German decade forms (*1970er*) escaped the year
+    rule, which changed one go/no-go target (sentence 1604: 110 instead of
+    108).
+  - Both were fixed (commit `0ddd55f`), the smoke test was re-run (run
+    `20261009T141025Z`, all three checks pass), and the go/no-go was
+    generated again. The superseded run is not scored for the decision.
 
 ## Stretch: isochrony
 
@@ -305,3 +323,8 @@ used.
 - 2026-10-09, v2.3, before the go/no-go run: prompt v1 frozen (hash above);
   the local model artefact recorded; smoke test passed; the language check now
   uses a character n-gram identifier.
+- 2026-10-09, v2.4, before any go/no-go output was scored or read: the
+  sampling is made explicit (temperature then top_p, no top_k or min_p), and
+  decade forms are read as years. The first go/no-go generation is superseded
+  and the go/no-go is generated again. The scorer only decides for a
+  complete, frozen-prompt run with unchanged targets.
