@@ -43,6 +43,18 @@ is not started. Nothing is pushed.
   - (c) shortens with v1 and the repair loop, in the budget's unit; the loop now takes a unit.
   - These choices are recorded in protocol v2.10.
 
+- **16:57. Judge selection rule, fixed before any Qwen3-14B result** (plan step 4).
+  - Basis: the hard controls, all 140 pairs. Qwen3-8B caught 13 of the 27 qualifier and modal changes
+    (qualifier 5 of 14, modal 8 of 13).
+  - Qwen3-14B becomes the main judge if it catches more than 13 of those 27 and is not lower in either
+    category.
+  - Otherwise both judges are reported side by side.
+  - The NLI stays the loop's screen in every case.
+- **Retry counting** ("retry a failing step at most twice"): only runs that failed on their own count;
+  restarts to install a fix do not.
+  - So far one failure each: the env setup (uv timeout, job 2634033) and the container import
+    (manifest timeout, job 2634227).
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 
