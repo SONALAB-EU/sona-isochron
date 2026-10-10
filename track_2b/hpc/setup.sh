@@ -165,13 +165,19 @@ setup_fallback() {
     "$HF_VENV/bin/python" -c 'import torch, transformers; from transformers import AutoModelForMultimodalLM, AutoProcessor; print("transformers", transformers.__version__, "torch", torch.__version__, "GPU", torch.cuda.is_available())'
 }
 
-require_compute_node
-mkdir -p "$ISOCHRON_WORK"
-case ${1:-env} in
-    env) setup_env ;;
-    prefetch) prefetch ;;
-    container) setup_container ;;
-    fallback) require_gpu && setup_fallback ;;
-    *) die "unknown step ${1}: env, prefetch, container or fallback" ;;
-esac
-log "done: setup ${1:-env}"
+main() {
+    require_compute_node
+    mkdir -p "$ISOCHRON_WORK"
+    case ${1:-env} in
+        env) setup_env ;;
+        prefetch) prefetch ;;
+        container) setup_container ;;
+        fallback) require_gpu && setup_fallback ;;
+        *) die "unknown step ${1}: env, prefetch, container or fallback" ;;
+    esac
+    log "done: setup ${1:-env}"
+}
+
+# bash reads a script while it runs it; with everything in main and this one last line, the file is read to
+# the end before anything runs, so replacing it (an rsync) cannot break a running job
+main "$@"; exit

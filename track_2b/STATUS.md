@@ -55,6 +55,16 @@ is not started. Nothing is pushed.
   - So far one failure each: the env setup (uv timeout, job 2634033) and the container import
     (manifest timeout, job 2634227).
 
+- **17:22. The container image is imported** (16.8 GB squashfs).
+  - Every layer was fetched in chunks and checked against its digest, then `enroot import`.
+- **17:27. The prefetch job died with "Stale file handle".** My own rsync of a fixed `setup.sh` replaced the
+  file while bash was still reading it.
+  - The environment was already installed; only the eSpeak NG build and the marker were left.
+  - Decision: `setup.sh` and `pipeline.sh` now run everything from `main` with a single last line,
+    `main "$@"; exit`, so bash reads the whole file before running. A sync can no longer break a job.
+  - Not counted as a failure of the step: the cause was my sync.
+  - The H100 run of `setup.sh` (job 2634300) finishes the rest.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 
