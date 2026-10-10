@@ -118,6 +118,7 @@ def table(rows: list[dict], title: str) -> list[str]:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Phase 2 pilot table.")
     ap.add_argument("runs", type=Path, nargs="+")
+    ap.add_argument("--notes", type=Path, help="hand-written summary (markdown) placed before the tables")
     args = ap.parse_args()
     cfgs, rows = [], []
     for run in args.runs:
@@ -144,6 +145,9 @@ def main() -> None:
         f"- Items: {c0['items']['n']} sentences ({selection_text()}), levels {c0['levels']}, seeds {c0['seeds']}, "
         f"round seeds: {c0.get('round_seed', 'the item seed in every round')}; TTS: none",
         f"- 95 % intervals: bootstrap over sentences, {N_BOOT} resamples, seed {BOOT_SEED}. Exploratory: not a decision.",
+        "",
+        *([args.notes.read_text(encoding="utf-8").rstrip(), ""] if args.notes else []),
+        "## Tables",
         "",
         "Fit, fact recall, added-fact rate and fit & complete are in %. Time is per output (one sentence at one",
         "level). Fit & complete = fits, and the judge keeps every fact and finds nothing added; the recommendation",
