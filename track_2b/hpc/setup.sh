@@ -127,10 +127,10 @@ fetch_layers() {
     fi
     cache=${ENROOT_CACHE_PATH:-${XDG_CACHE_HOME:-$HOME/.cache}/enroot}
     mkdir -p "$cache"
-    tok=$(ghcr_token "$image")
-    manifest=$(curl -fsS -H "Authorization: Bearer $tok" \
+    tok=$(with_retries 10 ghcr_token "$image") || die "no token from ghcr.io"
+    manifest=$(with_retries 10 curl -fsS --connect-timeout 30 --max-time 120 -H "Authorization: Bearer $tok" \
         -H "Accept: application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json" \
-        "https://ghcr.io/v2/$image/manifests/$tag")
+        "https://ghcr.io/v2/$image/manifests/$tag") || die "no manifest from ghcr.io"
     while read -r hex size; do
         [ -f "$cache/$hex" ] && continue
         find "$cache" -maxdepth 1 -name "$hex.??????????" -type f -delete

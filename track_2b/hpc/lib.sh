@@ -29,6 +29,17 @@ require_espeak() {
 # A chunk that fails or stalls (under 20 kB/s for 60 s) is tried again on its own, up to 40 times;
 # finished chunks survive a restart (DEST.parts/). DEST appears only once the whole file matches its
 # SHA-256. With GHCR_IMAGE, every try asks ghcr.io for an anonymous pull token.
+# with_retries N COMMAND...: run COMMAND until it succeeds, at most N times, 10 s apart
+with_retries() {
+    local n=$1 i
+    shift
+    for ((i = 1; i <= n; i++)); do
+        "$@" && return 0
+        sleep 10
+    done
+    return 1
+}
+
 ghcr_token() {
     curl -fsS --max-time 60 "https://ghcr.io/token?scope=repository:$1:pull" | sed -E 's/.*"token":"([^"]+)".*/\1/'
 }
