@@ -393,6 +393,25 @@ numbers are reported on test, as before. The work goes in this order.
      `…T153417Z_pilot_v2a_de_dev`, partial). A code review found that every
      round reused the item seed, so an unchanged revision prompt was replayed.
      The runs are kept in `results/raw/` but never judged or reported.
+   - **Result (2026-10-10, `results/phase2_pilot.md`; exploratory).**
+     - The repair loop helps; the v2 prompts do not help on their own. Pooled
+       over both levels, v1 with the loop fits 75.0 % [63.3, 85.0] and is fit
+       & complete in 50.0 % [38.3, 61.7]. Without the loop the figures are
+       33.3 % and 18.3 %. The loop costs 15.6 s per output instead of 6.2 s.
+     - With the loop, the four variants are within noise of each other: fit &
+       complete is 41.7 to 50.0 %, and the intervals overlap.
+     - The rule picks v1 with the loop. The rule does not name a table, so it
+       is applied to the both-levels table, which was the report's first
+       table when the rule was written. Level 90 alone gives the same pick.
+       Level 80 alone would pick v2b without the loop through the time
+       tie-break, because at n = 30 the intervals overlap widely.
+     - Caveats:
+       - The judge is lenient on lost qualifiers and misses insertions. An
+         LLM audit agreed with it on "complete" in 17 of 24 outputs. So fact
+         recall and fit & complete are upper bounds, and added facts are not
+         measured.
+       - Three outputs with the loop are in English and count as fits, because
+         the loop has no language check.
 
 ## Stretch: isochrony
 
@@ -409,6 +428,11 @@ used.
   model on the HPC is still possible.
 - Which outputs the 50 native-speaker lines come from, and who checks them.
 - A native-speaker review of the NLI control pairs.
+- Before the full runs (suggested by the pilot):
+  - a language check in the repair loop;
+  - a judge that catches qualifier-level losses and insertions, validated on
+    new qualifier-level controls;
+  - a near-tie test on paired differences, instead of overlapping intervals.
 
 ## References
 
@@ -458,3 +482,8 @@ used.
   The pilot report gets the "fit & complete" success measure and a
   recommendation rule (highest rate, near-ties broken by time), fixed before
   any judge output of the pilot.
+- 2026-10-10, v2.8: pilot result recorded (exploratory). v1 with the repair
+  loop is recommended for the full runs. The rule is applied to the
+  both-levels table, which it did not name. Caveats added: the judge is
+  lenient, and the loop has no language check. Open items for the full runs
+  added.
