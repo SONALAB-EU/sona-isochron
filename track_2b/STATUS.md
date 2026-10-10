@@ -65,6 +65,13 @@ is not started. Nothing is pushed.
   - Not counted as a failure of the step: the cause was my sync.
   - The H100 run of `setup.sh` (job 2634300) finishes the rest.
 
+- **17:35. Your model download had not started** (no `hpc/logs/download.log`, no tmux session on lx01).
+  - Decision: download what needs no token myself. `download_models.sh --open` fetches the judge Qwen3-14B
+    and the NLI model (job 2634301, CPU-only, submitted with `HF_TOKEN` removed from the environment).
+  - Your command still fetches everything; files already present are skipped, and huggingface_hub locks
+    each file if both run at once.
+  - Why: the judge validation (plan step 4) needs no Apertus weights, so it can run before they arrive.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 
