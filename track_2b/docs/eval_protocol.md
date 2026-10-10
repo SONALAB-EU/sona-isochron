@@ -354,6 +354,19 @@ numbers are reported on test, as before. The work goes in this order.
    - Metrics: *fact recall* (kept facts ÷ facts, per output, averaged) and the
      *added-fact rate* (share of outputs with at least one added fact).
    - It is validated on the NLI control suite before use.
+   - **Judge prompt selection (added 2026-10-10, before any v2 result).**
+     - Validation of `judge_compare_v1` showed two failure modes. It does not
+       see the original sentence, so it marks its own paraphrased facts as
+       "changed" even on identical pairs. It also often answers with fewer
+       entries than there are facts.
+     - `judge_compare_v2` therefore also shows the original sentence, defines
+       "kept" as the same information in any wording, and states the number
+       of entries expected.
+     - To avoid tuning on the validation data, the control suite is split. Half
+       A (per language the 10 base sentences with the lowest FLEURS ids) is
+       used to tune judge prompts; half B (the other 10) is held out.
+     - The prompt with the higher mean accuracy over the 5 control types on
+       half B judges the pilot. Ties are broken by fewer invalid answers.
 5. **Pilot.**
    - 30 German dev sentences outside the go/no-go 50
      (`random.Random(0).sample` of the other 97), seed 0, levels 90 % and 80 %.
@@ -425,3 +438,8 @@ used.
   superseded. Fixes from the code review: no-output handling, reproducible
   intervals, the judge's placeholder and server guards, and the record of the
   NLI used in judge validation.
+- 2026-10-10, v2.7, before any judge v2 result: the judge prompt selection
+  rule (tune on half A of the control suite, choose on held-out half B).
+  The pilot report gets the "fit & complete" success measure and a
+  recommendation rule (highest rate, near-ties broken by time), fixed before
+  any judge output of the pilot.

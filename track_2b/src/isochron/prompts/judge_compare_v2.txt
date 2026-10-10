@@ -1,0 +1,19 @@
+Check whether a new version of a $language sentence keeps the information of the original.
+
+Original sentence:
+$original
+
+Facts of the original ($n_facts, numbered):
+$facts
+
+New version:
+$text
+
+For each fact, compare it with the new version. Use the original sentence to understand what the fact means.
+- "kept": the new version states the same information. Any wording, word order, active or passive voice, synonyms, and merged or split sentences count as kept.
+- "changed": the new version states it, but the meaning differs: a different number, name, date or place, a negation, a stronger or weaker claim, or a lost qualifier (such as "almost", "very", "local", "according to the police").
+- "dropped": the new version does not state it at all.
+Then list the information in the new version that is not in the original sentence ("added"). Rewording is not added information. If the new version says nothing beyond the original sentence, give an empty list.
+
+Answer with JSON only, no explanations, in exactly this form. Give exactly $n_facts entries in "facts", one per numbered fact, in the same order, copying each fact as it is written above:
+{"facts": [{"fact": "<fact 1>", "status": "kept"}, {"fact": "<fact 2>", "status": "dropped"}], "added": []}

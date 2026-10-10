@@ -93,7 +93,7 @@ def verdict(judged: dict) -> dict[str, Any]:
 
 
 class Judge:
-    def __init__(self) -> None:
+    def __init__(self, compare_prompt: str = "judge_compare_v1") -> None:
         try:
             self.config = LLMConfig.from_env(prefix="JUDGE")
         except ConfigError as e:
@@ -107,7 +107,7 @@ class Judge:
         quant = re.search(r"(?i)(Q\d_K_[MSL]|Q\d_\d|Q\d_K|F16|BF16)", str(self.backend.get("model_path") or ""))
         self.quantisation = quant.group(1).upper() if quant else "unknown"
         self.client = ChatClient(self.config, timeout=300)
-        self.facts_prompt, self.compare_prompt = Prompt.load("judge_facts_v1"), Prompt.load("judge_compare_v1")
+        self.facts_prompt, self.compare_prompt = Prompt.load("judge_facts_v1"), Prompt.load(compare_prompt)
         self.cache = self._load_cache()
 
     def _refuse_if_apertus_is_up(self) -> None:
@@ -148,9 +148,11 @@ class Judge:
         e = self._ask("facts", self.facts_prompt, check_facts, lang, source)
         return [f.strip() for f in e["parsed"]["facts"]] if e["parsed"] else None
 
-    def compare(self, facts: list[str], output: str, lang: str) -> dict[str, Any]:
+    def compare(self, facts: list[str], output: str, lang: str, original: str) -> dict[str, Any]:
+        """v1 prompts see only the fact list; v2 also sees the original sentence."""
         listing = "\n".join(f"{i}. {f}" for i, f in enumerate(facts, 1))
-        e = self._ask("compare", self.compare_prompt, check_compare(len(facts)), lang, output, facts=listing)
+        e = self._ask("compare", self.compare_prompt, check_compare(len(facts)), lang, output,
+                      facts=listing, original=original, n_facts=len(facts))
         if not e["parsed"]:
             return {"valid": False, "error": e["error"]}
         return {"valid": True, **verdict(e["parsed"]), "judged": e["parsed"]}
@@ -175,16 +177,28 @@ NLI_EXPECTED = {
 }
 
 
-def controls(out_path: Path) -> None:
+def control_half(pairs: list[ControlPair], half: str) -> list[ControlPair]:
+    """Half A: per language, the 10 base sentences with the lowest FLEURS ids; half B: the other 10."""
+    if half == "all":
+        return pairs
+    keep = set()
+    for lang in {p.lang for p in pairs}:
+        ids = sorted({int(p.fleurs_id) for p in pairs if p.lang == lang})
+        chosen = ids[: len(ids) // 2] if half == "A" else ids[len(ids) // 2:]
+        keep |= {(lang, str(i)) for i in chosen}
+    return [p for p in pairs if (p.lang, p.fleurs_id) in keep]
+
+
+def controls(out_path: Path, half: str = "all", compare_prompt: str = "judge_compare_v1") -> None:
     from isochron.metrics.meaning import NLI
 
-    pairs = list(read_jsonl(Path("data/nli_controls.jsonl"), ControlPair))
-    judge = Judge()
+    pairs = control_half(list(read_jsonl(Path("data/nli_controls.jsonl"), ControlPair)), half)
+    judge = Judge(compare_prompt)
     started = datetime.now(timezone.utc)
     rows = []
     for i, p in enumerate(pairs, 1):
         facts = judge.facts(p.source, p.lang)
-        v = judge.compare(facts, p.output, p.lang) if facts else {"valid": False, "error": "no facts"}
+        v = judge.compare(facts, p.output, p.lang, p.source) if facts else {"valid": False, "error": "no facts"}
         rows.append((p, facts, v))
         print(f"  {i}/{len(pairs)} {p.id}: {v.get('recall', '-')} added {v.get('added', '-')}"
               f"{'' if v['valid'] else ' INVALID ' + v['error']}", flush=True)
@@ -220,7 +234,9 @@ def controls(out_path: Path) -> None:
         f"- Judge: {json.dumps(judge.describe(), ensure_ascii=False)}",
         f"- NLI (last column and agreement): {nli.describe()}",
         "- TTS: none. Seeds: judge seed 0 at temperature 0 (greedy)",
-        f"- n: {len(pairs)} pairs (data/nli_controls.jsonl: 20 German and 20 French FLEURS train sentences × 5 control types)",
+        f"- n: {len(pairs)} pairs, half {half} of data/nli_controls.jsonl (all = 20 German and 20 French FLEURS train "
+        "sentences × 5 control types; half A = per language the 10 base sentences with the lowest FLEURS ids, "
+        "used to tune judge prompts; half B = the other 10, held out)",
         f"- Invalid judge answers: {len(invalid)}",
         "",
         "A pair counts as judged correctly when the judge's verdict matches its control type. The last column",
@@ -243,8 +259,8 @@ def controls(out_path: Path) -> None:
     print(f"wrote {out_path.resolve()}")
 
 
-def pilot(runs: list[Path]) -> None:
-    judge = Judge()
+def pilot(runs: list[Path], compare_prompt: str = "judge_compare_v1") -> None:
+    judge = Judge(compare_prompt)
     for run in runs:
         cfg = json.loads((run / "config.json").read_text(encoding="utf-8"))
         items = [json.loads(line) for line in open(run / "items.jsonl", encoding="utf-8") if line.strip()]
@@ -258,7 +274,7 @@ def pilot(runs: list[Path]) -> None:
                 elif not cand:  # no output keeps no fact; whether it adds any is undefined
                     res[cond] = {"valid": True, "no_output": True, "recall": 0.0, "added_any": None}
                 else:
-                    res[cond] = judge.compare(facts, cand["text"], cfg["lang"])
+                    res[cond] = judge.compare(facts, cand["text"], cfg["lang"], it["input"])
             out.append(res)
             print(f"  {run.name} {i}/{len(items)} {it['id']} L{it['level']}: "
                   f"without {res['without'].get('recall', '-')} / with {res['with'].get('recall', '-')}", flush=True)
@@ -274,13 +290,16 @@ def main() -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("controls")
     c.add_argument("--out", type=Path, default=Path("results/judge_validation.md"))
+    c.add_argument("--half", choices=("A", "B", "all"), default="all")
+    c.add_argument("--compare-prompt", default="judge_compare_v1")
     p = sub.add_parser("pilot")
     p.add_argument("runs", type=Path, nargs="+")
+    p.add_argument("--compare-prompt", default="judge_compare_v1")
     args = ap.parse_args()
     if args.cmd == "controls":
-        controls(args.out)
+        controls(args.out, args.half, args.compare_prompt)
     else:
-        pilot(args.runs)
+        pilot(args.runs, args.compare_prompt)
 
 
 if __name__ == "__main__":
