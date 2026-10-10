@@ -194,6 +194,15 @@ is not started. Nothing is pushed.
   - No validate phase: it already ran in job 2634364, and the full run repeats it.
   - Only the files a job writes are copied back, so a local results file can never be overwritten by an
     older cluster copy.
+- **18:40. The step 2 report gets the loop's effect as a paired difference** (protocol v2.12, commit
+  bf8f429).
+  - What it shows: with − without, in points, for fit, fact recall, added-fact rate and fit & complete,
+    pooled and per level. The interval comes from a paired bootstrap over sentences.
+  - Why: the pilot's open item. Two overlapping per-condition intervals do not show whether the loop
+    helps; the paired interval does. It is added before any test output exists, so it cannot be fitted to
+    the results.
+  - Checked: the pilot tables regenerate identically. A mock run in the current format goes through
+    `isochron.compare_runs`, so the smoke comparison is ready.
 
 ## Previous status (2026-10-10, before the autonomous run)
 
