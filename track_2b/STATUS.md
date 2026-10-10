@@ -72,6 +72,19 @@ is not started. Nothing is pushed.
     each file if both run at once.
   - Why: the judge validation (plan step 4) needs no Apertus weights, so it can run before they arrive.
 
+- **17:51. Setup on an H100 passed** (job 2634300).
+  - torch 2.14.1+cu130 sees the H100 (driver 590.48.01).
+  - Tests: 115 pass and 4 skip (those need models). The syllable reference test passed: the cluster
+    counts syllables exactly as the Mac does on all 963 sentences.
+  - The marker `.env-ready` is written.
+- **17:55. pyxis runs the imported image** (job 2634285): vLLM 0.23.1rc1 (swiss-ai fork `a601a9d`),
+  torch 2.11.0+cu130 (H100 visible), transformers fork 5.14.0.dev0.
+  - But pyxis first unpacked the image to `~/.local/share/enroot` (12 GB on the network share) and
+    removed it afterwards, which held the GPU for about 20 minutes.
+  - Decision: the vLLM container gets a name (`--container-name`). With `container_scope=global` it is
+    unpacked once, in a CPU-only job, and reused by every later job.
+- **GPU budget so far: 1.17 H100-hours** (sacct; tests, setup, the container check).
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 

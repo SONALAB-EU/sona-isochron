@@ -30,6 +30,9 @@ NINJA_VERSION=1.11.1.4
 # (vLLM fork commit a601a9d, transformers fork commit 3797303, CUDA 13.0, Python 3.12).
 VLLM_IMAGE='ghcr.io#swiss-ai/vllm_apertus_1.5_release:latest-amd64'
 VLLM_SQSH=$ISOCHRON_WORK/containers/vllm_apertus_1.5_release-latest-amd64.sqsh
+# pyxis unpacks a squashfs image (about 12 GB) before it starts it; a named container is unpacked once
+# (in ~/.local/share/enroot, shared by all nodes) and reused by every later job (container_scope=global)
+VLLM_CONTAINER=isochron_vllm_apertus_1.5
 
 # The fallback when vLLM fails: the transformers fork named on the Apertus 1.5 model card
 # (git+https://github.com/swiss-ai/transformers.git@3797303...), as GitHub's archive of the same commit,
