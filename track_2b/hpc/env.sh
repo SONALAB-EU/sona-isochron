@@ -2,8 +2,9 @@
 #
 # ISOCHRON_WORK holds everything large that is not in the repository: tools, the
 # uv-managed Python, caches, model weights and the vLLM container. It needs about
-# 90 GB, or about 235 GB with Apertus 1.5 70B. Export another path before running
-# a script if your home quota is too small.
+# 90 GB; Apertus 1.5 70B adds about 145 GB. The home quota on the HPI cluster is
+# 200 GB, so the 70B weights can go elsewhere: export ISOCHRON_MODELS_70B (a directory
+# with space) before the 70B download and the 70B job.
 
 REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 ISOCHRON_WORK=${ISOCHRON_WORK:-$HOME/isochron_work}
@@ -35,6 +36,7 @@ HF_FALLBACK_TORCH=2.14.1
 HF_VENV=$ISOCHRON_WORK/venv-hf
 
 MODELS=$ISOCHRON_WORK/models
+MODELS_70B=${ISOCHRON_MODELS_70B:-$MODELS}
 APERTUS_8B_REPO=swiss-ai/Apertus-v1.5-8B
 APERTUS_8B_REV=a411d838600baf0e3635a3daf66fb7c55fc97bb6
 APERTUS_70B_REPO=swiss-ai/Apertus-v1.5-70B
@@ -43,7 +45,14 @@ JUDGE_REPO=Qwen/Qwen3-14B
 JUDGE_REV=40c069824f4251a91eefaf281ebe4c544efd3e18
 
 export UV_CACHE_DIR=$ISOCHRON_WORK/uv-cache
+# The cluster's internet is throttled per connection (2026-10-10: PyPI about 0.2 MB/s, Hugging Face
+# about 2 MB/s per connection), so downloads get long timeouts and retries instead of failing
+export UV_HTTP_TIMEOUT=600
+export UV_HTTP_RETRIES=10
+export ENROOT_TRANSFER_RETRIES=10
+export ENROOT_CONNECT_TIMEOUT=60
 export UV_PYTHON_INSTALL_DIR=$ISOCHRON_WORK/uv-python
+export UV_PYTHON_BIN_DIR=$ISOCHRON_WORK/bin
 export UV_PYTHON_PREFERENCE=only-managed
 export HF_HOME=$ISOCHRON_WORK/hf
 export HF_HUB_DISABLE_TELEMETRY=1

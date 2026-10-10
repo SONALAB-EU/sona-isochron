@@ -46,9 +46,11 @@ start_server() {
     case $kind in
         vllm)
             [ -f "$VLLM_SQSH" ] || die "no container at $VLLM_SQSH: run  bash hpc/setup.sh container"
+            local mounts="$MODELS:$MODELS:ro"
+            [ "$MODELS_70B" = "$MODELS" ] || mounts="$mounts,$MODELS_70B:$MODELS_70B:ro"
             VLLM_API_KEY=$key HF_HUB_OFFLINE=1 srun --overlap --ntasks=1 --nodes=1 \
                 --container-image="$VLLM_SQSH" \
-                --container-mounts="$MODELS:$MODELS:ro" \
+                --container-mounts="$mounts" \
                 --container-env=VLLM_API_KEY,HF_HUB_OFFLINE \
                 vllm serve "$model" --served-model-name "$name" --host 127.0.0.1 --port "$port" \
                 --dtype bfloat16 --generation-config vllm --seed 0 "$@" > "$logfile" 2>&1 &

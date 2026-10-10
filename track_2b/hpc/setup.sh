@@ -1,9 +1,14 @@
 #!/bin/bash
-# Set up the cluster side, on an H100 node (through srun, so the architecture matches):
+# Set up the cluster side:
 #
-#   bash hpc/setup.sh             uv (pinned), uv-managed Python, the project environment from uv.lock
-#                                 (torch from PyPI), eSpeak NG 1.52.0 built from source, then the tests
+#   bash hpc/setup.sh prefetch    every download and build that needs no GPU: uv (pinned), the
+#                                 uv-managed Python, the project environment from uv.lock (torch from
+#                                 PyPI) and eSpeak NG 1.52.0 built from source. The cluster's internet
+#                                 is slow per connection, so run this as a CPU-only batch job.
 #   bash hpc/setup.sh container   import the vLLM container for Apertus 1.5 into a squashfs file
+#                                 (also CPU-only; it resumes from enroot's layer cache)
+#   bash hpc/setup.sh             on an H100 (through srun, so the architecture matches): whatever
+#                                 prefetch has not done yet, then the GPU check and the tests
 #   bash hpc/setup.sh fallback    a second environment with the transformers fork (if vLLM fails)
 #
 # Every download is pinned by version and checked by SHA-256 where a file is fetched directly.
@@ -34,8 +39,8 @@ build_espeak() {
         log "espeak-ng $ESPEAK_VERSION already installed"
         return
     fi
-    command -v cc > /dev/null || command -v gcc > /dev/null || die "no C compiler on this node (is there a gcc module to load?)"
-    tmp=$(mktemp -d "$ISOCHRON_WORK/tmp.XXXXXX")
+    command -v cc > /dev/null || command -v gcc > /dev/null || die "no C compiler on this node"
+    tmp=$(mktemp -d "${TMPDIR:-$ISOCHRON_WORK}/espeak-build.XXXXXX")
     curl -fsSL -o "$tmp/espeak.tar.gz" "$ESPEAK_URL"
     sha256_ok "$tmp/espeak.tar.gz" "$ESPEAK_SHA256" || die "eSpeak NG source does not match its SHA-256"
     curl -fsSL -o "$tmp/sonic.tar.gz" "$SONIC_URL"
@@ -55,16 +60,21 @@ build_espeak() {
     log "installed $("$prefix/bin/espeak-ng" --version)"
 }
 
-setup_env() {
+prefetch() {
     install_uv
     uv python install "$PYTHON_VERSION"
     cd "$REPO"
     uv sync --frozen --python "$PYTHON_VERSION"
-    .venv/bin/python -c 'import torch; print("torch", torch.__version__, "CUDA", torch.version.cuda, "GPU", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none")'
-    .venv/bin/python -c 'import torch; assert torch.cuda.is_available(), "torch sees no GPU"'
     build_espeak
     require_espeak
     mkdir -p "$REPO/hpc/logs" "$REPO/results/raw/logs"
+}
+
+setup_env() {
+    prefetch
+    require_gpu
+    .venv/bin/python -c 'import torch; print("torch", torch.__version__, "CUDA", torch.version.cuda, "GPU", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "none")'
+    .venv/bin/python -c 'import torch; assert torch.cuda.is_available(), "torch sees no GPU"'
     log "running the tests (the NLI tests are skipped until hpc/download_models.sh has run)"
     uv run --no-sync python -m pytest -q
 }
@@ -89,12 +99,12 @@ setup_fallback() {
 }
 
 require_compute_node
-require_gpu
 mkdir -p "$ISOCHRON_WORK"
 case ${1:-env} in
     env) setup_env ;;
+    prefetch) prefetch ;;
     container) setup_container ;;
-    fallback) setup_fallback ;;
-    *) die "unknown step ${1}: env, container or fallback" ;;
+    fallback) require_gpu && setup_fallback ;;
+    *) die "unknown step ${1}: env, prefetch, container or fallback" ;;
 esac
 log "done: setup ${1:-env}"

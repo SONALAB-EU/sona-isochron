@@ -26,8 +26,8 @@ set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
 case ${MODEL_KEY:?set MODEL_KEY to 8b or 70b} in
-    8b) MODEL_REPO=$APERTUS_8B_REPO ;;
-    70b) MODEL_REPO=$APERTUS_70B_REPO ;;
+    8b) MODEL_DIR=$MODELS/$APERTUS_8B_REPO ;;
+    70b) MODEL_DIR=$MODELS_70B/$APERTUS_70B_REPO ;;
     *) die "MODEL_KEY must be 8b or 70b" ;;
 esac
 SERVER=${SERVER:-vllm}
@@ -47,7 +47,7 @@ require_gpu
 require_espeak
 cd "$REPO"
 [ -x .venv/bin/python ] || die "no project environment: run  bash hpc/setup.sh  first"
-[ -f "$MODELS/$MODEL_REPO/config.json" ] || die "no model at $MODELS/$MODEL_REPO: run  bash hpc/download_models.sh"
+[ -f "$MODEL_DIR/config.json" ] || die "no model at $MODEL_DIR: run  bash hpc/download_models.sh"
 [ -f "$MODELS/$JUDGE_REPO/config.json" ] || die "no judge model at $MODELS/$JUDGE_REPO: run  bash hpc/download_models.sh"
 export HF_HUB_OFFLINE=1
 mkdir -p results/raw/logs
@@ -55,7 +55,7 @@ TAG=hpc_${MODEL_KEY}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 trap stop_server EXIT
 trap 'exit 143' TERM
-log "job ${SLURM_JOB_ID}: $MODEL_REPO with $SERVER, languages $LANGS, split $SPLIT, levels $LEVELS, seeds $SEEDS"
+log "job ${SLURM_JOB_ID}: $MODEL_DIR with $SERVER, languages $LANGS, split $SPLIT, levels $LEVELS, seeds $SEEDS"
 
 # 1. Generation
 apertus_name=apertus-v1.5-${MODEL_KEY}-bf16
@@ -64,11 +64,11 @@ gen_key=$(random_key)
 gen_log=results/raw/logs/server-${TAG}-apertus-${STAMP}.log
 if [ "$SERVER" = vllm ]; then
     # shellcheck disable=SC2086
-    start_server vllm "$MODELS/$MODEL_REPO" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" \
+    start_server vllm "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" \
         --chat-template-content-format string --tensor-parallel-size "$TP" \
         --gpu-memory-utilization "$GPU_UTIL" --max-model-len 8192 $VLLM_EXTRA
 else
-    start_server transformers "$MODELS/$MODEL_REPO" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" --kind multimodal
+    start_server transformers "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" --kind multimodal
     WORKERS=2
 fi
 wait_healthy "$gen_port" 3600 "$gen_log"
