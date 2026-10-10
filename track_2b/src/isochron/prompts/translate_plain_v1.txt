@@ -1,0 +1,7 @@
+Translate the following English sentence into $language.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form:
+{"translation": "..."}

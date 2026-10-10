@@ -27,6 +27,10 @@ round number). Otherwise an unchanged prompt would be replayed byte for byte.
 "Without the loop" is the closest round-0 candidate in syllables (the v1 rule),
 chosen without the language check; scoring counts a wrong-language output as a
 failure in both conditions.
+
+The target is in syllables unless run_loop gets another unit: step 4 shortens a
+translation to a character budget (unit "chars"), with the same ranking and
+feedback in characters.
 """
 
 from __future__ import annotations
@@ -48,6 +52,7 @@ Generate = Callable[[str, int], tuple[str, dict[str, Any]]]  # (prompt, round) -
 Judge = Callable[[Sequence[str], Sequence[str]], list[Meaning]]  # the NLI, not the final judge
 Count = Callable[[str, str], int]  # (text, unit) -> length
 CheckLanguage = Callable[[str, str], LanguageCheck]  # (text, requested language) -> check
+UNIT_NAMES = {"syllables": "syllables", "chars": "characters", "words": "words"}
 
 
 @dataclass
@@ -67,28 +72,37 @@ class Candidate:
     """Top label of the language identifier ("" if not checked)."""
     language_p: float = 1.0
     wrong_language: bool = False
+    chars: int = -1
+    """Characters without spaces (-1 in logs written before this field existed)."""
+    unit: str = "syllables"
+    """The unit of the target: hit, ranking and feedback use it."""
 
     @property
     def accepted(self) -> bool:
         return self.hit and self.kept and not self.wrong_language
 
+    @property
+    def size(self) -> int:
+        return {"syllables": self.syllables, "words": self.words, "chars": self.chars}[self.unit]
+
 
 def rank(c: Candidate, target: int) -> tuple:
-    return (c.wrong_language, not c.accepted, not c.kept, abs(c.syllables - target), c.round, c.index)
+    return (c.wrong_language, not c.accepted, not c.kept, abs(c.size - target), c.round, c.index)
 
 
-def feedback(c: Candidate, target: int, words_in: int, syllables_in: int, lang: str) -> list[str]:
+def feedback(c: Candidate, target: int, words_in: int, units_in: int, lang: str) -> list[str]:
+    """units_in: the source's length in the target's unit (c.unit)."""
     if c.wrong_language:
         return [f"- It is not in {LANGUAGES[lang]}. Answer in {LANGUAGES[lang]}."]
     lines = []
     if not c.hit:
-        d = c.syllables - target
-        w = max(1, round(abs(d) * words_in / syllables_in))
+        d, name = c.size - target, UNIT_NAMES[c.unit]
+        w = max(1, round(abs(d) * words_in / units_in))
         if d > 0:
-            lines.append(f"- It is {d} syllables too long ({c.syllables} instead of {target}): "
+            lines.append(f"- It is {d} {name} too long ({c.size} instead of {target}): "
                          f"remove about {w} words.")
         else:
-            lines.append(f"- It is {-d} syllables too short ({c.syllables} instead of {target}): "
+            lines.append(f"- It is {-d} {name} too short ({c.size} instead of {target}): "
                          f"add about {w} words, using only information from the original.")
     if c.dropped:
         lines.append("- Information from the original is missing; restore it.")
@@ -98,13 +112,15 @@ def feedback(c: Candidate, target: int, words_in: int, syllables_in: int, lang: 
 
 
 def evaluate(texts: list[str], rnd: int, source: str, lang: str, target: int, nli: Judge, count: Count,
-             check_language: CheckLanguage) -> list[Candidate]:
+             check_language: CheckLanguage, unit: str = "syllables") -> list[Candidate]:
     meanings = nli([source] * len(texts), texts) if texts else []
     out = []
     for i, (t, m) in enumerate(zip(texts, meanings)):
-        syl, lc = count(t, "syllables"), check_language(t, lang)
-        out.append(Candidate(t, rnd, i, syl, count(t, "words"), m.forward, m.backward,
-                             m.kept, m.added, m.dropped, hit(syl, target), lc.label, lc.p, lc.wrong))
+        lc = check_language(t, lang)
+        c = Candidate(t, rnd, i, count(t, "syllables"), count(t, "words"), m.forward, m.backward,
+                      m.kept, m.added, m.dropped, False, lc.label, lc.p, lc.wrong, count(t, "chars"), unit)
+        c.hit = hit(c.size, target)
+        out.append(c)
     return out
 
 
@@ -120,11 +136,12 @@ def run_loop(
     check_language: CheckLanguage,
     repair: bool = True,
     max_revisions: int = MAX_REVISIONS,
+    unit: str = "syllables",
 ) -> dict[str, Any]:
     """One item through round 0 and, if repair is on, up to max_revisions revisions."""
-    words_in, syllables_in = count(source, "words"), count(source, "syllables")
-    target_words = max(1, round(target * words_in / syllables_in))
-    log: dict[str, Any] = {"rounds": [], "target": target, "target_words": target_words}
+    words_in, units_in = count(source, "words"), count(source, unit)
+    target_words = max(1, round(target * words_in / units_in))
+    log: dict[str, Any] = {"rounds": [], "target": target, "unit": unit, "target_words": target_words}
     best: Candidate | None = None
     prompt, retry = first_prompt, False
     t_start = time.monotonic()
@@ -132,7 +149,7 @@ def run_loop(
         raw, info = generate(prompt, rnd)
         texts, error = parse_candidates(raw)
         t_nli = time.monotonic()
-        cands = evaluate(texts, rnd, source, lang, target, nli, count, check_language)
+        cands = evaluate(texts, rnd, source, lang, target, nli, count, check_language, unit)
         nli_s = time.monotonic() - t_nli
         for c in cands:
             if best is None or rank(c, target) < rank(best, target):
@@ -143,7 +160,7 @@ def run_loop(
         log["rounds"].append(entry)
         if rnd == 0:
             log["time_round0_s"] = round(info.get("latency_s", 0.0), 3)
-            idx = select(texts, "closest", lambda t: count(t, "syllables"), target)
+            idx = select(texts, "closest", lambda t: count(t, unit), target)
             log["closest_round0"] = asdict(cands[idx]) if idx is not None else None
         if not repair or (best is not None and best.accepted) or rnd == max_revisions:
             break
@@ -151,7 +168,7 @@ def run_loop(
             entry["feedback"] = ["(no usable answer: the round-0 prompt is sent again)"]
             prompt, retry = first_prompt, True
         else:
-            lines = feedback(best, target, words_in, syllables_in, lang)
+            lines = feedback(best, target, words_in, units_in, lang)
             entry["feedback"] = lines
             prompt, retry = revise.render(lang, target, source, current=best.text,
                                           feedback="\n".join(lines), target_words=target_words), False

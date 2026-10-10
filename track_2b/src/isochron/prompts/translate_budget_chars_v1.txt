@@ -1,0 +1,12 @@
+Translate the following English sentence into $language for dubbing. Write in $language.
+
+Each version must be $target characters long, not counting spaces.
+
+Keep every piece of information. Add nothing.
+You may reorder, use shorter synonyms, drop filler words and merge clauses.
+
+Sentence:
+$text
+
+Answer with JSON only, no explanations, in exactly this form, with 4 different versions:
+{"candidates": ["...", "...", "...", "..."]}

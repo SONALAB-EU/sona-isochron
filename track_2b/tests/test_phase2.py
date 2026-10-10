@@ -59,10 +59,10 @@ def test_rank_prefers_accepted_then_kept_then_closest() -> None:
 
 
 def test_feedback_lines() -> None:
-    lines = feedback(_cand(50, False), 40, words_in=20, syllables_in=40, lang="de")
+    lines = feedback(_cand(50, False), 40, words_in=20, units_in=40, lang="de")
     assert lines[0].startswith("- It is 10 syllables too long (50 instead of 40): remove about 5 words")
     assert lines[1] == "- Information from the original is missing; restore it."
-    short = feedback(_cand(30, True), 40, words_in=20, syllables_in=40, lang="de")
+    short = feedback(_cand(30, True), 40, words_in=20, units_in=40, lang="de")
     assert short == ["- It is 10 syllables too short (30 instead of 40): add about 5 words, using only information from the original."]
     assert feedback(_cand(41, True), 40, 20, 40, "de") == []
 
@@ -165,6 +165,22 @@ def test_loop_asks_for_german_after_an_english_round() -> None:
     assert "Answer in German." in w.prompts[1]
     assert log["final_accepted"] and log["final"]["round"] == 1 and not log["final"]["wrong_language"]
     assert log["closest_round0"]["wrong_language"]  # without the loop: closest round-0 candidate, English
+
+
+def test_loop_in_characters() -> None:
+    """Step 4 shortens to a character budget: hit, ranking and feedback use characters."""
+    class CharWorld(FakeWorld):
+        @staticmethod
+        def count(text: str, unit: str) -> int:
+            return len(text.replace(" ", "")) if unit == "chars" else len(text.split())
+
+    w = CharWorld([["aaaaaaaaaaaa KEEP", "aaaa", "a", "aa"],    # round 0: kept, 16 characters
+                   ["aaaaaa KEEP", "a", "a", "a"]])            # round 1: kept, 10 characters
+    log = run_loop("P0", "s " * 10, "de", 10, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language, unit="chars")
+    assert log["unit"] == "chars" and log["final_accepted"]
+    assert log["rounds"][0]["feedback"][0].startswith("- It is 6 characters too long (16 instead of 10)")
+    assert log["final"]["chars"] == 10 and log["final"]["unit"] == "chars"
 
 
 def test_judge_parsing_and_verdict() -> None:
