@@ -32,6 +32,16 @@ is not started. Nothing is pushed.
   - It runs through srun, not sbatch, because Slurm stores a batch job's environment, token included.
 - **The 70B weights** get their own location (`ISOCHRON_MODELS_70B`): home has a 200 GB quota. Unused
   tonight.
+- **16:53. The downloader's range probe treated a transient 403 or timeout as "no range support"** and fell
+  back to one stream, which restarts from zero on every stall.
+  - Decision: probe up to 5 times with a fresh token, and fall back to one stream only on a plain HTTP 200.
+  - Both jobs were restarted. Finished files and chunks are kept.
+- **Step 4 (plan step 6), done while the GPUs waited for the environment.**
+  - Built: runner (`isochron.step4`), report (`isochron.step4_report`), tests, and a 5-sentence local smoke
+    test per language (`results/step4_smoke_local.md`).
+  - (b) and (c) use the closest of 4 candidates, because step 3 has not been run.
+  - (c) shortens with v1 and the repair loop, in the budget's unit; the loop now takes a unit.
+  - These choices are recorded in protocol v2.10.
 
 ## Previous status (2026-10-10, before the autonomous run)
 

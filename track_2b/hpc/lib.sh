@@ -53,10 +53,16 @@ export -f ghcr_token fetch_range
 fetch_chunked() {
     local url=$1 size=$2 sha=$3 dest=$4 chunk=$(($5 * 1024 * 1024)) parallel=$6 image=${7:-} parts n i s e code auth=()
     [ -f "$dest" ] && return 0
-    [ -z "$image" ] || auth=(-H "Authorization: Bearer $(ghcr_token "$image")")
-    code=$(curl -sL --connect-timeout 20 --max-time 120 "${auth[@]}" -r 0-0 -o /dev/null -w '%{http_code}' "$url" || true)
-    if [ "$code" != 206 ]; then
-        echo "note: $url answers ranges with HTTP $code; one stream instead" >&2
+    # does the server serve byte ranges? Only a plain 200 says no; errors (403, timeouts) are tried again
+    for _ in 1 2 3 4 5; do
+        auth=()
+        [ -z "$image" ] || auth=(-H "Authorization: Bearer $(ghcr_token "$image")")
+        code=$(curl -sL --connect-timeout 20 --max-time 120 "${auth[@]}" -r 0-0 -o /dev/null -w '%{http_code}' "$url" || true)
+        case $code in 206 | 200) break ;; esac
+        sleep 5
+    done
+    if [ "$code" = 200 ]; then
+        echo "note: $url ignores byte ranges; one stream instead" >&2
         chunk=$size
         parallel=1
     fi
