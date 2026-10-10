@@ -325,8 +325,9 @@ numbers are reported on test, as before. The work goes in this order.
      percentage points of the input's syllables, capped at 100 %. That is
      95/90/85/80 % at level 80 and 100/100/95/90 % at level 90.
 3. **Repair loop (our method).**
-   - Selection prefers a candidate that is both within ±10 % and kept by the
-     NLI, then one that is kept, then the closest.
+   - Selection prefers a candidate in the requested language (since v2.9),
+     then one that is both within ±10 % and kept by the NLI, then one that is
+     kept, then the closest.
    - If the selected candidate fails either test, Apertus gets one revision
      prompt with specific feedback: how many syllables too long or short (with
      the word equivalent), that information is missing, or that information
@@ -338,8 +339,19 @@ numbers are reported on test, as before. The work goes in this order.
      byte.
    - If no round has given a usable answer yet, the round-0 prompt is sent
      again, and that round is logged as a retry.
-   - The loop uses only the syllable counter and the NLI, never the final
-     judge.
+   - **Language check (added 2026-10-10, after the pilot).** Every candidate
+     is checked with py3langid 0.4.0 (BSD-3-Clause), restricted to German,
+     English, French and Italian.
+     - A candidate is in the wrong language when another of these languages
+       is the top label with probability ≥ 0.9. The rule was chosen on FLEURS
+       train and dev sentences and on dev outputs (`results/language_check.md`).
+     - A wrong-language candidate is never accepted. When the best candidate
+       is in the wrong language, the only feedback is "It is not in German.
+       Answer in German."
+     - Scoring counts a wrong-language output as a failure in both
+       conditions, like a missing output.
+   - The loop uses only the language identifier, the syllable counter and the
+     NLI, never the final judge.
    - "Without the loop" means the closest candidate of round 0 of the same
      run.
 4. **Final meaning judge, for evaluation only.**
@@ -382,6 +394,24 @@ numbers are reported on test, as before. The work goes in this order.
          likely undercounted.
        - Reports: `results/judge_validation_v1_all.md`, `…_v1_halfB.md`,
          `…_v3_halfB.md`, `…_v3_all.md`; tuning in `results/judge_tuning_*`.
+   - **Hard controls (added 2026-10-10).** The NLI suite changes whole clauses;
+     the losses that dominate our outputs are smaller.
+     - `data/judge_controls_de.jsonl` has 60 German FLEURS train sentences,
+       none of them in the NLI suite, selected in a seeded order
+       (`src/isochron/data/build_judge_controls.py`): 40 with one modal, number
+       or qualifier change, 20 with one inserted fact, 20 same-meaning edits
+       and 60 identity pairs.
+     - Claude wrote the edits; no native speaker has reviewed them yet.
+     - Any judge is validated on both suites before use, with halves A and B
+       as for the NLI suite (per edit type).
+     - **Qwen3-8B with `perfact_v3`, all 140 pairs**
+       (`results/judge_validation_hard_v3_all.md`): identity 100 %, same
+       meaning 85 %, modal changed 62 %, number changed 100 %, qualifier
+       changed 36 %, fact inserted 85 % (mean 78 %). The NLI scores
+       92 / 90 / 77 / 92 / 21 / 100 % on the same pairs.
+     - So this judge misses most lost qualifiers.
+   - On the HPC the judge is Qwen3-14B (BF16, Apache-2.0) under vLLM. Every
+     job validates it on both suites before it judges (`docs/hpc.md`).
 5. **Pilot.**
    - 30 German dev sentences outside the go/no-go 50
      (`random.Random(0).sample` of the other 97), seed 0, levels 90 % and 80 %.
@@ -395,9 +425,14 @@ numbers are reported on test, as before. The work goes in this order.
      The runs are kept in `results/raw/` but never judged or reported.
    - **Result (2026-10-10, `results/phase2_pilot.md`; exploratory).**
      - The repair loop helps; the v2 prompts do not help on their own. Pooled
-       over both levels, v1 with the loop fits 75.0 % [63.3, 85.0] and is fit
+       over both levels, v1 with the loop fits 73.3 % [61.7, 85.0] and is fit
        & complete in 50.0 % [38.3, 61.7]. Without the loop the figures are
        33.3 % and 18.3 %. The loop costs 15.6 s per output instead of 6.2 s.
+     - Re-scored on 2026-10-10 with the language check.
+       - Three outputs with the loop are in English, all for sentence 1525
+         (v1 at level 90, v2b at both levels). They now count as failures.
+       - Fit falls by one output in 60 for v1 and by two for v2b. Fit &
+         complete and the pick are unchanged.
      - With the loop, the four variants are within noise of each other: fit &
        complete is 41.7 to 50.0 %, and the intervals overlap.
      - The rule picks v1 with the loop. The rule does not name a table, so it
@@ -410,8 +445,21 @@ numbers are reported on test, as before. The work goes in this order.
          LLM audit agreed with it on "complete" in 17 of 24 outputs. So fact
          recall and fit & complete are upper bounds, and added facts are not
          measured.
-       - Three outputs with the loop are in English and count as fits, because
-         the loop has no language check.
+   - **Decided on 2026-10-10:** prompt v1 with the repair loop is the method;
+     v2a is dropped.
+6. **Full runs (planned 2026-10-10; scripts ready, nothing run yet).**
+   - **HPC** (`docs/hpc.md`).
+     - Models: Apertus 1.5 8B and 70B in BF16, the official weights in the
+       official vLLM container.
+     - Task: step 2 on German test, levels 90, 80, 70 and 60 %, seeds 0, 1
+       and 2. That is 4,164 items per model, with prompt v1 and the loop.
+     - Judge: Qwen3-14B, validated on both suites in the same job.
+     - French is optional.
+   - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
+     - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
+     - Task: step 2 on German test, levels 90 and 80, seed 0.
+     - About 5 h on the Apple M3 (an estimate from the pilot: 694 items at
+       15.6 s, then 1,388 outputs judged at about 5.4 s).
 
 ## Stretch: isochrony
 
@@ -423,16 +471,16 @@ used.
 
 ## Still open
 
-- The Apertus endpoint and quantisation (HPC). Each run records them.
-- The judge for the final runs: Qwen3-8B Q4_K_M locally in phase 2; a larger
-  model on the HPC is still possible.
+- The HPC runs themselves (kit ready, see `docs/hpc.md`). Each run records its
+  endpoint, backend and quantisation.
+- The judge for the final runs: Qwen3-14B on the HPC, if it does clearly
+  better than Qwen3-8B on the hard controls; otherwise a native-speaker check
+  must carry the meaning results.
 - Which outputs the 50 native-speaker lines come from, and who checks them.
 - A native-speaker review of the NLI control pairs.
-- Before the full runs (suggested by the pilot):
-  - a language check in the repair loop;
-  - a judge that catches qualifier-level losses and insertions, validated on
-    new qualifier-level controls;
-  - a near-tie test on paired differences, instead of overlapping intervals.
+- A near-tie test on paired differences, instead of overlapping intervals
+  (suggested by the pilot).
+- A native-speaker review of the hard judge controls.
 
 ## References
 
@@ -487,3 +535,8 @@ used.
   both-levels table, which it did not name. Caveats added: the judge is
   lenient, and the loop has no language check. Open items for the full runs
   added.
+- 2026-10-10, v2.9: decided: v1 with the repair loop is the method, and v2a
+  is dropped. Added: the language check in the loop (py3langid, wrong
+  language = another language at p ≥ 0.9), with the pilot re-scored; the hard
+  judge controls, and Qwen3-8B's result on them; the full-run plan (HPC kit,
+  local insurance run).

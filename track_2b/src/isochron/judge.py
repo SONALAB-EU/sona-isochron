@@ -22,9 +22,10 @@ isochron.data.build_judge_controls). Any judge is validated on both.
     uv run python -m isochron.judge controls --suite hard --compare-prompt perfact_v3   (validation)
     uv run python -m isochron.judge runs RUN_DIR [...] --compare-prompt perfact_v3      (judge run outputs)
 
-Judging is resumable: every answer is cached in results/raw/judge_cache.jsonl,
-keyed by the served model, the prompt and the rendered request, so a second
-pass only asks what is missing. --workers N sends N items at once (for vLLM).
+Judging is resumable: every answer is cached in results/raw/judge_cache.jsonl
+(or the file ISOCHRON_JUDGE_CACHE names, one per cluster job), keyed by the
+served model, the prompt and the rendered request, so a second pass only asks
+what is missing. --workers N sends N items at once (for vLLM).
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 import threading
@@ -56,7 +58,7 @@ GENERATION: dict[str, Any] = {
 }
 SEED = 0
 STATUSES = ("kept", "dropped", "changed")
-CACHE = Path("results/raw/judge_cache.jsonl")
+CACHE = Path(os.environ.get("ISOCHRON_JUDGE_CACHE", "results/raw/judge_cache.jsonl"))
 
 
 def first_object(raw: str, check) -> tuple[dict | None, str | None]:

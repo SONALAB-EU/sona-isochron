@@ -1,0 +1,45 @@
+# rsync filter rules for copying track_2b/ to the cluster: an allowlist (the last rule excludes
+# everything that is not listed). Use it from track_2b/ with
+#     rsync -av --filter='merge hpc/sync_include.txt' ./ <user>@<cluster>:isochron/track_2b/
+# The first matching rule wins, so these exclusions come first: secrets (.env), audio, model weights,
+# caches, environments, raw results and logs are never copied.
+- .env
+- .env.*
+- *.wav
+- *.mp3
+- *.flac
+- *.ogg
+- *.opus
+- *.m4a
+- *.aac
+- *.gguf
+- *.safetensors
+- *.bin
+- *.pt
+- *.pth
+- *.ckpt
+- *.onnx
+- *.sqsh
+- __pycache__/
+- .venv/
+- .pytest_cache/
+- /results/raw/
+- /hpc/logs/
++ /pyproject.toml
++ /uv.lock
++ /.python-version
++ /README.md
++ /src/
++ /src/**
++ /data/
++ /data/*.jsonl
++ /data/README.md
++ /tests/
++ /tests/**
++ /hpc/
++ /hpc/*
++ /docs/
++ /docs/*.md
++ /results/
++ /results/*.md
+- *

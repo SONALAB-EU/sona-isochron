@@ -52,3 +52,6 @@ huggingface/
 
 # Raw experiment outputs
 results/raw/
+
+# HPC job logs (hpc/pipeline.sh)
+hpc/logs/
