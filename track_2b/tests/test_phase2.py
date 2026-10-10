@@ -10,6 +10,7 @@ import pytest
 
 from isochron.config import ConfigError, LLMConfig
 from isochron.judge import check_added, check_compare, check_facts, first_object, parse_status, verdict
+from isochron.language import LanguageCheck
 from isochron.metrics.meaning import Meaning
 from isochron.pilot import VARIANTS, graded_targets, pilot_ids
 from isochron.prompts import PROMPTS, Prompt
@@ -58,12 +59,12 @@ def test_rank_prefers_accepted_then_kept_then_closest() -> None:
 
 
 def test_feedback_lines() -> None:
-    lines = feedback(_cand(50, False), 40, words_in=20, syllables_in=40)
+    lines = feedback(_cand(50, False), 40, words_in=20, syllables_in=40, lang="de")
     assert lines[0].startswith("- It is 10 syllables too long (50 instead of 40): remove about 5 words")
     assert lines[1] == "- Information from the original is missing; restore it."
-    short = feedback(_cand(30, True), 40, words_in=20, syllables_in=40)
+    short = feedback(_cand(30, True), 40, words_in=20, syllables_in=40, lang="de")
     assert short == ["- It is 10 syllables too short (30 instead of 40): add about 5 words, using only information from the original."]
-    assert feedback(_cand(41, True), 40, 20, 40) == []
+    assert feedback(_cand(41, True), 40, 20, 40, "de") == []
 
 
 class FakeWorld:
@@ -87,10 +88,16 @@ class FakeWorld:
     def count(text: str, unit: str) -> int:
         return len(text.split())
 
+    @staticmethod
+    def check_language(text: str, lang: str) -> LanguageCheck:
+        english = "ENGLISH" in text
+        return LanguageCheck("en" if english else lang, 1.0, english)
+
 
 def test_loop_stops_when_round_zero_is_accepted() -> None:
     w = FakeWorld([["a b c d KEEP", "a b", "a", "a b c d e f"]])
-    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language)
     assert log["revisions"] == 0 and log["final_accepted"] and log["final"]["index"] == 0
     assert log["closest_round0"]["index"] == 0
 
@@ -101,7 +108,8 @@ def test_loop_revises_with_feedback_and_keeps_the_best() -> None:
         ["a b c d e f g h i j KEEP", "x", "y", "z"],           # round 1: kept but too long
         ["a b c d KEEP", "a b", "a b c", "a"],                # round 2: accepted
     ])
-    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language)
     assert log["revisions"] == 2 and log["final_accepted"]
     assert (log["final"]["round"], log["final"]["index"]) == (2, 0)
     assert "Information from the original is missing" in w.prompts[1]
@@ -115,7 +123,8 @@ def test_unchanged_best_gives_the_same_prompt_but_a_new_round() -> None:
         ["a b c d e", "a b c d", "a b c", "a b c d e f"],  # round 1: hits, but all dropped
         ["a b c d e f g h i KEEP", "x", "y", "z"],        # round 2
     ])
-    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language)
     assert w.prompts[1] == w.prompts[2]  # best did not change, so the feedback is the same ...
     assert w.rounds == [0, 1, 2]         # ... but each call knows its round, so the caller can vary the seed
     assert log["retries"] == 0 and not any(r["retry"] for r in log["rounds"])
@@ -123,7 +132,8 @@ def test_unchanged_best_gives_the_same_prompt_but_a_new_round() -> None:
 
 def test_no_answer_is_retried_and_logged_as_retry() -> None:
     w = FakeWorld(["not json", ["a b c d KEEP", "a", "b", "c"]])
-    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"))
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language)
     assert w.prompts == ["P0", "P0"] and w.rounds == [0, 1]
     assert log["retries"] == 1 and log["rounds"][1]["retry"] and log["final_accepted"]
     assert log["closest_round0"] is None
@@ -131,8 +141,30 @@ def test_no_answer_is_retried_and_logged_as_retry() -> None:
 
 def test_loop_without_repair_makes_one_call() -> None:
     w = FakeWorld([["a b c", "a b", "a", "a b c d e f"]])
-    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"), repair=False)
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language, repair=False)
     assert len(w.prompts) == 1 and log["revisions"] == 0
+
+
+def test_wrong_language_ranks_last_and_is_never_accepted() -> None:
+    english = Candidate("x", 0, 0, 40, 10, "entailment", "entailment", True, False, False, True, "en", 1.0, True)
+    german_far = _cand(60, False)
+    assert not english.accepted
+    assert min([english, german_far], key=lambda c: rank(c, 40)) is german_far
+    assert feedback(english, 40, 20, 40, "de") == ["- It is not in German. Answer in German."]
+
+
+def test_loop_asks_for_german_after_an_english_round() -> None:
+    w = FakeWorld([
+        ["ENGLISH a b c KEEP", "ENGLISH a b c d KEEP", "ENGLISH x", "ENGLISH y"],   # round 0: all English
+        ["a b c d KEEP", "a b", "a", "a b c"],                                      # round 1: German, accepted
+    ])
+    log = run_loop("P0", "s " * 10, "de", 5, w.generate, w.nli, w.count, Prompt.load("revise_v1"),
+                   w.check_language)
+    assert log["rounds"][0]["feedback"] == ["- It is not in German. Answer in German."]
+    assert "Answer in German." in w.prompts[1]
+    assert log["final_accepted"] and log["final"]["round"] == 1 and not log["final"]["wrong_language"]
+    assert log["closest_round0"]["wrong_language"]  # without the loop: closest round-0 candidate, English
 
 
 def test_judge_parsing_and_verdict() -> None:

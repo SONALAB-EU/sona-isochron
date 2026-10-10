@@ -68,27 +68,38 @@ def mock_answer(text: str, unit: str, lang: str, goal: int, seed: int, counter: 
     return json.dumps({"candidates": picks}, ensure_ascii=False)
 
 
-def backend_info(config: LLMConfig) -> dict[str, Any]:
-    """What serves the model. llama-server answers /props; other backends do not."""
+def _get_json(config: LLMConfig, url: str) -> dict[str, Any] | None:
     try:
-        r = httpx.get(
-            f"{config.base_url.removesuffix('/v1')}/props",
-            headers={"Authorization": f"Bearer {config.api_key}"},
-            timeout=10,
-        )
+        r = httpx.get(url, headers={"Authorization": f"Bearer {config.api_key}"}, timeout=10)
         r.raise_for_status()
-        props = r.json()
+        data = r.json()
     except (httpx.HTTPError, ValueError):
-        return {"type": "unknown (no llama-server /props)"}
-    if "build_info" not in props:
-        return {"type": "unknown (no llama-server /props)"}
-    return {
-        "type": "llama.cpp llama-server",
-        "build_info": props.get("build_info"),
-        "model_path": props.get("model_path"),
-        "n_ctx": (props.get("default_generation_settings") or {}).get("n_ctx"),
-        "samplers": LLAMACPP_SAMPLERS,
-    }
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def backend_info(config: LLMConfig) -> dict[str, Any]:
+    """What serves the model: llama-server answers /props; vLLM and hpc/hf_server.py answer /version."""
+    root = config.base_url.removesuffix("/v1")
+    props = _get_json(config, f"{root}/props")
+    if props and "build_info" in props:
+        return {
+            "type": "llama.cpp llama-server",
+            "build_info": props.get("build_info"),
+            "model_path": props.get("model_path"),
+            "n_ctx": (props.get("default_generation_settings") or {}).get("n_ctx"),
+            "samplers": LLAMACPP_SAMPLERS,
+        }
+    ver = _get_json(config, f"{root}/version")
+    models = (_get_json(config, f"{config.base_url}/models") or {}).get("data") or [{}]
+    served = next((m for m in models if m.get("id") == config.name), models[0])
+    if ver and ver.get("server") == "isochron-hf-server":
+        return {"type": "transformers (hpc/hf_server.py)", "build_info": f"transformers {ver.get('transformers')}",
+                "model_path": ver.get("model_path"), "dtype": ver.get("dtype"), "torch": ver.get("torch")}
+    if ver and "version" in ver:
+        return {"type": "vLLM", "build_info": f"vLLM {ver['version']}", "model_path": served.get("root"),
+                "max_model_len": served.get("max_model_len")}
+    return {"type": "unknown (no /props or /version)"}
 
 
 def check_endpoint(config: LLMConfig) -> None:

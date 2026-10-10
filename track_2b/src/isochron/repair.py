@@ -1,18 +1,22 @@
-"""The repair loop (our method): select, check length and meaning, revise with feedback.
+"""The repair loop (our method): select, check language, length and meaning, revise with feedback.
 
-The loop sees only the syllable counter and the NLI, never the final judge.
+The loop sees only the language identifier, the syllable counter and the NLI,
+never the final judge.
 
-Round 0 asks the variant's prompt for 4 candidates. Each candidate gets its
-length (syllables, words) and an NLI verdict against the input, in both
-directions. The best candidate so far is ranked by:
+Round 0 asks the variant's prompt for 4 candidates. Each candidate gets a
+language check (isochron.language), its length (syllables, words) and an NLI
+verdict against the input, in both directions. The best candidate so far is
+ranked by:
+0. in the requested language (a wrong-language candidate is never accepted);
 1. accepted: within ±10 % of the target and kept by the NLI;
 2. kept by the NLI;
 3. closest to the target in syllables;
 4. earlier round, then earlier position.
 
 If the best one is not accepted, a revision prompt with specific feedback asks
-for 4 new candidates: how many syllables too long or short (with the word
-equivalent), missing information, added information. There are at most
+for 4 new candidates: that it must be written in the requested language (and
+nothing else, when it is not), how many syllables too long or short (with the
+word equivalent), missing information, added information. There are at most
 MAX_REVISIONS rounds after round 0. If no round has yet given a usable
 candidate, the next round repeats the round-0 prompt; such a round is logged
 as a retry. Every round is logged.
@@ -20,7 +24,9 @@ as a retry. Every round is logged.
 Each round is generated with its own seed (the caller derives it from the
 round number). Otherwise an unchanged prompt would be replayed byte for byte.
 
-"Without the loop" is the closest round-0 candidate in syllables (the v1 rule).
+"Without the loop" is the closest round-0 candidate in syllables (the v1 rule),
+chosen without the language check; scoring counts a wrong-language output as a
+failure in both conditions.
 """
 
 from __future__ import annotations
@@ -31,15 +37,17 @@ from dataclasses import asdict, dataclass
 from typing import Any
 
 from isochron.candidates import parse_candidates, select
+from isochron.language import LanguageCheck
 from isochron.metrics.length import hit
 from isochron.metrics.meaning import Meaning
-from isochron.prompts import Prompt
+from isochron.prompts import LANGUAGES, Prompt
 
 MAX_REVISIONS = 2
 
 Generate = Callable[[str, int], tuple[str, dict[str, Any]]]  # (prompt, round) -> (raw answer, call info)
 Judge = Callable[[Sequence[str], Sequence[str]], list[Meaning]]  # the NLI, not the final judge
 Count = Callable[[str, str], int]  # (text, unit) -> length
+CheckLanguage = Callable[[str, str], LanguageCheck]  # (text, requested language) -> check
 
 
 @dataclass
@@ -55,17 +63,23 @@ class Candidate:
     added: bool
     dropped: bool
     hit: bool
+    language: str = ""
+    """Top label of the language identifier ("" if not checked)."""
+    language_p: float = 1.0
+    wrong_language: bool = False
 
     @property
     def accepted(self) -> bool:
-        return self.hit and self.kept
+        return self.hit and self.kept and not self.wrong_language
 
 
 def rank(c: Candidate, target: int) -> tuple:
-    return (not c.accepted, not c.kept, abs(c.syllables - target), c.round, c.index)
+    return (c.wrong_language, not c.accepted, not c.kept, abs(c.syllables - target), c.round, c.index)
 
 
-def feedback(c: Candidate, target: int, words_in: int, syllables_in: int) -> list[str]:
+def feedback(c: Candidate, target: int, words_in: int, syllables_in: int, lang: str) -> list[str]:
+    if c.wrong_language:
+        return [f"- It is not in {LANGUAGES[lang]}. Answer in {LANGUAGES[lang]}."]
     lines = []
     if not c.hit:
         d = c.syllables - target
@@ -83,13 +97,14 @@ def feedback(c: Candidate, target: int, words_in: int, syllables_in: int) -> lis
     return lines
 
 
-def evaluate(texts: list[str], rnd: int, source: str, target: int, nli: Judge, count: Count) -> list[Candidate]:
+def evaluate(texts: list[str], rnd: int, source: str, lang: str, target: int, nli: Judge, count: Count,
+             check_language: CheckLanguage) -> list[Candidate]:
     meanings = nli([source] * len(texts), texts) if texts else []
     out = []
     for i, (t, m) in enumerate(zip(texts, meanings)):
-        syl = count(t, "syllables")
+        syl, lc = count(t, "syllables"), check_language(t, lang)
         out.append(Candidate(t, rnd, i, syl, count(t, "words"), m.forward, m.backward,
-                             m.kept, m.added, m.dropped, hit(syl, target)))
+                             m.kept, m.added, m.dropped, hit(syl, target), lc.label, lc.p, lc.wrong))
     return out
 
 
@@ -102,6 +117,7 @@ def run_loop(
     nli: Judge,
     count: Count,
     revise: Prompt,
+    check_language: CheckLanguage,
     repair: bool = True,
     max_revisions: int = MAX_REVISIONS,
 ) -> dict[str, Any]:
@@ -116,7 +132,7 @@ def run_loop(
         raw, info = generate(prompt, rnd)
         texts, error = parse_candidates(raw)
         t_nli = time.monotonic()
-        cands = evaluate(texts, rnd, source, target, nli, count)
+        cands = evaluate(texts, rnd, source, lang, target, nli, count, check_language)
         nli_s = time.monotonic() - t_nli
         for c in cands:
             if best is None or rank(c, target) < rank(best, target):
@@ -135,7 +151,7 @@ def run_loop(
             entry["feedback"] = ["(no usable answer: the round-0 prompt is sent again)"]
             prompt, retry = first_prompt, True
         else:
-            lines = feedback(best, target, words_in, syllables_in)
+            lines = feedback(best, target, words_in, syllables_in, lang)
             entry["feedback"] = lines
             prompt, retry = revise.render(lang, target, source, current=best.text,
                                           feedback="\n".join(lines), target_words=target_words), False

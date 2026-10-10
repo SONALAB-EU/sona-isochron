@@ -1,7 +1,8 @@
 """Does an output keep the meaning of its source? Bidirectional NLI.
 
 Model: MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (MIT licence),
-pinned to REVISION, run locally in float32 on CPU or Apple's mps, in batches.
+pinned to REVISION, run locally in float32 on an NVIDIA GPU (cuda), Apple's mps
+or the CPU, in batches.
 The predicted label is the argmax over entailment / neutral / contradiction.
 
 For a source s and an output o:
@@ -58,7 +59,8 @@ class NLI:
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         self._torch = torch
-        self.device = device or ("mps" if torch.backends.mps.is_available() else "cpu")
+        self.device = device or ("cuda" if torch.cuda.is_available()
+                                 else "mps" if torch.backends.mps.is_available() else "cpu")
         self.batch_size = batch_size
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=REVISION)
         # The checkpoint is stored in float16, and transformers 5 loads the stored

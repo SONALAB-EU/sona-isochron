@@ -72,18 +72,21 @@ class OverlongRecord(SentenceRecord):
 
 @dataclass
 class ControlPair:
-    """One line of data/nli_controls.jsonl: a hand-made check for the NLI metric."""
+    """One line of data/nli_controls.jsonl or data/judge_controls_de.jsonl: a hand-made check of a meaning metric."""
 
     id: str
     lang: str
     fleurs_id: str
     """FLEURS train sentence id of the source."""
     control: str
-    """identity, paraphrase, clause_deleted, clause_inserted or negation."""
+    """nli_controls: identity, paraphrase, clause_deleted, clause_inserted or negation. judge_controls_de:
+    identity, same_meaning, modal_changed, number_changed, qualifier_changed or fact_inserted."""
     source: str
     output: str
     """The source itself (identity) or a variant written by hand."""
     license: str
+    note: str | None = None
+    """The edit, as "old → new" (judge_controls_de only)."""
 
 
 R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord, ControlPair)

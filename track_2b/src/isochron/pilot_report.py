@@ -1,15 +1,19 @@
-"""Phase 2 pilot table: one row per variant × repair condition.
+"""Tables for repair-loop runs: one row per variant × repair condition.
 
-Reads each pilot run's items.jsonl (generation log) and judge.jsonl (final
-meaning judge, evaluation only) and writes results/phase2_pilot.md.
+Reads each run's items.jsonl (generation log) and judge.jsonl (final meaning
+judge, evaluation only) and writes results/phase2_pilot.md (or --out).
 
+- Wrong language: the chosen output is not in the run's language by the
+  language check (isochron.language). It counts as a failure, like a missing
+  output: no fit, not kept, recall 0, not complete, no ratio. The phase 2
+  pilot ran before the loop had this check; its outputs are re-scored here.
 - Fit: the chosen output is within ±10 % of T in syllables (T = level % of the
   input syllables). A missing output is a miss.
-- Fact recall: the judge's kept ÷ facts, per output, averaged. A missing output
-  keeps no fact (recall 0). Outputs the judge could not parse are left out and
-  counted under "Judge invalid".
-- Added-fact rate: the share of outputs with an answer for which the judge
-  marks at least one fact as added.
+- Fact recall: the judge's kept ÷ facts, per output, averaged. A missing or
+  wrong-language output keeps no fact (recall 0). Outputs the judge could not
+  parse are left out and counted under "Judge invalid".
+- Added-fact rate: the share of outputs with an answer in the right language
+  for which the judge marks at least one fact as added.
 - Fit & complete: the output fits AND the judge keeps every fact (recall 1) and
   finds nothing added. This is the success measure the recommendation uses
   (fixed before any judge output was seen): the condition with the highest
@@ -21,10 +25,10 @@ meaning judge, evaluation only) and writes results/phase2_pilot.md.
   after an unusable answer included and also counted on their own.
 - Time: seconds per output. Without the loop it is the round-0 request; with
   it, every round including the NLI checks.
-- 95 % intervals: bootstrap over sentences (each carries both levels), 10,000
-  resamples, seed 0.
+- 95 % intervals: bootstrap over sentences (each carries all its levels and
+  seeds), 10,000 resamples, seed 0.
 
-    uv run python -m isochron.pilot_report RUN_DIR [RUN_DIR ...]
+    uv run python -m isochron.pilot_report RUN_DIR [RUN_DIR ...] [--notes FILE] [--out FILE --title TEXT]
 """
 
 from __future__ import annotations
@@ -37,11 +41,13 @@ from pathlib import Path
 
 import numpy as np
 
-from isochron.pilot import selection_text
+from isochron.language import check as check_language
+from isochron.language import describe as describe_language
 from isochron.provenance import git_commit
 
 N_BOOT, BOOT_SEED = 10_000, 0
 OUT = Path("results/phase2_pilot.md")
+TITLE = "Phase 2 pilot (exploratory): prompt variants with and without the repair loop"
 
 
 def ci(values_by_sentence: dict[str, list[float]]) -> str:
@@ -77,10 +83,14 @@ def rows_for(run: Path) -> tuple[dict, list[dict]]:
             ("with", it["final"], it["revisions"], it.get("retries", 0), it["time_total_s"]),
         ):
             j = judged[key][cond]
+            wrong = bool(cand) and check_language(cand["text"], cfg["lang"]).wrong
+            usable = bool(cand) and not wrong
             rows.append({"variant": cfg["variant"], "cond": cond, "id": it["id"], "level": it["level"],
-                         "fit": bool(cand and cand["hit"]), "nli_kept": bool(cand and cand["kept"]),
-                         "no_output": not cand, "ratio": cand["syllables"] / it["target"] if cand else None,
-                         "valid": j.get("valid", False), "recall": j.get("recall"), "added": j.get("added_any"),
+                         "fit": bool(usable and cand["hit"]), "nli_kept": bool(usable and cand["kept"]),
+                         "no_output": not cand, "wrong_language": wrong,
+                         "ratio": cand["syllables"] / it["target"] if usable else None,
+                         "valid": j.get("valid", False), "recall": 0.0 if wrong else j.get("recall"),
+                         "added": None if wrong else j.get("added_any"),
                          "rounds": rounds, "retries": retries, "secs": secs})
     return cfg, rows
 
@@ -88,9 +98,9 @@ def rows_for(run: Path) -> tuple[dict, list[dict]]:
 def table(rows: list[dict], title: str) -> list[str]:
     out = [f"### {title}", "",
            "| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | "
-           "Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Judge invalid |",
+           "Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |",
            "|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|"
-           "------------------:|------------:|--------:|------------------:|----------:|--------------:|"]
+           "------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|"]
     groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for r in rows:
         groups[r["variant"], r["cond"]].append(r)
@@ -104,7 +114,7 @@ def table(rows: list[dict], title: str) -> list[str]:
             return r["valid"] and r["recall"] is not None
 
         def answered(r):
-            return valid(r) and not r["no_output"]
+            return valid(r) and not r["no_output"] and not r["wrong_language"]
 
         def complete(r):
             return bool(r["fit"] and answered(r) and r["recall"] == 1 and not r["added"])
@@ -116,15 +126,17 @@ def table(rows: list[dict], title: str) -> list[str]:
             f"| {100 * np.mean([r['nli_kept'] for r in rs]):.0f} % "
             f"| {f'{np.mean(ratios):.2f}' if ratios else '–'} | {np.mean([r['rounds'] for r in rs]):.2f} "
             f"| {sum(r['retries'] for r in rs)} | {np.mean([r['secs'] for r in rs]):.1f} "
-            f"| {sum(r['no_output'] for r in rs)} | {sum(not valid(r) for r in rs)} |"
+            f"| {sum(r['no_output'] for r in rs)} | {sum(r['wrong_language'] for r in rs)} | {sum(not valid(r) for r in rs)} |"
         )
     return out
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Phase 2 pilot table.")
+    ap = argparse.ArgumentParser(description="Tables for repair-loop runs (the phase 2 pilot by default).")
     ap.add_argument("runs", type=Path, nargs="+")
     ap.add_argument("--notes", type=Path, help="hand-written summary (markdown) placed before the tables")
+    ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--title", default=TITLE)
     args = ap.parse_args()
     cfgs, rows = [], []
     for run in args.runs:
@@ -133,8 +145,10 @@ def main() -> None:
         rows += rs
     judge_cfgs = [json.loads((run / "judge_config.json").read_text(encoding="utf-8")) for run in args.runs]
     judge_cfg, c0 = judge_cfgs[0], cfgs[0][1]
+    loop_lang = {cfg.get("language_check", "none (the run predates it)") for _, cfg in cfgs}
+    levels = sorted({r["level"] for r in rows}, reverse=True)
     out = [
-        "# Phase 2 pilot (exploratory): prompt variants with and without the repair loop",
+        f"# {args.title}",
         "",
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
         f"- Git commit (report): {git_commit()}; runs: "
@@ -145,30 +159,31 @@ def main() -> None:
         f"- Generation: {json.dumps(c0['generation'])}",
         f"- Prompts: " + ", ".join(f"{cfg['variant']} `{cfg['prompt']['name']}` ({cfg['prompt']['sha256'][:12]})" for _, cfg in cfgs)
         + f"; repair `{c0['revise_prompt']['name']}` ({c0['revise_prompt']['sha256'][:12]}), at most {c0['max_revisions']} rounds",
-        f"- Loop checks: {c0['length_counter']['syllables']} and NLI {c0['nli']}; the loop never sees the judge",
+        f"- Loop checks: {c0['length_counter']['syllables']} and NLI {c0['nli']}; language check in the loop: "
+        f"{'; '.join(sorted(loop_lang))}; the loop never sees the judge",
+        f"- Scoring: an output in the wrong language counts as a failure ({describe_language()})",
         f"- Judge (evaluation only): {judge_cfg['model']} ({judge_cfg['quantisation']}), endpoint {judge_cfg['endpoint']}, "
         f"backend {judge_cfg['backend'].get('build_info')}, temperature 0, seed {judge_cfg['seed']}, prompts "
         + ", ".join(f"{k} ({v[:12]})" for k, v in judge_cfg["prompts"].items()),
-        f"- Items: {c0['items']['n']} sentences ({selection_text()}), levels {c0['levels']}, seeds {c0['seeds']}, "
+        f"- Items: {c0['items']['n']} sentences ({c0['items']['selection']}; {c0['lang']} {c0['split']}), "
+        f"levels {c0['levels']}, seeds {c0['seeds']}, "
         f"round seeds: {c0.get('round_seed', 'the item seed in every round')}; TTS: none",
-        f"- 95 % intervals: bootstrap over sentences, {N_BOOT} resamples, seed {BOOT_SEED}. Exploratory: not a decision.",
+        f"- 95 % intervals: bootstrap over sentences, {N_BOOT} resamples, seed {BOOT_SEED}. "
+        + ("Dev split: exploratory, not a decision." if c0["split"] == "dev" else f"Split: {c0['split']}."),
         "",
         *([args.notes.read_text(encoding="utf-8").rstrip(), ""] if args.notes else []),
         "## Tables",
         "",
-        "Fit, fact recall, added-fact rate and fit & complete are in %. Time is per output (one sentence at one",
-        "level). Fit & complete = fits, and the judge keeps every fact and finds nothing added; the recommendation",
-        "rule (fixed before any judge output was seen) picks the highest fit & complete rate, near-ties broken by time.",
+        "Fit, fact recall, added-fact rate and fit & complete are in %. Time is per output (one sentence at one level",
+        "and seed). Fit & complete = fits, and the judge keeps every fact and finds nothing added. An output in the",
+        "wrong language counts as a failure.",
         "",
-        *table(rows, "Both levels (90 % and 80 %)"),
-        "",
-        *table([r for r in rows if r["level"] == 90], "Level 90 %"),
-        "",
-        *table([r for r in rows if r["level"] == 80], "Level 80 %"),
+        *table(rows, f"{'Both' if len(levels) == 2 else 'All'} levels ({' and '.join(f'{lv} %' for lv in levels)})"),
+        *[line for lv in levels for line in ("", *table([r for r in rows if r["level"] == lv], f"Level {lv} %"))],
     ]
-    OUT.write_text("\n".join(out) + "\n", encoding="utf-8")
+    args.out.write_text("\n".join(out) + "\n", encoding="utf-8")
     print("\n".join(out))
-    print(f"\nwrote {OUT.resolve()}")
+    print(f"\nwrote {args.out.resolve()}")
 
 
 if __name__ == "__main__":
