@@ -1,5 +1,52 @@
 # Status
 
+## Summary (2026-10-10, 18:45 UTC)
+
+**Blocked: the Apertus 1.5 8B weights are missing.** Your download (`download_models.sh` with your
+token) has not started: there is no `hpc/logs/download.log` and no Apertus file on the cluster.
+- Everything else is ready on the cluster.
+- A watcher on the Mac checks every 30 minutes until about 08:40 UTC.
+- When the weights are complete, the smoke test runs, then step 2 on test (plan steps 3 and 5).
+
+**Done**
+- Cluster: the environment passes its tests on an H100. The vLLM container is imported and unpacked once.
+  Qwen3-14B and the NLI model are downloaded (no token needed).
+- Plan step 4: the judge is decided. Qwen3-14B is the main judge.
+- Plan step 6: step 4 is implemented, with tests and a local 5-sentence smoke test
+  (`results/step4_smoke_local.md`).
+- Provenance: `hpc/sync.sh` records the commit of the cluster copy, so results made there report it.
+- `docs/hpc.md` describes what was run, with the commands for the smoke test, step 2 and copying back.
+
+**Numbers (each labelled)**
+- Judge validation, measured. Qwen3-14B BF16 on vLLM, job 2634364, temperature 0, seed 0:
+  - Hard controls (140 pairs): mean 84 %. Qualifier changes caught 7 of 14, modal changes 10 of 13.
+  - NLI suite (200 pairs): 99 %.
+- Earlier, local: Qwen3-8B Q4_K_M had a mean of 78 % on the hard controls (qualifier 5 of 14, modal 8 of 13).
+- The difference between the two judges is within noise: paired McNemar on the 27 qualifier and modal
+  pairs, p = 0.34.
+- GPU: 1.45 of the 12 H100-hours used (sacct, measured).
+- No step 2 test number exists yet.
+
+**Decisions (reasons in the log below)**
+- Qwen3-14B is the main judge, by the rule fixed before its result. The NLI stays the loop's screen.
+- Time limits: 1.5 h for the smoke test and 8 h for step 2, which keeps the worst case under 12 H100-hours.
+- The local insurance run is not started. The HPC works and only the weights are missing. Your plan
+  sends that case to step 6 (done), not to the insurance run.
+- Not started either: the 70B model.
+
+**Blockers**
+- The Apertus weights need your token. In the tmux commands from my earlier message, the
+  `until … .env-ready` wait now passes at once.
+
+**Next steps**
+1. You: start the download (`docs/hpc.md`, step 4). Apertus 8B alone should take about 15 minutes (an
+   estimate).
+2. Smoke test: 5 German dev sentences, levels 90 and 80, seed 0. Then compare with the local Q4
+   outputs (`isochron.compare_runs`).
+3. Step 2 on test, German and French: 4 levels × 3 seeds, 8,148 items. Then `results/step2_test.md`
+   (`docs/hpc.md`, steps 5 and 9).
+4. Your call: the 70B run.
+
 ## Autonomous run, 2026-10-10 evening to 2026-10-11 (decision log)
 
 Times are UTC. Each entry: what was decided, and why. Budget: at most 12 H100-hours; the 70B model
@@ -133,7 +180,20 @@ is not started. Nothing is pushed.
     limits, the total stays at or under 10.95.
 - **18:28. Your Apertus download has not started** (no `hpc/logs/download.log`, no Apertus files).
   - The environment marker exists, so your command would start at once.
-  - Decision: check every 30 minutes. The smoke test and step 2 follow as soon as the weights are complete.
+  - Decision: check every 30 minutes until about 08:40 UTC. The smoke test and step 2 follow as soon as
+    the weights are complete.
+  - Decision: the local insurance run stays off. The HPC has not failed; only the weights are missing.
+    Your plan sends "the weights never arrive" to step 6, which is done. The insurance run would also
+    cover only a subset: German, levels 90 and 80, seed 0, Q4, about 5 h. The HPC job covers all of it
+    in an estimated 3–4 h once the weights are there.
+- **18:36. Checked on a compute node** (CPU-only, 1 min, job 2634436): `setup.sh container` finds the
+  image and the named container. `isochron.provenance` reports the synced commit
+  (`934a808… (synced copy, recorded by hpc/sync.sh)`).
+- **Smoke test settings** (decided now, run when the weights arrive): phases generate, judge and
+  report.
+  - No validate phase: it already ran in job 2634364, and the full run repeats it.
+  - Only the files a job writes are copied back, so a local results file can never be overwritten by an
+    older cluster copy.
 
 ## Previous status (2026-10-10, before the autonomous run)
 
