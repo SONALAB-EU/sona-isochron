@@ -1,0 +1,15 @@
+Original $language sentence:
+$original
+
+New version:
+$text
+
+Fact from the original:
+$fact
+
+Does the new version state this fact with the same meaning? Different wording, word order, active or passive voice, synonyms and merged or split sentences do not matter.
+
+Answer with one word only:
+- kept: the new version states this fact with the same meaning;
+- changed: the new version states it with a different meaning (a different number, name, date or place, a negation, a stronger or weaker claim, or a lost qualifier such as "almost", "very", "local", "according to the police");
+- dropped: the new version does not state this fact.

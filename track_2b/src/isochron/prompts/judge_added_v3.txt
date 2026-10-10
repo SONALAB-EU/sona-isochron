@@ -1,0 +1,10 @@
+Original $language sentence:
+$original
+
+New version:
+$text
+
+List each piece of information that the new version states but the original sentence does not. Different wording, word order, active or passive voice, synonyms and merged or split sentences are not new information. If there is no new information, give an empty list.
+
+Answer with JSON only, no explanations, in exactly this form (one string per new piece of information, or an empty list):
+{"added": []}

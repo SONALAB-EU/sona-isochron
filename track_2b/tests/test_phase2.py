@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from isochron.config import ConfigError, LLMConfig
-from isochron.judge import check_compare, check_facts, first_object, verdict
+from isochron.judge import check_added, check_compare, check_facts, first_object, parse_status, verdict
 from isochron.metrics.meaning import Meaning
 from isochron.pilot import VARIANTS, graded_targets, pilot_ids
 from isochron.prompts import PROMPTS, Prompt
@@ -146,6 +146,15 @@ def test_judge_parsing_and_verdict() -> None:
     assert "instead of 3" in first_object(good, check_compare(3))[1]
     placeholder = {"facts": [{"fact": "A", "status": "kept"}], "added": ["...", "…", " "]}
     assert verdict(placeholder)["added_any"] is False
+
+
+def test_perfact_parsers() -> None:
+    assert parse_status("kept") == ({"status": "kept"}, None)
+    assert parse_status("Changed.\n") == ({"status": "changed"}, None)
+    assert parse_status("The answer: dropped") == ({"status": "dropped"}, None)
+    assert parse_status("maybe")[0] is None
+    assert first_object('{"added": []}', check_added) == ({"added": []}, None)
+    assert first_object('{"added": [1]}', check_added)[1] == 'no "added" list of strings'
 
 
 def test_config_prefix(monkeypatch: pytest.MonkeyPatch) -> None:

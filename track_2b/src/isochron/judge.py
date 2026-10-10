@@ -84,6 +84,22 @@ def check_compare(n_facts: int):
     return check
 
 
+def check_added(obj: dict) -> str | None:
+    added = obj.get("added")
+    if not isinstance(added, list) or not all(isinstance(a, str) for a in added):
+        return 'no "added" list of strings'
+    return None
+
+
+def parse_status(raw: str) -> tuple[dict | None, str | None]:
+    """A one-word answer: the first kept / changed / dropped in it."""
+    m = re.search(r"\b(kept|changed|dropped)\b", raw, re.IGNORECASE)
+    return ({"status": m.group(1).lower()}, None) if m else (None, "no kept/changed/dropped in the answer")
+
+
+PERFACT = "perfact_v3"  # one call per fact (judge_fact_v3) plus one call for added facts (judge_added_v3)
+
+
 def verdict(judged: dict) -> dict[str, Any]:
     statuses = [f["status"] for f in judged["facts"]]
     added = [a for a in judged.get("added", []) if a.strip(" .…")]  # ignore empty and "..." placeholders
@@ -107,7 +123,14 @@ class Judge:
         quant = re.search(r"(?i)(Q\d_K_[MSL]|Q\d_\d|Q\d_K|F16|BF16)", str(self.backend.get("model_path") or ""))
         self.quantisation = quant.group(1).upper() if quant else "unknown"
         self.client = ChatClient(self.config, timeout=300)
-        self.facts_prompt, self.compare_prompt = Prompt.load("judge_facts_v1"), Prompt.load(compare_prompt)
+        self.facts_prompt = Prompt.load("judge_facts_v1")
+        self.perfact = compare_prompt == PERFACT
+        if self.perfact:
+            self.fact_prompt, self.added_prompt = Prompt.load("judge_fact_v3"), Prompt.load("judge_added_v3")
+            self.compare_prompts = [self.fact_prompt, self.added_prompt]
+        else:
+            self.compare_prompt = Prompt.load(compare_prompt)
+            self.compare_prompts = [self.compare_prompt]
         self.cache = self._load_cache()
 
     def _refuse_if_apertus_is_up(self) -> None:
@@ -128,14 +151,18 @@ class Judge:
             return {}
         return {e["key"]: e for e in map(json.loads, CACHE.read_text(encoding="utf-8").splitlines()) if e}
 
-    def _ask(self, kind: str, prompt: Prompt, check, lang: str, text: str, **values: Any) -> dict:
+    def _ask(self, kind: str, prompt: Prompt, parse, lang: str, text: str,
+             max_tokens: int | None = None, **values: Any) -> dict:
+        """parse(raw) -> (parsed object or None, error or None)."""
         rendered = prompt.render(lang, None, text, **values)
         served = f"{self.config.name}\0{self.backend.get('model_path')}\0{self.backend.get('build_info')}"
-        key = hashlib.sha256(f"{kind}\0{served}\0{prompt.sha256}\0{rendered}".encode()).hexdigest()
+        extra = f"\0max_tokens={max_tokens}" if max_tokens else ""
+        key = hashlib.sha256(f"{kind}\0{served}\0{prompt.sha256}\0{rendered}{extra}".encode()).hexdigest()
         if key in self.cache:
             return self.cache[key]
-        res = self.client.chat([{"role": "user", "content": rendered}], seed=SEED, **GENERATION)
-        obj, error = first_object(res.text, check)
+        gen = {**GENERATION, **({"max_tokens": max_tokens} if max_tokens else {})}
+        res = self.client.chat([{"role": "user", "content": rendered}], seed=SEED, **gen)
+        obj, error = parse(res.text)
         entry = {"key": key, "kind": kind, "raw": res.text, "parsed": obj, "error": error,
                  "finish_reason": res.finish_reason, "timings": res.raw.get("timings")}
         CACHE.parent.mkdir(parents=True, exist_ok=True)
@@ -145,14 +172,28 @@ class Judge:
         return entry
 
     def facts(self, source: str, lang: str) -> list[str] | None:
-        e = self._ask("facts", self.facts_prompt, check_facts, lang, source)
+        e = self._ask("facts", self.facts_prompt, lambda raw: first_object(raw, check_facts), lang, source)
         return [f.strip() for f in e["parsed"]["facts"]] if e["parsed"] else None
 
     def compare(self, facts: list[str], output: str, lang: str, original: str) -> dict[str, Any]:
-        """v1 prompts see only the fact list; v2 also sees the original sentence."""
+        """v1 sees only the fact list; v2 also sees the original; perfact_v3 asks one question per fact."""
+        if self.perfact:
+            judged_facts = []
+            for f in facts:
+                e = self._ask("fact", self.fact_prompt, parse_status, lang, output, max_tokens=16,
+                              original=original, fact=f)
+                if not e["parsed"]:
+                    return {"valid": False, "error": f"fact answer: {e['error']}"}
+                judged_facts.append({"fact": f, "status": e["parsed"]["status"]})
+            e = self._ask("added", self.added_prompt, lambda raw: first_object(raw, check_added), lang, output,
+                          original=original)
+            if not e["parsed"]:
+                return {"valid": False, "error": f"added answer: {e['error']}"}
+            judged = {"facts": judged_facts, "added": e["parsed"]["added"]}
+            return {"valid": True, **verdict(judged), "judged": judged}
         listing = "\n".join(f"{i}. {f}" for i, f in enumerate(facts, 1))
-        e = self._ask("compare", self.compare_prompt, check_compare(len(facts)), lang, output,
-                      facts=listing, original=original, n_facts=len(facts))
+        e = self._ask("compare", self.compare_prompt, lambda raw: first_object(raw, check_compare(len(facts))),
+                      lang, output, facts=listing, original=original, n_facts=len(facts))
         if not e["parsed"]:
             return {"valid": False, "error": e["error"]}
         return {"valid": True, **verdict(e["parsed"]), "judged": e["parsed"]}
@@ -160,7 +201,8 @@ class Judge:
     def describe(self) -> dict[str, Any]:
         return {"model": self.config.name, "endpoint": self.config.base_url, "backend": self.backend,
                 "quantisation": self.quantisation, "generation": GENERATION, "seed": SEED,
-                "prompts": {p.name: p.sha256 for p in (self.facts_prompt, self.compare_prompt)}}
+                "mode": PERFACT if self.perfact else "single call",
+                "prompts": {p.name: p.sha256 for p in (self.facts_prompt, *self.compare_prompts)}}
 
 
 EXPECTED = {
@@ -291,10 +333,10 @@ def main() -> None:
     c = sub.add_parser("controls")
     c.add_argument("--out", type=Path, default=Path("results/judge_validation.md"))
     c.add_argument("--half", choices=("A", "B", "all"), default="all")
-    c.add_argument("--compare-prompt", default="judge_compare_v1")
+    c.add_argument("--compare-prompt", default="judge_compare_v1", help=f"judge_compare_v1, judge_compare_v2 or {PERFACT}")
     p = sub.add_parser("pilot")
     p.add_argument("runs", type=Path, nargs="+")
-    p.add_argument("--compare-prompt", default="judge_compare_v1")
+    p.add_argument("--compare-prompt", default="judge_compare_v1", help=f"judge_compare_v1, judge_compare_v2 or {PERFACT}")
     args = ap.parse_args()
     if args.cmd == "controls":
         controls(args.out, args.half, args.compare_prompt)
