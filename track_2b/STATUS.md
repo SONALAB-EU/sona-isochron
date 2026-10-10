@@ -85,6 +85,13 @@ is not started. Nothing is pushed.
     unpacked once, in a CPU-only job, and reused by every later job.
 - **GPU budget so far: 1.17 H100-hours** (sacct; tests, setup, the container check).
 
+- **18:06. The ungated models are on the cluster.** Qwen3-14B (29.6 GB) and the NLI model took 23 min
+  (job 2634301, CPU-only).
+- **18:17. The named vLLM container exists** (`pyxis_isochron_vllm_apertus_1.5`, 19 GB in
+  `~/.local/share/enroot`; 11 min, CPU-only, job 2634347).
+- **18:17. Judge validation submitted** (job 2634364): Qwen3-14B BF16 on the hard controls and the NLI
+  suite. The selection rule above decides from its result.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 
