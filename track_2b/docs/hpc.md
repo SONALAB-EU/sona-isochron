@@ -4,17 +4,23 @@ This runbook takes the experiments from this repository to the cluster and back:
 BF16 behind an OpenAI-compatible server, step 2 with our method (prompt v1 and the repair loop),
 then the judge Qwen3-14B on the same outputs.
 
-On 2026-10-10 the cluster facts below were checked; the code was copied, `hpc/setup.sh` was run and the
-vLLM image was pulled (see "What has been run"). No models have been downloaded and no experiment has run.
+On 2026-10-10 the cluster facts below were checked and steps 1–3 were run:
+- The environment passed its tests on an H100.
+- The vLLM image was imported, then unpacked once as a named container.
+- Qwen3-14B and the NLI model were downloaded without a token (`download_models.sh --open`).
+- The judge was validated on the cluster: `results/judge_validation_{hard,nli}_v3_qwen3-14b_hpc_8b.md`.
+
+Apertus 1.5 needs your token (step 4). No Apertus job has run yet.
 
 ## What runs where
 
 | File | What it does | How it is started |
 |------|--------------|-------------------|
-| `hpc/sync_include.txt` | rsync allowlist: code, data and reports; never `.env`, audio, weights, caches or `results/raw/` | `rsync --filter='merge hpc/sync_include.txt'` |
-| `hpc/setup.sh` | `prefetch`: uv 0.12.3, Python 3.11.15 (uv-managed), the locked environment (torch from PyPI) and eSpeak NG 1.52.0 built from source, without a GPU; `container`: imports the vLLM image; no argument: whatever is missing, then the GPU check and the tests; `fallback`: the transformers fork | `sbatch … --wrap="bash hpc/setup.sh prefetch"`, then `srun … bash hpc/setup.sh` |
-| `hpc/download_models.sh` | Apertus 1.5 8B (gated), Qwen3-14B and the NLI model at pinned revisions; `--70b` adds Apertus 1.5 70B. `HF_TOKEN` comes from the environment only and is never written to disk | `srun … bash hpc/download_models.sh [--70b]` |
-| `hpc/run.sbatch` | Apertus 1.5 8B, one H100 | `sbatch hpc/run.sbatch` |
+| `hpc/sync.sh` | on the Mac: copies the code with the allowlist below, then records the copied commit in `.git_commit` on the cluster, which every results file made there reports (the copy is not a git checkout) | `bash hpc/sync.sh hpi-login` |
+| `hpc/sync_include.txt` | rsync allowlist: code, data and reports; never `.env`, audio, weights, caches or `results/raw/` | used by `hpc/sync.sh` |
+| `hpc/setup.sh` | `prefetch`: uv 0.12.3, Python 3.11.15 (uv-managed), the locked environment (torch from PyPI) and eSpeak NG 1.52.0 built from source, without a GPU; it ends by writing the marker `~/isochron_work/.env-ready`. `container`: imports the vLLM image and unpacks it once as a named container. No argument: whatever is missing, then the GPU check and the tests. `fallback`: the transformers fork | `sbatch … --wrap="bash hpc/setup.sh prefetch"`, then `srun … bash hpc/setup.sh` |
+| `hpc/download_models.sh` | Apertus 1.5 8B (gated), Qwen3-14B and the NLI model at pinned revisions; `--70b` adds Apertus 1.5 70B; `--open` fetches only the two models that need no token. `HF_TOKEN` comes from the environment only and is never written to disk | `srun … bash hpc/download_models.sh [--70b \| --open]` |
+| `hpc/run.sbatch` | Apertus 1.5 8B, one H100. The settings at the top of `hpc/pipeline.sh` (languages, split, levels, seeds, phases, sentence ids) can be changed with `sbatch --export=ALL,…` | `sbatch hpc/run.sbatch` |
 | `hpc/run_70b.sbatch` | Apertus 1.5 70B, two H100s, tensor parallelism 2 | `sbatch hpc/run_70b.sbatch` |
 | `hpc/pipeline.sh` | what both jobs do (below) | called by the sbatch files |
 | `hpc/env.sh`, `hpc/lib.sh` | pinned versions and checksums; server start, health check and stop | sourced |
@@ -96,7 +102,7 @@ Thinking stays off (`enable_thinking: false` in every request).
 - Your Hugging Face account has accepted the terms of `swiss-ai/Apertus-v1.5-8B` (and
   `swiss-ai/Apertus-v1.5-70B` for the 70B job), and you have a read token at hand.
 - Disk: `$HOME/isochron_work` gets about 90 GB, which fits the home quota. For the 70B model, put
-  the weights elsewhere: `export ISOCHRON_MODELS=<a larger directory>` before the 70B download and
+  the weights elsewhere: `export ISOCHRON_MODELS_70B=<a larger directory>` before the 70B download and
   every 70B job. That directory is your choice; `/sc/projects/sci-aisc` is shared with your group.
 
 ## Commands, in order
@@ -104,11 +110,12 @@ Thinking stays off (`enable_thinking: false` in every request).
 ### 1. On the Mac: copy the code (from `track_2b/`)
 
 ```
-ssh hpi-login mkdir -p isochron/track_2b
-rsync -av --filter='merge hpc/sync_include.txt' ./ hpi-login:isochron/track_2b/
+bash hpc/sync.sh hpi-login
 ```
 
-The same `rsync` command copies later code changes. It never deletes files on the cluster.
+- The same command copies later code changes. It never deletes files on the cluster.
+- It ends by printing the commit it recorded. That is a plain hash after a commit, and
+  "with uncommitted changes" otherwise. Commit before a run whose numbers you will report.
 
 ### 2. Log in
 
@@ -132,6 +139,11 @@ srun --account=aisc --partition=pot-hpi-aisc-shortrun --nodes=1 --gres=gpu:h100:
 The two batch jobs do every download and the eSpeak NG build without a GPU.
 - Run the last command when `squeue` no longer lists them.
 - Their logs are `hpc/logs/isochron-prefetch-<job id>.out` and `hpc/logs/isochron-container-<job id>.out`.
+- The container job ends by unpacking the image once as the named container
+  `pyxis_isochron_vllm_apertus_1.5` (19 GB in `~/.local/share/enroot`; `enroot list` shows it).
+  Without it, pyxis unpacks the image again in every job, which held the GPU for about 20 minutes.
+- On 2026-10-10 the downloads took about 2 h with restarts. The container import took 30 min and the
+  unpacking 11 min (measured).
 
 The last command checks the GPU and ends with the test suite.
 - `tests/test_syllable_reference.py` must pass: the cluster's eSpeak NG then counts every German and
@@ -152,9 +164,19 @@ unset HF_TOKEN
   the shell history.
 - `srun` hands the token to the job in memory. Do not use `sbatch` here: Slurm stores a batch job's
   environment on its controller.
-- Apertus 1.5 8B, Qwen3-14B and the NLI model come to about 48 GB. At the rates above that should
-  take about 25–40 minutes (an estimate). If the job hits the one-hour limit, run the same `srun` line
-  again: downloads resume.
+- So that the download survives a logout, run these lines inside `tmux new -s isochron-download`, then
+  detach with Ctrl-b d. Retries and a log file, as one line after `export HF_TOKEN`:
+
+  ```
+  { for attempt in 1 2 3 4 5 6 7 8; do srun --account=aisc --partition=pot-hpi-aisc-shortrun --nodes=1 --exclude=ga03 --cpus-per-task=8 --mem=32G --time=01:00:00 --job-name=isochron-download bash hpc/download_models.sh && break; sleep 60; done; } 2>&1 | tee -a hpc/logs/download.log; unset HF_TOKEN
+  ```
+
+- Apertus 1.5 8B, Qwen3-14B and the NLI model come to about 48 GB.
+  - Qwen3-14B (29.6 GB) and the NLI model took 23 min (measured, `--open`, 2026-10-10). They are already
+    on the cluster; the script skips files it has.
+  - Apertus 1.5 8B (about 16 GB) should take about 15 minutes (an estimate).
+  - If the job hits the one-hour limit, run the same `srun` line again: downloads resume.
+- `--open` downloads only Qwen3-14B and the NLI model, which need no token. Use it with `HF_TOKEN` unset.
 - For the 70B job only (about 145 GB, more than the home quota leaves), choose a directory with
   space. Then run, each time with your token exported:
 
@@ -168,11 +190,20 @@ unset HF_TOKEN
 
 ### 5. Run the 8B job
 
+First a smoke test: 5 German dev sentences outside the go/no-go set, levels 90 and 80, seed 0. Then the
+full run, German and French test.
+
 ```
-sbatch hpc/run.sbatch
+sbatch --time=01:30:00 --job-name=isochron-smoke --export=ALL,SPLIT=dev,IDS="1516 1525 1528 1533 1537",LEVELS="90 80",SEEDS=0,RUN_SUFFIX=_smoke,WORKERS=8 hpc/run.sbatch
+sbatch --time=08:00:00 --export=ALL,LANGS="de fr" hpc/run.sbatch
 squeue -u $USER
 tail -f hpc/logs/isochron-8b-<job id>.out
 ```
+
+- `--time` overrides the 12 h in `hpc/run.sbatch`. Eight hours keeps a failed run's cost inside a
+  12 H100-hour budget.
+- Each server needs about 11 minutes to start (measured for Qwen3-14B). Most of that is Python imports
+  from the network home, then compilation.
 
 ### 6. Run the 70B job, after the 8B job
 
@@ -203,14 +234,26 @@ a time, so expect it to be several times slower than vLLM.
 ```
 rsync -av --include='/results/' --include='/results/*.md' --exclude='*' hpi-login:isochron/track_2b/ ./
 rsync -av hpi-login:isochron/track_2b/results/raw/hpc_8b_step2_de_test results/raw/
-rsync -av hpi-login:isochron/track_2b/results/raw/hpc_70b_step2_de_test results/raw/
+rsync -av hpi-login:isochron/track_2b/results/raw/hpc_8b_step2_fr_test results/raw/
+uv run python -m isochron.step2_report results/raw/hpc_8b_step2_de_test results/raw/hpc_8b_step2_fr_test --validation results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md results/judge_validation_nli_v3_qwen3-14b_hpc_8b.md --out results/step2_test.md
 ```
 
 - The first line brings the reports.
-- The other two bring the raw runs (`items.jsonl`, `judge.jsonl`, configs). They stay in the
-  git-ignored `results/raw/`, as locally.
+- The next two bring the raw runs (`items.jsonl`, `judge.jsonl`, configs). They stay in the
+  git-ignored `results/raw/`, as locally. For the 70B job, the same with `hpc_70b_`.
+- The last writes `results/step2_test.md`: both languages, 95 % intervals, and every run's
+  configuration.
 
-## GPU-hours per run (estimates, not measurements)
+## GPU-hours per run
+
+Measured on 2026-10-10 (sacct, elapsed time × H100s):
+
+| Job | H100-hours |
+|-----|-----------:|
+| Setup, network checks, a cancelled pyxis pull, and the container check on an H100 (jobs 2634028–2634300) | 1.22 |
+| Judge validation: Qwen3-14B on both control suites (job 2634364; 11 min server start, 2 min judging) | 0.23 |
+
+Estimates, not measurements:
 
 | Job | GPUs | Wall time | GPU-hours |
 |-----|-----:|----------:|----------:|

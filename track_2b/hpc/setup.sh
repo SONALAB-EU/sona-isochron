@@ -5,8 +5,9 @@
 #                                 uv-managed Python, the project environment from uv.lock (torch from
 #                                 PyPI) and eSpeak NG 1.52.0 built from source. The cluster's internet
 #                                 is slow per connection, so run this as a CPU-only batch job.
-#   bash hpc/setup.sh container   import the vLLM container for Apertus 1.5 into a squashfs file
-#                                 (also CPU-only; it resumes from enroot's layer cache)
+#   bash hpc/setup.sh container   import the vLLM container for Apertus 1.5 into a squashfs file and
+#                                 unpack it once as a named container that every job reuses (also
+#                                 CPU-only; the import resumes from enroot's layer cache)
 #   bash hpc/setup.sh             on an H100 (through srun, so the architecture matches): whatever
 #                                 prefetch has not done yet, then the GPU check and the tests
 #   bash hpc/setup.sh fallback    a second environment with the transformers fork (if vLLM fails)
@@ -145,16 +146,30 @@ for b in [m["config"], *m["layers"]]:
     log "every blob of $VLLM_IMAGE is in $cache"
 }
 
+# pyxis unpacks an image again for every job (12 GB onto the network home, about 20 minutes with the GPU
+# held). A named container is unpacked once, here without a GPU, and every later job reuses it
+# (container_scope=global): hpc/lib.sh starts vLLM with the same --container-name.
+create_named_container() {
+    if enroot list | grep -qx "pyxis_$VLLM_CONTAINER"; then
+        log "named container already exists: pyxis_$VLLM_CONTAINER"
+        return
+    fi
+    srun --overlap --ntasks=1 --nodes=1 --container-image="$VLLM_SQSH" --container-name="$VLLM_CONTAINER" \
+        bash -c 'ls -d /opt/venv/bin/vllm' || die "pyxis could not create the named container $VLLM_CONTAINER"
+    log "created the named container pyxis_$VLLM_CONTAINER"
+}
+
 setup_container() {
     command -v enroot > /dev/null || die "enroot is not available on this node"
     if [ -f "$VLLM_SQSH" ]; then
         log "container already imported: $VLLM_SQSH"
-        return
+    else
+        fetch_layers
+        mkdir -p "$(dirname "$VLLM_SQSH")"
+        enroot import -o "$VLLM_SQSH" "docker://$VLLM_IMAGE"
+        log "imported $VLLM_IMAGE into $VLLM_SQSH"
     fi
-    fetch_layers
-    mkdir -p "$(dirname "$VLLM_SQSH")"
-    enroot import -o "$VLLM_SQSH" "docker://$VLLM_IMAGE"
-    log "imported $VLLM_IMAGE into $VLLM_SQSH"
+    create_named_container
 }
 
 setup_fallback() {

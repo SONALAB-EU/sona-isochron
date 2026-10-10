@@ -92,6 +92,49 @@ is not started. Nothing is pushed.
 - **18:17. Judge validation submitted** (job 2634364): Qwen3-14B BF16 on the hard controls and the NLI
   suite. The selection rule above decides from its result.
 
+- **18:23. Decision: Qwen3-14B is the main judge** (plan step 4; job 2634364, BF16 on vLLM).
+  - Measured on the hard controls, all 140 pairs: it caught 17 of the 27 qualifier and modal changes.
+    Qualifier: 7 of 14 (Qwen3-8B: 5). Modal: 10 of 13 (Qwen3-8B: 8).
+  - That passes the rule fixed at 16:57 (more than 13, and not lower in either category).
+  - The other control types, against Qwen3-8B:
+
+    | Control type | Qwen3-14B | Qwen3-8B |
+    |--------------|----------:|---------:|
+    | Same meaning, judged complete | 20/20 | 17/20 |
+    | Number change caught | 13/13 | 13/13 |
+    | Inserted fact caught | 16/20 | 17/20 |
+    | Identity | 60/60 | 60/60 |
+    | Mean over the 6 types | 84 % | 78 % |
+
+  - NLI suite (200 pairs, DE and FR), Qwen3-14B: mean 99 %. Identity 100 %, paraphrase 98 %, deletion
+    98 %, insertion 100 %, negation 100 %.
+  - Caveats:
+    - The difference is within noise. Paired on the same 27 pairs, the 14B judge alone caught 7 and the 8B
+      judge alone caught 3; both caught 10 (exact McNemar, two-sided p = 0.34). The rule decides the main
+      judge; it does not show that the 14B judge is better.
+    - The two judges differ in size and also in quantisation and backend (8B: Q4_K_M on llama.cpp; 14B:
+      BF16 on vLLM), so this does not isolate model size.
+    - The 14B judge still misses half the qualifier changes. A "complete" verdict does not rule out a
+      dropped qualifier.
+  - The NLI stays the loop's screen.
+  - Files: `results/judge_validation_{hard,nli}_v3_qwen3-14b_hpc_8b.md`.
+- **18:30. Provenance of results made on the cluster.**
+  - Both validation files said "Git commit: unknown", because the cluster copy is an rsync, not a git
+    checkout.
+  - I checked with `rsync --checksum` that every synced file equals commit 5820d9d (the code is unchanged
+    since 1f71399), and wrote that into both files by hand, marked as added by hand.
+  - Decision: `hpc/sync.sh` now copies the code and records the commit in `.git_commit` on the cluster, and
+    `isochron.provenance` reports it there. The Apertus runs then record their commit themselves.
+  - Also: `setup.sh container` now creates the named container itself (before, the one-off job 2634347
+    did), so the runbook reproduces the setup.
+- **18:34. GPU budget: 1.45 H100-hours used** (sacct, elapsed × H100s), so 10.55 are left.
+  - 1.22 before the judge validation, then 0.23 for it (13.6 min: 11 min server start, 2 min judging).
+  - Plan: the smoke test runs with a 1.5 h limit and the full step 2 with 8 h. Even if both run to their
+    limits, the total stays at or under 10.95.
+- **18:28. Your Apertus download has not started** (no `hpc/logs/download.log`, no Apertus files).
+  - The environment marker exists, so your command would start at once.
+  - Decision: check every 30 minutes. The smoke test and step 2 follow as soon as the weights are complete.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 

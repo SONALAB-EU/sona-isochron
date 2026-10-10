@@ -440,6 +440,22 @@ numbers are reported on test, as before. The work goes in this order.
      - So this judge misses most lost qualifiers.
    - On the HPC the judge is Qwen3-14B (BF16, Apache-2.0) under vLLM. Every
      job validates it on both suites before it judges (`docs/hpc.md`).
+   - **Qwen3-14B result (2026-10-10, job 2634364,
+     `results/judge_validation_{hard,nli}_v3_qwen3-14b_hpc_8b.md`).**
+     - Hard controls: identity 100 %, same meaning 100 %, modal changed 77 %,
+       number changed 100 %, qualifier changed 50 %, fact inserted 80 % (mean
+       84 %).
+     - NLI suite: mean 99 %.
+     - Rule, fixed before this result: Qwen3-14B becomes the main judge if it
+       catches more than Qwen3-8B's 13 of the 27 qualifier and modal changes
+       and is not lower in either category. It caught 17 (qualifier 7, modal
+       10), so it is the main judge for the full runs.
+     - The difference is within noise. On the same 27 pairs, only the 14B
+       judge caught 7 and only the 8B judge caught 3 (exact McNemar,
+       two-sided p = 0.34). The two judges also differ in quantisation and
+       backend, not only in size.
+     - It still misses half the lost qualifiers, so fact recall stays an upper
+       bound.
 5. **Pilot.**
    - 30 German dev sentences outside the go/no-go 50
      (`random.Random(0).sample` of the other 97), seed 0, levels 90 % and 80 %.
@@ -501,9 +517,11 @@ used.
 
 - The HPC runs themselves (kit ready, see `docs/hpc.md`). Each run records its
   endpoint, backend and quantisation.
-- The judge for the final runs: Qwen3-14B on the HPC, if it does clearly
-  better than Qwen3-8B on the hard controls; otherwise a native-speaker check
-  must carry the meaning results.
+- The judge for the final runs: decided on 2026-10-10 by the rule fixed
+  beforehand. Qwen3-14B is the main judge (see the judge section above). It
+  is not clearly better than Qwen3-8B (p = 0.34), and it misses half the lost
+  qualifiers. So the native-speaker check still carries the meaning results
+  for qualifiers.
 - Which outputs the 50 native-speaker lines come from, and who checks them.
 - A native-speaker review of the NLI control pairs.
 - A near-tie test on paired differences, instead of overlapping intervals
@@ -573,3 +591,9 @@ used.
   loop now takes a unit (syllables by default, characters for step 4). The
   HPC setup was adapted to the cluster's per-connection throttling: chunked,
   digest-checked downloads (`docs/hpc.md`).
+- 2026-10-10, v2.11: judge for the full runs decided. Qwen3-14B (BF16, vLLM)
+  passed the rule fixed before its result (17 of 27 qualifier and modal
+  changes, against 13, lower in neither), so it is the main judge. The paired
+  difference is within noise (p = 0.34), which is recorded with the decision.
+  Results made on the cluster now record their commit through `hpc/sync.sh`
+  (the copy there is not a git checkout).
