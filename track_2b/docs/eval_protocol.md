@@ -525,7 +525,9 @@ used.
 - Which outputs the 50 native-speaker lines come from, and who checks them.
 - A native-speaker review of the NLI control pairs.
 - A near-tie test on paired differences, instead of overlapping intervals
-  (suggested by the pilot).
+  (suggested by the pilot). For step 2 on test, the report now gives the
+  loop's effect as a paired difference (v2.12); the recommendation rule
+  itself is unchanged.
 - A native-speaker review of the hard judge controls.
 
 ## References
@@ -597,3 +599,10 @@ used.
   difference is within noise (p = 0.34), which is recorded with the decision.
   Results made on the cluster now record their commit through `hpc/sync.sh`
   (the copy there is not a git checkout).
+- 2026-10-10, v2.12: before any step 2 output on test exists, the step 2
+  report (`isochron.step2_report`) adds the effect of the repair loop: with
+  minus without, in percentage points, for fit, fact recall, added-fact rate
+  and fit & complete, pooled and per level. Its 95 % interval is a paired
+  bootstrap: sentences are resampled once per resample (10,000, seed 0), and
+  both conditions are scored on the same resample. The per-condition
+  intervals stay as they were.

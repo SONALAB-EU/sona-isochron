@@ -95,6 +95,21 @@ def rows_for(run: Path) -> tuple[dict, list[dict]]:
     return cfg, rows
 
 
+def valid(r: dict) -> bool:
+    """The judge gave a usable verdict."""
+    return r["valid"] and r["recall"] is not None
+
+
+def answered(r: dict) -> bool:
+    """A usable verdict on an output in the right language."""
+    return valid(r) and not r["no_output"] and not r["wrong_language"]
+
+
+def complete(r: dict) -> bool:
+    """Fit & complete: fits, and the judge keeps every fact and finds nothing added."""
+    return bool(r["fit"] and answered(r) and r["recall"] == 1 and not r["added"])
+
+
 def table(rows: list[dict], title: str) -> list[str]:
     out = [f"### {title}", "",
            "| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | "
@@ -109,15 +124,6 @@ def table(rows: list[dict], title: str) -> list[str]:
 
         def by(f, sel=lambda r: True):
             return {sid: [f(r) for r in rs if r["id"] == sid and sel(r)] for sid in ids}
-
-        def valid(r):
-            return r["valid"] and r["recall"] is not None
-
-        def answered(r):
-            return valid(r) and not r["no_output"] and not r["wrong_language"]
-
-        def complete(r):
-            return bool(r["fit"] and answered(r) and r["recall"] == 1 and not r["added"])
 
         ratios = [r["ratio"] for r in rs if r["ratio"] is not None]
         out.append(

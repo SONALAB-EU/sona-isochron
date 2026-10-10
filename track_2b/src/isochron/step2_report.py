@@ -1,8 +1,14 @@
 """results/step2_test.md: step 2 on test, every language in one report, with every run's configuration.
 
 For each run (one per language): the tables of isochron.pilot_report (all levels pooled, then each
-level; prompt v1 without and with the repair loop; 95 % bootstrap intervals over sentences), then the
-judge validation the run relies on, then each run's config.json and judge_config.json in full.
+level; prompt v1 without and with the repair loop; 95 % bootstrap intervals over sentences), the
+effect of the loop as a paired difference, then the judge validation the run relies on, then each
+run's config.json and judge_config.json in full.
+
+The loop's effect: with − without, in percentage points, for all levels pooled and for each level.
+Both conditions come from the same items, so the bootstrap resamples sentences once per resample and
+scores both conditions on that same resample (a paired interval). An interval that excludes 0 means
+the difference is not resampling noise over sentences.
 
     uv run python -m isochron.step2_report RUN_DIR [RUN_DIR ...] --validation FILE [FILE ...] --out results/step2_test.md
 """
@@ -11,12 +17,52 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
+
 from isochron.language import describe as describe_language
-from isochron.pilot_report import BOOT_SEED, N_BOOT, rows_for, short, table
+from isochron.pilot_report import BOOT_SEED, N_BOOT, answered, complete, rows_for, short, table, valid
 from isochron.provenance import git_commit
+
+METRICS = (  # name, value per output, which outputs count (as in isochron.pilot_report.table)
+    ("Fit ±10 %", lambda r: r["fit"], lambda r: True),
+    ("Fact recall", lambda r: r["recall"], valid),
+    ("Added-fact rate", lambda r: r["added"], answered),
+    ("Fit & complete", complete, lambda r: True),
+)
+
+
+def paired_diff(rows: list[dict], value, counts) -> str:
+    """Pooled mean with the loop minus pooled mean without, in points, with a paired bootstrap interval."""
+    sums = {cond: defaultdict(float) for cond in ("with", "without")}
+    ns = {cond: defaultdict(int) for cond in ("with", "without")}
+    for r in rows:
+        if counts(r):
+            sums[r["cond"]][r["id"]] += float(value(r))
+            ns[r["cond"]][r["id"]] += 1
+    ids = sorted(set(ns["with"]) & set(ns["without"]))  # fixed order, so the bootstrap does not depend on hashing
+    if not ids:
+        return "–"
+    s = {c: np.array([sums[c][i] for i in ids]) for c in sums}
+    n = {c: np.array([ns[c][i] for i in ids]) for c in ns}
+    idx = np.random.default_rng(BOOT_SEED).integers(0, len(ids), size=(N_BOOT, len(ids)))
+    diffs = s["with"][idx].sum(axis=1) / n["with"][idx].sum(axis=1) - s["without"][idx].sum(axis=1) / n["without"][idx].sum(axis=1)
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    point = s["with"].sum() / n["with"].sum() - s["without"].sum() / n["without"].sum()
+    return f"{100 * point:+.1f} [{100 * lo:+.1f}, {100 * hi:+.1f}]"
+
+
+def effect_table(rows: list[dict], lang: str, levels: list[int]) -> list[str]:
+    out = [f"### {lang}: effect of the repair loop (with − without, percentage points)", "",
+           "| Levels | " + " | ".join(name for name, _, _ in METRICS) + " |",
+           "|--------|" + "|".join("-" * (len(name) + 2) for name, _, _ in METRICS) + "|"]
+    for name, rs in (("all", rows), *((f"{lv} %", [r for r in rows if r["level"] == lv]) for lv in levels)):
+        out.append(f"| {name} | " + " | ".join(paired_diff(rs, value, counts) for _, value, counts in METRICS) + " |")
+    return out + ["", "Higher is better, except for the added-fact rate. Sentences that lack a judge verdict in "
+                      "one condition are left out of that column's difference."]
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -61,7 +107,8 @@ def main(argv: list[str] | None = None) -> None:
         levels = sorted({r["level"] for r in rows}, reverse=True)
         lang = cfg["lang"].upper()
         out += [f"## {lang} ({cfg['split']})", "",
-                *table(rows, f"{lang}: all levels ({', '.join(f'{lv} %' for lv in levels)})"), ""]
+                *table(rows, f"{lang}: all levels ({', '.join(f'{lv} %' for lv in levels)})"), "",
+                *effect_table(rows, lang, levels), ""]
         for lv in levels:
             out += [*table([r for r in rows if r["level"] == lv], f"{lang}: level {lv} %"), ""]
     if args.validation:

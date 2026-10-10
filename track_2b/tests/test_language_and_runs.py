@@ -82,6 +82,29 @@ def test_report_counts_wrong_language_as_failure(tmp_path: Path) -> None:
     assert with_["recall"] == 0.0 and with_["added"] is None and with_["ratio"] is None
 
 
+def test_paired_difference_of_the_loop() -> None:
+    from isochron.step2_report import paired_diff
+
+    def rows(with_fit: list[int], without_fit: list[int]) -> list[dict]:
+        return [{"id": str(i), "cond": cond, "fit": fit}
+                for i, pair in enumerate(zip(with_fit, without_fit)) for cond, fit in zip(("with", "without"), pair)]
+
+    def fit(r: dict) -> int:
+        return r["fit"]
+
+    def every(r: dict) -> bool:
+        return True
+
+    assert paired_diff(rows([1, 0, 1, 0], [1, 0, 1, 0]), fit, every) == "+0.0 [+0.0, +0.0]"
+    assert paired_diff(rows([1, 1, 1, 1], [0, 0, 0, 0]), fit, every) == "+100.0 [+100.0, +100.0]"
+    # one sentence of four gains: +25 points, and a resample that misses that sentence gives 0
+    assert paired_diff(rows([1, 0, 0, 0], [0, 0, 0, 0]), fit, every).startswith("+25.0 [+0.0, ")
+    # a sentence whose rows do not count in one condition is left out of the difference
+    assert paired_diff(rows([1, 0], [0, 0]), fit, lambda r: not (r["id"] == "0" and r["cond"] == "without")) == \
+        "+0.0 [+0.0, +0.0]"
+    assert paired_diff([], fit, every) == "–"
+
+
 def test_control_halves() -> None:
     nli = list(read_jsonl(ROOT / "data/nli_controls.jsonl", ControlPair))
     assert len(control_half(nli, "A")) == len(control_half(nli, "B")) == 100
