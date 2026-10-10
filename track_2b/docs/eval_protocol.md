@@ -190,6 +190,34 @@ A target T is a whole number: the share or budget, rounded half up. An output
   is cross-lingual NLI against the English source. In a first probe, the
   cross-lingual check labelled a correct German–French pair as
   "contradiction" in one direction.
+- **Implementation (2026-10-10, v2.10; `src/isochron/step4.py`,
+  `src/isochron/step4_report.py`).**
+  - Step 3 has not been run, so (b) and (c) use step 2's selection: the
+    closest of 4 candidates in the budget's unit. That rule is fixed here,
+    before any test run.
+  - (c) shortens (a) with our method: prompt v1 and the repair loop, in the
+    budget's unit. The loop's NLI compares the candidates with (a).
+  - The character prompts (`shorten_chars_v1`, `revise_chars_v1`,
+    `translate_budget_chars_v1`) differ from the syllable ones only in the
+    length instruction.
+  - Budgets:
+    - isometric: the English source's characters without spaces;
+    - isosyllabic: its syllables (eSpeak NG, `en-us`) × the rate ratio,
+      rounded half up.
+  - (a) asks again, with the next seed, if its answer is not JSON (at most 3
+    tries).
+  - A wrong-language output counts as a failure.
+  - Seeds: (a) and (b) use the item seed, (c) item seed + 1000 × round.
+- **Local smoke test (2026-10-10; exploratory, 5 dev sentences per language
+  outside the go/no-go 50, seed 0, Apertus Q4_K_M;
+  `results/step4_smoke_local.md`).**
+  - For German, (a) never met the syllable budget and met the character
+    budget 2 of 5 times.
+  - Under the character budget, (b) fit every time but kept the meaning
+    against the reference in 2 of 5. (c) fit every time and kept it in 4
+    of 5.
+  - Five sentences per cell is too few to read any difference; this only
+    shows that the pipeline works.
 
 ## Metrics for steps 2–4
 
@@ -540,3 +568,8 @@ used.
   language = another language at p ≥ 0.9), with the pilot re-scored; the hard
   judge controls, and Qwen3-8B's result on them; the full-run plan (HPC kit,
   local insurance run).
+- 2026-10-10, v2.10: step 4 implemented (selection, units, budgets, seeds, as
+  above) and smoke-tested locally on 5 dev sentences per language. The repair
+  loop now takes a unit (syllables by default, characters for step 4). The
+  HPC setup was adapted to the cluster's per-connection throttling: chunked,
+  digest-checked downloads (`docs/hpc.md`).
