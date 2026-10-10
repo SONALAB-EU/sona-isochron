@@ -367,6 +367,21 @@ numbers are reported on test, as before. The work goes in this order.
        used to tune judge prompts; half B (the other 10) is held out.
      - The prompt with the higher mean accuracy over the 5 control types on
        half B judges the pilot. Ties are broken by fewer invalid answers.
+     - A third candidate, `perfact_v3`, was added during tuning. It asks one
+       one-word question per fact (`judge_fact_v3`: kept / changed /
+       dropped, showing the original and the new version) plus one call for
+       added information (`judge_added_v3`). On half A it beat v2: mean 95 %
+       against 82 %, because v2 still failed paraphrases (30 %). So
+       `perfact_v3` went to half B.
+     - **Result on half B:** `perfact_v3` 91 % against v1 69 % (v1: 4 invalid
+       answers; v3: 0). So `perfact_v3` judges the pilot.
+       - Per type on half B: identity 100 / 50, paraphrase 100 / 50,
+         deletion 85 / 90, insertion 70 / 60, negation 100 / 95 (v3 / v1).
+       - Over all 200 pairs, v3 scores 100 / 100 / 92 / 72 / 100 %.
+       - Its weak spot is insertions in German (50 %), so added-fact rates are
+         likely undercounted.
+       - Reports: `results/judge_validation_v1_all.md`, `…_v1_halfB.md`,
+         `…_v3_halfB.md`, `…_v3_all.md`; tuning in `results/judge_tuning_*`.
 5. **Pilot.**
    - 30 German dev sentences outside the go/no-go 50
      (`random.Random(0).sample` of the other 97), seed 0, levels 90 % and 80 %.
