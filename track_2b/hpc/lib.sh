@@ -24,8 +24,59 @@ require_espeak() {
     espeak-ng --version | grep -q "$ESPEAK_VERSION" || die "espeak-ng is not $ESPEAK_VERSION: $(espeak-ng --version)"
 }
 
-sha256_ok() {
-    [ "$(sha256sum "$1" | cut -d' ' -f1)" = "$2" ]
+# The cluster's internet is slow per connection, and connections stall for minutes. fetch_chunked
+# URL SIZE SHA256 DEST CHUNK_MB PARALLEL [GHCR_IMAGE] fetches a file in ranged chunks, PARALLEL at once.
+# A chunk that fails or stalls (under 20 kB/s for 60 s) is tried again on its own, up to 40 times;
+# finished chunks survive a restart (DEST.parts/). DEST appears only once the whole file matches its
+# SHA-256. With GHCR_IMAGE, every try asks ghcr.io for an anonymous pull token.
+ghcr_token() {
+    curl -fsS --max-time 60 "https://ghcr.io/token?scope=repository:$1:pull" | sed -E 's/.*"token":"([^"]+)".*/\1/'
+}
+
+fetch_range() {
+    local url=$1 start=$2 end=$3 part=$4 image=$5 auth
+    [ -f "$part" ] && [ "$(stat -c %s "$part")" -eq $((end - start + 1)) ] && return 0
+    for _ in $(seq 1 40); do
+        auth=()
+        [ -z "$image" ] || auth=(-H "Authorization: Bearer $(ghcr_token "$image")")
+        if curl -fsSL --connect-timeout 20 --speed-limit 20000 --speed-time 60 --max-time 1200 "${auth[@]}" \
+            -r "$start-$end" -o "$part.tmp" "$url" && [ "$(stat -c %s "$part.tmp")" -eq $((end - start + 1)) ]; then
+            mv "$part.tmp" "$part"
+            return 0
+        fi
+        sleep 3
+    done
+    return 1
+}
+export -f ghcr_token fetch_range
+
+fetch_chunked() {
+    local url=$1 size=$2 sha=$3 dest=$4 chunk=$(($5 * 1024 * 1024)) parallel=$6 image=${7:-} parts n i s e code auth=()
+    [ -f "$dest" ] && return 0
+    [ -z "$image" ] || auth=(-H "Authorization: Bearer $(ghcr_token "$image")")
+    code=$(curl -sL --connect-timeout 20 --max-time 120 "${auth[@]}" -r 0-0 -o /dev/null -w '%{http_code}' "$url" || true)
+    if [ "$code" != 206 ]; then
+        echo "note: $url answers ranges with HTTP $code; one stream instead" >&2
+        chunk=$size
+        parallel=1
+    fi
+    parts=$dest.parts
+    mkdir -p "$parts"
+    n=$(((size + chunk - 1) / chunk))
+    # shellcheck disable=SC2016
+    for ((i = 0; i < n; i++)); do
+        s=$((i * chunk))
+        e=$((s + chunk - 1 < size - 1 ? s + chunk - 1 : size - 1))
+        printf '%s %s %s %s %s\n' "$url" "$s" "$e" "$parts/$(printf %06d "$i")" "${image:--}"
+    done | xargs -P "$parallel" -n 5 bash -c 'fetch_range "$1" "$2" "$3" "$4" "${5#-}"' _ || return 1
+    cat "$parts"/[0-9]* > "$dest.tmp"
+    if [ "$(sha256sum "$dest.tmp" | cut -d' ' -f1)" != "$sha" ]; then
+        rm -rf "$dest.tmp" "$parts"
+        echo "ERROR: $dest does not match its SHA-256; its chunks were deleted" >&2
+        return 1
+    fi
+    mv "$dest.tmp" "$dest"
+    rm -rf "$parts"
 }
 
 free_port() {

@@ -1,4 +1,40 @@
-# Status, 2026-10-10 (evening)
+# Status
+
+## Autonomous run, 2026-10-10 evening to 2026-10-11 (decision log)
+
+Times are UTC. Each entry: what was decided, and why. Budget: at most 12 H100-hours; the 70B model
+is not started. Nothing is pushed.
+
+- **15:07. `setup.sh` through srun failed in `uv sync`, on a 30-s download timeout.**
+  - Measured from compute nodes: the internet is throttled per connection and connections stall for
+    minutes.
+    - PyPI: 0.1–0.6 MB/s per connection.
+    - Hugging Face: 0.6–4 MB/s per connection, 34 MB/s with eight.
+    - ghcr.io: 0.1–2.9 MB/s per connection.
+  - Decision: split setup. A CPU-only batch job does every download and the eSpeak NG build
+    (`setup.sh prefetch`); `setup.sh` on an H100 (srun) then only checks and tests.
+  - Why: the downloads take longer than shortrun's hour, and a CPU-only job does not hold a GPU idle.
+- **15:44. A pyxis pull of the vLLM image (8.9 GB) did not finish in its hour, so I cancelled it.**
+  - Large layers stalled and restarted from zero.
+  - Decision: fetch the image's layers in ranged chunks in parallel, each checked against its digest,
+    into enroot's cache; `enroot import` then only builds the squashfs.
+  - Why: ghcr.io and its CDN serve ranges (HTTP 206), and a stalled chunk costs 32 MB, not a whole
+    layer.
+- **16:40. `uv sync` restarted each large wheel about ten times without finishing one.**
+  - Decision: fetch the 16 locked Linux wheels over 20 MB (3.1 GB) the same way, checked against
+    `uv.lock`'s hashes. They are installed from those files, and the rest of the lock is installed with
+    `uv pip` from `uv export` (hash-checked).
+  - Versions and hashes stay exactly those of `uv.lock`; torch still comes from PyPI.
+  - Why: uv cannot resume a download.
+  - Checked locally: a preinstalled wheel is left alone by a hash-checked install ("Checked 1 package").
+- **16:00. Your model download** waits in your tmux session for `~/isochron_work/.env-ready`.
+  - `setup.sh prefetch` writes that marker when the environment is complete.
+  - It runs through srun, not sbatch, because Slurm stores a batch job's environment, token included.
+- **The 70B weights** get their own location (`ISOCHRON_MODELS_70B`): home has a 200 GB quota. Unused
+  tonight.
+
+## Previous status (2026-10-10, before the autonomous run)
+
 
 **Done, not blocked.** All four tasks of this round are committed locally; nothing was pushed. Nothing has
 run on the cluster, and the local insurance run has not been started. No llama-server is running.

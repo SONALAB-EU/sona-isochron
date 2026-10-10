@@ -11,14 +11,17 @@ ISOCHRON_WORK=${ISOCHRON_WORK:-$HOME/isochron_work}
 
 UV_VERSION=0.12.3
 UV_SHA256=600cf9a742aca00d292673b16b5acffaa7b8c269a364ad0c2e79498dcb1fe101
+UV_SIZE=21721441
 PYTHON_VERSION=3.11.15
 
 ESPEAK_VERSION=1.52.0
 ESPEAK_URL=https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz
 ESPEAK_SHA256=bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23
+ESPEAK_SIZE=17739803
 # eSpeak NG's CMake build fetches sonic at this commit; we download it ourselves so no git is needed
 SONIC_URL=https://github.com/waywardgeek/sonic/archive/fbf75c3d6d846bad3bb3d456cbc5d07d9fd8c104.tar.gz
 SONIC_SHA256=715827b5a39b79e56e44397d7b845910df996d4cca74777b3b61629b1ddc98c1
+SONIC_SIZE=5361159
 CMAKE_VERSION=3.31.6
 NINJA_VERSION=1.11.1.4
 
@@ -34,6 +37,7 @@ VLLM_SQSH=$ISOCHRON_WORK/containers/vllm_apertus_1.5_release-latest-amd64.sqsh
 HF_FALLBACK_TRANSFORMERS='transformers[torch,vision,audio] @ https://github.com/swiss-ai/transformers/archive/3797303dda74844e3d1f8977ff5518bb91f818b4.tar.gz'
 HF_FALLBACK_TORCH=2.14.1
 HF_VENV=$ISOCHRON_WORK/venv-hf
+WHEELS=$ISOCHRON_WORK/wheelhouse
 
 MODELS=$ISOCHRON_WORK/models
 MODELS_70B=${ISOCHRON_MODELS_70B:-$MODELS}

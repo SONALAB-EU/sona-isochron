@@ -21,6 +21,10 @@
 #   WORKERS     items (and judge items) in flight at once           default 16
 #   NLI_DEVICE  device of the loop's NLI                            default cuda
 #   JUDGE_SEED_CACHE  a judge cache to start from, so two jobs share the same fact lists
+#   PHASES      which steps run: generate, validate (judge on the control suites), judge (judge the
+#               runs), report                                       default all four
+#   IDS         FLEURS sentence ids to run (smoke tests)            default all sentences
+#   RUN_SUFFIX  appended to the run names                           default none
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -41,81 +45,107 @@ SEEDS=${SEEDS:-0 1 2}
 WORKERS=${WORKERS:-16}
 NLI_DEVICE=${NLI_DEVICE:-cuda}
 JUDGE_SEED_CACHE=${JUDGE_SEED_CACHE:-}
+PHASES=${PHASES:-generate validate judge report}
+IDS=${IDS:-}
+RUN_SUFFIX=${RUN_SUFFIX:-}
+
+has_phase() {
+    case " $PHASES " in *" $1 "*) return 0 ;; esac
+    return 1
+}
 
 require_compute_node
 require_gpu
 require_espeak
 cd "$REPO"
 [ -x .venv/bin/python ] || die "no project environment: run  bash hpc/setup.sh  first"
-[ -f "$MODEL_DIR/config.json" ] || die "no model at $MODEL_DIR: run  bash hpc/download_models.sh"
-[ -f "$MODELS/$JUDGE_REPO/config.json" ] || die "no judge model at $MODELS/$JUDGE_REPO: run  bash hpc/download_models.sh"
+if has_phase generate; then
+    [ -f "$MODEL_DIR/config.json" ] || die "no model at $MODEL_DIR: run  bash hpc/download_models.sh"
+fi
+if has_phase validate || has_phase judge; then
+    [ -f "$MODELS/$JUDGE_REPO/config.json" ] || die "no judge model at $MODELS/$JUDGE_REPO: run  bash hpc/download_models.sh"
+fi
 export HF_HUB_OFFLINE=1
 mkdir -p results/raw/logs
 TAG=hpc_${MODEL_KEY}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
 trap stop_server EXIT
 trap 'exit 143' TERM
-log "job ${SLURM_JOB_ID}: $MODEL_DIR with $SERVER, languages $LANGS, split $SPLIT, levels $LEVELS, seeds $SEEDS"
-
-# 1. Generation
-apertus_name=apertus-v1.5-${MODEL_KEY}-bf16
-gen_port=$(free_port)
-gen_key=$(random_key)
-gen_log=results/raw/logs/server-${TAG}-apertus-${STAMP}.log
-if [ "$SERVER" = vllm ]; then
-    # shellcheck disable=SC2086
-    start_server vllm "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" \
-        --chat-template-content-format string --tensor-parallel-size "$TP" \
-        --gpu-memory-utilization "$GPU_UTIL" --max-model-len 8192 $VLLM_EXTRA
-else
-    start_server transformers "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" --kind multimodal
-    WORKERS=2
-fi
-wait_healthy "$gen_port" 3600 "$gen_log"
-export LLM_NAME=$apertus_name LLM_BASE_URL=http://127.0.0.1:$gen_port/v1 LLM_API_KEY=$gen_key
+log "job ${SLURM_JOB_ID}: phases $PHASES; $MODEL_DIR with $SERVER, languages $LANGS, split $SPLIT${IDS:+ (ids $IDS)}, levels $LEVELS, seeds $SEEDS"
+[ "$SERVER" = transformers ] && WORKERS=2
 runs=()
 for lang in $LANGS; do
-    run=results/raw/${TAG}_step2_${lang}_${SPLIT}
-    # shellcheck disable=SC2086
-    uv run --no-sync python -m isochron.loop_run --variant v1 --lang "$lang" --split "$SPLIT" --allow-test \
-        --levels $LEVELS --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" --device "$NLI_DEVICE" \
-        --out "$run" --resume
-    runs+=("$run")
+    runs+=("results/raw/${TAG}_step2_${lang}_${SPLIT}${RUN_SUFFIX}")
 done
-stop_server
+
+# 1. Generation
+gen_port=
+if has_phase generate; then
+    apertus_name=apertus-v1.5-${MODEL_KEY}-bf16
+    gen_port=$(free_port)
+    gen_key=$(random_key)
+    gen_log=results/raw/logs/server-${TAG}-apertus-${STAMP}.log
+    if [ "$SERVER" = vllm ]; then
+        # shellcheck disable=SC2086
+        start_server vllm "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" \
+            --chat-template-content-format string --tensor-parallel-size "$TP" \
+            --gpu-memory-utilization "$GPU_UTIL" --max-model-len 8192 $VLLM_EXTRA
+    else
+        start_server transformers "$MODEL_DIR" "$apertus_name" "$gen_port" "$gen_key" "$gen_log" --kind multimodal
+    fi
+    wait_healthy "$gen_port" 3600 "$gen_log"
+    export LLM_NAME=$apertus_name LLM_BASE_URL=http://127.0.0.1:$gen_port/v1 LLM_API_KEY=$gen_key
+    for run in "${runs[@]}"; do
+        lang=${run#results/raw/"${TAG}"_step2_}
+        lang=${lang%%_*}
+        # shellcheck disable=SC2086
+        uv run --no-sync python -m isochron.loop_run --variant v1 --lang "$lang" --split "$SPLIT" --allow-test \
+            ${IDS:+--ids $IDS} --levels $LEVELS --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
+            --device "$NLI_DEVICE" --out "$run" --resume
+    done
+    stop_server
+fi
 
 # 2. Judge (evaluation only)
-judge_port=$(free_port)
-while [ "$judge_port" = "$gen_port" ]; do judge_port=$(free_port); done
-judge_key=$(random_key)
-judge_log=results/raw/logs/server-${TAG}-judge-${STAMP}.log
-export ISOCHRON_JUDGE_CACHE=results/raw/judge_cache_${TAG}.jsonl
-if [ ! -f "$ISOCHRON_JUDGE_CACHE" ] && [ -n "$JUDGE_SEED_CACHE" ] && [ -f "$JUDGE_SEED_CACHE" ]; then
-    cp "$JUDGE_SEED_CACHE" "$ISOCHRON_JUDGE_CACHE"
-    log "judge cache started from $JUDGE_SEED_CACHE, so both jobs use the same fact lists"
+if has_phase validate || has_phase judge; then
+    judge_port=$(free_port)
+    while [ "$judge_port" = "$gen_port" ]; do judge_port=$(free_port); done
+    judge_key=$(random_key)
+    judge_log=results/raw/logs/server-${TAG}-judge-${STAMP}.log
+    export ISOCHRON_JUDGE_CACHE=results/raw/judge_cache_${TAG}.jsonl
+    if [ ! -f "$ISOCHRON_JUDGE_CACHE" ] && [ -n "$JUDGE_SEED_CACHE" ] && [ -f "$JUDGE_SEED_CACHE" ]; then
+        cp "$JUDGE_SEED_CACHE" "$ISOCHRON_JUDGE_CACHE"
+        log "judge cache started from $JUDGE_SEED_CACHE, so both jobs use the same fact lists"
+    fi
+    if [ "$SERVER" = vllm ]; then
+        start_server vllm "$MODELS/$JUDGE_REPO" qwen3-14b-bf16 "$judge_port" "$judge_key" "$judge_log" \
+            --tensor-parallel-size 1 --gpu-memory-utilization 0.85 --max-model-len 8192
+    else
+        start_server transformers "$MODELS/$JUDGE_REPO" qwen3-14b-bf16 "$judge_port" "$judge_key" "$judge_log" --kind causal
+    fi
+    wait_healthy "$judge_port" 3600 "$judge_log"
+    export JUDGE_NAME=qwen3-14b-bf16 JUDGE_BASE_URL=http://127.0.0.1:$judge_port/v1 JUDGE_API_KEY=$judge_key
+    judge=(uv run --no-sync python -m isochron.judge)
+    if has_phase validate; then
+        for suite in hard nli; do
+            "${judge[@]}" controls --suite "$suite" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS" \
+                --out "results/judge_validation_${suite}_v3_qwen3-14b_${TAG}.md"
+        done
+    fi
+    if has_phase judge; then
+        "${judge[@]}" runs "${runs[@]}" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS"
+    fi
+    stop_server
 fi
-if [ "$SERVER" = vllm ]; then
-    start_server vllm "$MODELS/$JUDGE_REPO" qwen3-14b-bf16 "$judge_port" "$judge_key" "$judge_log" \
-        --tensor-parallel-size 1 --gpu-memory-utilization 0.85 --max-model-len 8192
-else
-    start_server transformers "$MODELS/$JUDGE_REPO" qwen3-14b-bf16 "$judge_port" "$judge_key" "$judge_log" --kind causal
-fi
-wait_healthy "$judge_port" 3600 "$judge_log"
-export JUDGE_NAME=qwen3-14b-bf16 JUDGE_BASE_URL=http://127.0.0.1:$judge_port/v1 JUDGE_API_KEY=$judge_key
-judge=(uv run --no-sync python -m isochron.judge)
-for suite in hard nli; do
-    "${judge[@]}" controls --suite "$suite" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS" \
-        --out "results/judge_validation_${suite}_v3_qwen3-14b_${TAG}.md"
-done
-"${judge[@]}" runs "${runs[@]}" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS"
-stop_server
 
 # 3. Reports
-for run in "${runs[@]}"; do
-    name=${run##*/}
-    uv run --no-sync python -m isochron.pilot_report "$run" --out "results/${name}.md" \
-        --title "Step 2 (${name}): prompt v1 with and without the repair loop, Apertus 1.5 ${MODEL_KEY} BF16, judge Qwen3-14B" \
-        > /dev/null
-    log "wrote results/${name}.md"
-done
-log "done"
+if has_phase report; then
+    for run in "${runs[@]}"; do
+        name=${run##*/}
+        uv run --no-sync python -m isochron.pilot_report "$run" --out "results/${name}.md" \
+            --title "Step 2 (${name}): prompt v1 with and without the repair loop, Apertus 1.5 ${MODEL_KEY} BF16, judge Qwen3-14B" \
+            > /dev/null
+        log "wrote results/${name}.md"
+    done
+fi
+log "done: phases $PHASES"
