@@ -169,6 +169,14 @@ def test_config_prefix(monkeypatch: pytest.MonkeyPatch) -> None:
     assert (cfg.name, cfg.base_url) == ("judge", "http://example.invalid/v1")
 
 
+def test_report_short_commit_keeps_dirty_note() -> None:
+    from isochron.pilot_report import short
+
+    sha = "c75706a1d0a1be3f2f61ae05fb26b1007a84896e"
+    assert short(sha) == "c75706a"
+    assert short(f"{sha} (with uncommitted changes to tracked files)") == "c75706a (with uncommitted changes to tracked files)"
+
+
 def test_variants_point_to_existing_prompts() -> None:
     for name in VARIANTS.values():
         assert (PROMPTS / f"{name}.txt").exists()

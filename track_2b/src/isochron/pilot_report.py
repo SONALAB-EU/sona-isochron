@@ -56,6 +56,12 @@ def ci(values_by_sentence: dict[str, list[float]]) -> str:
     return f"{100 * sums.sum() / counts.sum():.1f} [{100 * lo:.1f}, {100 * hi:.1f}]"
 
 
+def short(commit: str) -> str:
+    """Abbreviated hash, keeping any '(with uncommitted changes ...)' note."""
+    sha, _, note = commit.partition(" ")
+    return f"{sha[:7]} {note}".strip()
+
+
 def rows_for(run: Path) -> tuple[dict, list[dict]]:
     cfg = json.loads((run / "config.json").read_text(encoding="utf-8"))
     items = {(it["id"], it["level"], it["seed"]): it
@@ -125,14 +131,15 @@ def main() -> None:
         cfg, rs = rows_for(run)
         cfgs.append((run, cfg))
         rows += rs
-    judge_cfg = json.loads((args.runs[0] / "judge_config.json").read_text(encoding="utf-8"))
-    c0 = cfgs[0][1]
+    judge_cfgs = [json.loads((run / "judge_config.json").read_text(encoding="utf-8")) for run in args.runs]
+    judge_cfg, c0 = judge_cfgs[0], cfgs[0][1]
     out = [
         "# Phase 2 pilot (exploratory): prompt variants with and without the repair loop",
         "",
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
         f"- Git commit (report): {git_commit()}; runs: "
-        + ", ".join(f"`{run.name}` ({cfg['git_commit'][:7]})" for run, cfg in cfgs),
+        + ", ".join(f"`{run.name}` ({short(cfg['git_commit'])})" for run, cfg in cfgs)
+        + "; judge: " + ", ".join(sorted({short(c["git_commit"]) for c in judge_cfgs})),
         f"- Model: {c0['model']}, quantisation {c0['quantisation']}, endpoint {c0['endpoint']}, "
         f"backend {c0['backend'].get('build_info')}",
         f"- Generation: {json.dumps(c0['generation'])}",
