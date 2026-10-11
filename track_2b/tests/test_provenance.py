@@ -23,6 +23,10 @@ def test_git_commit_in_a_synced_copy(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(provenance.subprocess, "run", no_checkout)
     monkeypatch.setattr(provenance, "SYNCED_COMMIT", tmp_path / ".git_commit")
+    monkeypatch.delenv(provenance.COMMIT_ENV, raising=False)
     assert provenance.git_commit() == "unknown (not a git checkout)"
+    monkeypatch.setenv(provenance.COMMIT_ENV, "89abcdef0123456789abcdef0123456789abcdef")
+    assert provenance.git_commit() == \
+        "89abcdef0123456789abcdef0123456789abcdef (recorded by make run; the container is not a git checkout)"
     (tmp_path / ".git_commit").write_text("0123456789abcdef0123456789abcdef01234567\n", encoding="utf-8")
     assert provenance.git_commit() == "0123456789abcdef0123456789abcdef01234567 (synced copy, recorded by hpc/sync.sh)"

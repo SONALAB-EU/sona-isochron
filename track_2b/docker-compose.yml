@@ -1,0 +1,21 @@
+# `make run`: the app container against the LLM named by LLM_NAME, LLM_BASE_URL and LLM_API_KEY. Compose
+# reads them from the environment, or from .env next to this file (see .env.example). For a server on the
+# Docker host, use http://host.docker.internal:<port>/v1 as LLM_BASE_URL.
+name: isochron
+
+services:
+  app:
+    build: .
+    image: isochron-app:local
+    environment:
+      LLM_NAME: ${LLM_NAME:?set LLM_NAME (see .env.example and README.md)}
+      LLM_BASE_URL: ${LLM_BASE_URL:?set LLM_BASE_URL (see .env.example and README.md)}
+      LLM_API_KEY: ${LLM_API_KEY:?set LLM_API_KEY (see .env.example and README.md)}
+      LLM_QUANTISATION: ${LLM_QUANTISATION:-}
+      ISOCHRON_GIT_COMMIT: ${ISOCHRON_GIT_COMMIT:-}
+    volumes:
+      - ./data:/app/data:ro
+      - ./output:/app/output
+    user: ${ISOCHRON_UID_GID:-1000:1000}
+    extra_hosts:
+      - host.docker.internal:host-gateway

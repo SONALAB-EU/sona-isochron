@@ -59,3 +59,6 @@ hpc/gates/
 
 # The commit hpc/sync.sh records in the cluster copy (never in this checkout)
 /.git_commit
+
+# make run writes here
+output/

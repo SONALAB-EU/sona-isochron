@@ -1,0 +1,42 @@
+# `make run-offline`: no network at all. llama-server (llama.cpp build 11429, the build of every local result)
+# runs a local GGUF in a container without network interfaces (network_mode: none); the app container joins
+# that container's network namespace, so the two reach each other on 127.0.0.1 and nothing else.
+# The Makefile sets GGUF (an absolute path; the file is mounted read-only, never copied into the image or the
+# repository), LLM_NAME and a fresh random LLM_API_KEY. LLM_BASE_URL is the address of the llama-server below,
+# on the loopback interface the two containers share.
+name: isochron-offline
+
+services:
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server-b11429@sha256:2f8ebc2dde83c4bd7e5c6d61efa57965e0d5a79d29802c246c4593740d9c04c1
+    network_mode: none
+    volumes:
+      - ${GGUF:?set GGUF to the path of a GGUF file (make run-offline GGUF=...)}:/models/model.gguf:ro
+    environment:
+      LLAMA_API_KEY: ${LLM_API_KEY:?}
+    command: ["-m", "/models/model.gguf", "--alias", "${LLM_NAME:?}", "--host", "127.0.0.1", "--port", "8080",
+              "-c", "8192", "-np", "1", "--reasoning", "off"]
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 10s
+
+  app:
+    build: .
+    image: isochron-app:local
+    network_mode: service:llm
+    depends_on:
+      llm:
+        condition: service_healthy
+    environment:
+      LLM_NAME: ${LLM_NAME:?}
+      LLM_BASE_URL: http://127.0.0.1:8080/v1
+      LLM_API_KEY: ${LLM_API_KEY:?}
+      LLM_QUANTISATION: ${LLM_QUANTISATION:-}
+      ISOCHRON_GIT_COMMIT: ${ISOCHRON_GIT_COMMIT:-}
+    volumes:
+      - ./data:/app/data:ro
+      - ./output:/app/output
+    user: ${ISOCHRON_UID_GID:-1000:1000}

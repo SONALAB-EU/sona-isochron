@@ -1,0 +1,11 @@
+# Only what the image needs goes into the build context (an allowlist): never .env, keys, weights,
+# results, logs or caches.
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!src/
+!data/sample_input.jsonl
+**/__pycache__
+**/*.pyc
