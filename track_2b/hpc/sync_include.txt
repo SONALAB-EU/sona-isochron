@@ -25,6 +25,7 @@
 - .pytest_cache/
 - /results/raw/
 - /hpc/logs/
+- /hpc/gates/
 + /pyproject.toml
 + /uv.lock
 + /.python-version

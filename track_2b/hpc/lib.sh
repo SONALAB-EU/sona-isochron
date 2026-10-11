@@ -155,6 +155,20 @@ wait_healthy() {
     log "server on port $port healthy after about $waited s"
 }
 
+# wait_for_gate FILE TIMEOUT_S: until FILE exists (go on); fails if FILE.stop appears or TIMEOUT_S passes.
+# A queued job can start its server while an earlier job's result is checked by hand (docs/hpc.md).
+wait_for_gate() {
+    local gate=$1 timeout=$2 waited=0
+    log "waiting at the gate: $gate to go on, $gate.stop to stop (at most $timeout s)"
+    until [ -e "$gate" ]; do
+        [ ! -e "$gate.stop" ] || die "stopped at the gate ($gate.stop)"
+        [ "$waited" -lt "$timeout" ] || die "the gate $gate did not open within $timeout s"
+        sleep 30
+        waited=$((waited + 30))
+    done
+    log "gate open after about $waited s: $gate"
+}
+
 stop_server() {
     [ -n "${SERVER_PID:-}" ] || return 0
     if kill -0 "$SERVER_PID" 2> /dev/null; then

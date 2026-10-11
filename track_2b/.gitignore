@@ -55,6 +55,7 @@ results/raw/
 
 # HPC job logs (hpc/pipeline.sh)
 hpc/logs/
+hpc/gates/
 
 # The commit hpc/sync.sh records in the cluster copy (never in this checkout)
 /.git_commit

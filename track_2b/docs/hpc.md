@@ -190,20 +190,40 @@ unset HF_TOKEN
 
 ### 5. Run the 8B job
 
-First a smoke test: 5 German dev sentences outside the go/no-go set, levels 90 and 80, seed 0. Then the
-full run, German and French test.
+The jobs run in a chain:
+1. A smoke test: 5 German dev sentences outside the go/no-go set, levels 90 and 80, seed 0.
+2. Step 2 on German test.
+3. Step 2 on French test.
+4. Step 4 on dev.
+
+Each job waits for the one before (`--dependency=afterok`), so it can take the GPU that job frees
+instead of queueing again. Put each job id into the next line.
 
 ```
-sbatch --time=01:30:00 --job-name=isochron-smoke --export=ALL,SPLIT=dev,IDS="1516 1525 1528 1533 1537",LEVELS="90 80",SEEDS=0,RUN_SUFFIX=_smoke,WORKERS=8 hpc/run.sbatch
-sbatch --time=08:00:00 --export=ALL,LANGS="de fr" hpc/run.sbatch
+sbatch --time=01:30:00 --job-name=isochron-smoke --export=ALL,PHASES="generate judge report",SPLIT=dev,IDS="1516 1525 1528 1533 1537",LEVELS="90 80",SEEDS=0,RUN_SUFFIX=_smoke,WORKERS=8 hpc/run.sbatch
+sbatch --dependency=afterok:<smoke job id> --time=04:00:00 --job-name=isochron-step2-de --export=ALL,LANGS=de,GATE=hpc/gates/step2_test.go hpc/run.sbatch
+sbatch --dependency=afterok:<German job id> --time=03:30:00 --job-name=isochron-step2-fr --export=ALL,LANGS=fr,PHASES="generate judge report" hpc/run.sbatch
+sbatch --dependency=afterok:<French job id> --time=01:30:00 --job-name=isochron-step4-dev --export=ALL,STEP=4,LANGS="de fr",SPLIT=dev,EXCLUDE_GONOGO=1 hpc/run.sbatch
 squeue -u $USER
-tail -f hpc/logs/isochron-8b-<job id>.out
+tail -f hpc/logs/<job name>-<job id>.out
 ```
 
-- `--time` overrides the 12 h in `hpc/run.sbatch`. Eight hours keeps a failed run's cost inside a
-  12 H100-hour budget.
-- Each server needs about 11 minutes to start (measured for Qwen3-14B). Most of that is Python imports
-  from the network home, then compilation.
+- **The gate.** The German job starts Apertus, then waits at most 45 minutes for the smoke test to be
+  checked:
+
+  ```
+  mkdir -p hpc/gates
+  touch hpc/gates/step2_test.go
+  ```
+
+  The first command is needed once. Creating the `.go` file lets it go on. To stop it instead, create
+  `hpc/gates/step2_test.go.stop`; the job then fails, and so the jobs after it never start.
+- **Time limits.** `--time` overrides the 12 h in `hpc/run.sbatch`. These limits add up to 10.5
+  H100-hours, which keeps even a chain that runs to every limit inside a 12 H100-hour budget.
+- **Step 4** (`STEP=4`) runs `isochron.step4`, then `isochron.step4_report`, against Apertus only. It
+  has no judge.
+- **Start-up.** Each server needs about 11 minutes to start (measured for Qwen3-14B). Most of that is
+  Python imports from the network home, then compilation.
 
 ### 6. Run the 70B job, after the 8B job
 
