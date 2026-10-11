@@ -304,6 +304,60 @@ workflows. Ultracode mode was switched on in this session, but your rules say no
   - GPU so far: 1.45 + 0.19 = 1.64 H100-hours. Worst case with the remaining limits (4 + 3.5 + 1.5 h):
     10.64.
 
+## Local work while the H100 jobs run (your second message on 11 October)
+
+Tasks: `make run` and `make run-offline`, `README.md` and `technical_report.md`. I did not touch the cluster
+jobs, apart from the gate, and synced nothing: the cluster stays at commit 68492f2.
+
+- **Docker is not installed on this Mac** (no `docker`, Docker Desktop, OrbStack, Colima or Podman). As
+  you asked, I wrote the files and did not build the images. Here is what I tested instead.
+  - Static checks:
+    - Both compose files are valid against the official Compose schema (compose-spec commit 914ec15).
+    - The Dockerfile passes hadolint 2.15.1, with two ignores whose reasons are in the file.
+    - Every pin exists, checked against the registries: the base, uv and llama.cpp images by digest
+      (each built for amd64 and arm64), and the two CPU wheels of torch by their hashes on the PyTorch
+      index.
+  - From a fresh clone (commit a7d8e97):
+    - Without Docker, `make run` and `make run-offline` stop with a clear message, and `make -n` shows the
+      commands they would run.
+    - The app (`uv run python -m isochron.app`) ran on the 10 sample lines against llama-server b11429,
+      with Q4_K_M and an API key required. Fit was 6 of 10 (4 at round 0), NLI kept 9 of 10, at 19.4 s
+      per line.
+  - Offline: the same run under a macOS sandbox that allows connections to localhost only, with Hugging
+    Face offline.
+    - An external connection fails there (the DNS lookup is refused), and the app still ran.
+    - All 10 outputs and their checks are identical to the first run's. Only the times differ.
+  - llama-server is stopped, and the temporary key is deleted.
+- **Decisions.**
+  - **torch in the image is the locked version (2.14.1) as its CPU build,** hash-pinned for amd64 and
+    arm64. Every other package comes from `uv.lock`, hash-checked.
+    - Why: the container runs the NLI on the CPU. The lock's Linux build of torch is the CUDA build, which
+      adds about 3 GB of NVIDIA libraries.
+    - A test (`tests/test_app.py`) fails if the Dockerfile's torch version ever drifts from the lock.
+  - **Offline networking.** llama-server runs with `network_mode: none`, and the app joins its network
+    namespace.
+    - Why: neither container has a network interface besides loopback, and the two still talk over
+      127.0.0.1. That is "networking disabled" in the strict sense.
+    - The address `http://127.0.0.1:8080/v1` is written once, in `docker-compose.offline.yml`, next to the
+      server's port. There is no API key in any file: the Makefile makes a fresh random one for each run.
+  - **The NLI model is built into the image** at its pinned revision, so nothing is downloaded at run time.
+  - **The app calls the experiments' own runner** (`isochron.loop_run.run`, variant v1, seed 0). So
+    `make run` is exactly the method we evaluate, with the same logs and provenance.
+  - **Sample input:** the first 10 German dev sentences in file order outside the go/no-go 50, at levels
+    90, 80, 70 and 60 % in turn (`isochron.data.build_sample_input`).
+  - **The container's commit:** the Makefile passes the host's commit in `ISOCHRON_GIT_COMMIT`, and the
+    summary records it.
+  - **Not changed: the selection rule.**
+    - In the sample, all 4 misses kept 90–100 % of the line's syllables, and one is the line unchanged.
+      When nothing fits and keeps the meaning, the loop prefers meaning.
+    - The test runs use this rule, so it stays. It is listed as a limitation in the report.
+- **A slip, fixed.** Commit 9764177 went in with one test failing: `test_data_files` had no schema for the
+  new sample file, and pytest's exit status was lost in a pipe. The next commit (a7d8e97) fixed it, and
+  all 128 tests pass.
+- **README.md** is rewritten: what it does, how to run it, input and output, licences.
+- **technical_report.md** has every template section filled. Test results, team, demo, the Docker check
+  and the final commit are marked **[PLACEHOLDER: …]**. `docs/architecture.md` has the diagrams.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 

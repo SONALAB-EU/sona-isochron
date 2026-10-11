@@ -1,108 +1,178 @@
-# Track 2 B: Own Project
+# Isochron: dubbing lines that fit their slot, with Apertus
 
-Bring your own idea and build a working Apertus prototype that tackles a problem you care about — any domain, any use case. The project must be new, started within the hackathon period.
+Hack Apertus 2026, Track 2B (own project). Built with Apertus 1.5.
 
-Submissions must use the Apertus model family.
-For Track 2 this means that submitted solutions must be built with Apertus. Other open-weights models can be used to support development, e.g. as automatic judges during evaluation. Their role must be clearly described in the submission report.
+A dubbed line has to fit the time the original actor speaks: that is isochrony. Translations are often
+longer than the original, so a dubbing editor shortens them by hand without changing what they say.
+Isochron does that step with **Apertus 1.5**. It shortens a line to a target length in syllables, as a
+proxy for spoken time, and it checks that nothing was dropped or added.
 
-💬 In case you have questions, join the conversation on [Discord](https://discord.gg/hack-apertus) or send an email to “hello@hackapertus.ch”
+- **Input:** a line, its language (German or French) and a target length, as a percentage of its syllables.
+- **Output:** a shorter line in the same language, with its syllable count. Two checks are reported:
+  whether it fits within ±10 % of the target, and whether a meaning check finds the same content in both
+  directions.
 
----
+## How it works
 
-## 🔧 Resources & Tools
+Our method is prompt v1 with a **repair loop**. Asking for a character count (isometric prompting) is the
+baseline we compare against, not our method.
 
-Check our resources & tools page for detailed information:
-https://hackapertus.notion.site/resources-tools
+1. **Round 0.** Apertus gets the line and the syllable target and writes 4 candidates.
+2. **Checks.** Each candidate is checked three ways:
+   - **Length:** its syllables are counted with eSpeak NG 1.52.0.
+   - **Meaning:** a multilingual NLI model (mDeBERTa-v3, XNLI) must find entailment in both directions
+     between the line and the candidate. One direction failing means information was added; the other,
+     that it was dropped.
+   - **Language:** a language identifier (py3langid) checks that the candidate is in the line's language.
+3. **Repair.** If the best candidate fails a check, Apertus gets one revision prompt with specific
+   feedback: "4 syllables too long (about 1 word)", "information is missing", "information was added" or
+   "answer in German".
+4. **Stop.** After at most 2 revisions, the best candidate over all rounds is returned. Every round is
+   logged.
 
-| Models           | URL                                      |
-|------------------|------------------------------------------|
-| Apertus v1.5 8B  | [huggingface.co/swiss-ai/Apertus-v1.5-8B](https://huggingface.co/swiss-ai/Apertus-v1.5-8B)  |
-| Apertus v1.5 70B | [huggingface.co/swiss-ai/Apertus-v1.5-70B](https://huggingface.co/swiss-ai/Apertus-v1.5-70B) |
+The loop never sees the evaluation judge. On FLEURS dev, the loop raised the share of outputs that fit
+from 33 % to 73 % (30 German sentences, exploratory; see `technical_report.md`). The results on test are
+in `technical_report.md` when they are in.
 
+## Run it
 
-## Target architecture (mandatory)
+### `make run` (Docker)
 
-Whatever you build in Track 2B must be deployable in one of these three architectures:
+What you need:
+- Docker with Compose v2 (the `docker compose` command).
+- An OpenAI-compatible endpoint that serves Apertus 1.5, given by three variables, either in the
+  environment or in `.env` next to this file (copy `.env.example`):
 
-- **a) On-premise** — on the organisation's own infrastructure, under its own administration.
-- **b) Air-gapped** — with no external network connection at runtime.
-- **c) Sovereign Swiss cloud** — on a cloud platform operated in Switzerland, under Swiss jurisdiction, with Swiss data residency.
+  ```
+  LLM_NAME=<the model name the endpoint serves>
+  LLM_BASE_URL=<the endpoint's base URL, ending in /v1>
+  LLM_API_KEY=<your API key>
+  ```
 
----
+  For a server on the Docker host itself, use `http://host.docker.internal:<port>/v1` as `LLM_BASE_URL`.
+  `LLM_QUANTISATION` is optional: if you set it, it is recorded in the summary.
 
-## Data
+Then, from this directory:
 
-The `data/` directory must not exceed 100 MB.
+```
+make run
+```
 
----
+What happens:
+- The image is built (only the first time) and the method runs on the 10 lines of
+  `data/sample_input.jsonl`.
+- The results go to `output/results.jsonl` and `output/summary.md`.
+- The NLI and the language check run on the CPU, inside the container.
 
-## 📦 Submission Requirements & Deliverables
+### `make run-offline` (no network at all)
 
-❗️ Submissions are not handled on Devpost but via this URL only:
-http://hackapertus.ch/online-hack/submissions
+The same run with no network connection. llama.cpp's server (build 11429, the build of all our local
+results) runs a GGUF file from your disk next to the app:
 
-The submission must: 
-1. follow the template repo and include all prerequisite files and definitions
-2. follow the specified input/output formats
-3. run in a Docker container, launched with `make run` from the root of the project
-4. run end-to-end when judges try to run it
+```
+make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
+```
 
-### Git repo (URL)
-- Create your repo from this template (**Use this template**) and work in the `track_2b/` challenge directory. Delete the other track challenge directories.
-- Keep `track_2b/` as it is: don't rename it or move its files.
-- Set the repo to PUBLIC (Settings --> Collaborators --> Manage Visibility)
-- Submit the URL of YOUR Git repo.
+- The server's container has no network interfaces. The app joins its network namespace, so the two
+  reach each other on 127.0.0.1 and nothing else.
+- The GGUF is mounted read-only. It is never copied into the image or the repository.
+- `docs/local_llm.md` explains which GGUF we use and its caveat: it is a text-only conversion of the
+  official weights.
+- Build the images once while online. After that, `make run-offline` needs no network.
+- Everything runs on the CPU here, so it is slower than with a GPU server.
 
-### Technical Report (pdf)
-- Update [technical_report.md](technical_report.md) in this repository with all the details for your submission.
-- Upload a pdf of your technical report to this directory, named as `TeamName_Report.pdf`.
-- Format: pdf, max. 6 pages
-- Submit the pdf of the technical report.
+### Without Docker
 
-### Demo video (URL)
-- Max. 2 min demo video of your prototype
+You need Python 3.11 with [uv](https://docs.astral.sh/uv/), and eSpeak NG 1.52.0 (`brew install
+espeak-ng` on a Mac). Set the three variables, then run:
 
-### Dataset (URL) - optional, depending on your project
-Submitted datasets must comply with our guidelines for responsibly sourced datasets.
+```
+uv sync
+uv run python -m isochron.app --input data/sample_input.jsonl --out output
+```
 
-- Create a user account on Hugging Face
-- Clone our dataset template on Hugging Face: https://huggingface.co/datasets/HackApertus/online_hack_template
-- Complete the dataset card with all required information
-- Upload your dataset. It should consist of the following components:
-    - evaluation dataset (i.e. individual test cases)
-    - model response dataset (i.e. the model response to each test case)
-    - metadata file (i.e. additional information about each test case; where relevant, this file must contain instance-level licensing information) 
-- Make sure your dataset access control is set to PUBLIC
-- Provide the URL of _your_ data set
+Add `--mock` for a dry run without an LLM. `uv run pytest` runs the tests.
 
+### The experiments
 
----
+- `docs/eval_protocol.md`: the pre-registered protocol, its changelog and every decision with its date.
+- `docs/local_llm.md`: Apertus on a Mac (llama.cpp).
+- `docs/hpc.md`: Apertus 1.5 in BF16 on H100s (vLLM).
+- `results/`: every report. Each one records its date, git commit, model and quantisation, endpoint,
+  TTS (none), seeds and n.
 
-## ⚖️ Judging Criteria
+## Input and output
 
-1. Purposeful use of AI
-2. Technical rigour
-3. Value, cost & scalability
-4. Sovereign deployability
-5. Implementation feasibility
+**Input** (`--input`, JSON lines), one object per line:
 
-Judges use a Scale 0–5 per dimension.
+```json
+{"id": "1513", "lang": "de", "text": "Argentinien ist bekannt dafür, dass sein Polo-Team und die Spieler zu den besten der Welt gehören.", "level": 70}
+```
 
----
+| Field | Meaning |
+|-------|---------|
+| `id` | A unique string |
+| `lang` | `de` or `fr`: the language of the line |
+| `text` | The line to shorten |
+| `level` | The target length in % of the line's syllables, a whole number from 1 to 100. The target is `level × syllables / 100`, rounded half up. |
 
-## Support
+Other fields, such as `license` and `source` in the sample, are ignored.
 
-**Licensing requirements**
-Please check our Terms & Conditions (6. What you build is open source):
-https://hackapertus.ch/terms-and-conditions
+**Output** (`--out`, default `output/`):
 
-## FAQ
-💡 https://hackapertus.ch/faq
+- `results.jsonl`: one object per input line, in input order.
 
-## Contact
-💬 In case you have questions, join the conversation on Discord or send an email to “hello@hackapertus.ch”
+  | Field | Meaning |
+  |-------|---------|
+  | `id`, `lang`, `level`, `input` | From the input |
+  | `input_syllables`, `target_syllables` | The line's syllables and the target |
+  | `output`, `output_syllables` | The shortened line and its syllables (`null` if Apertus gave no usable answer) |
+  | `fit` | The output is within ±10 % of the target |
+  | `nli_kept` | The NLI finds entailment in both directions between line and output |
+  | `language`, `wrong_language` | The identified language of the output, and whether it is not `lang` |
+  | `accepted` | `fit` and `nli_kept`, in the right language |
+  | `revisions`, `retries` | Rounds after round 0 (0 to 2), and how many of them repeated round 0 after an unusable answer |
+  | `round0` | The closest of the first 4 candidates, before any revision: `output`, `output_syllables`, `fit`, `nli_kept` |
+  | `time_s` | Seconds for this line, all rounds and checks included |
 
-## Licence
+  An output in the wrong language counts as neither fitting nor kept.
+- `summary.md`: how the run was made, one row per line, and totals.
+  - Provenance: date, git commit, model, quantisation, endpoint, server, prompts, generation settings,
+    seeds and n.
+  - Totals: fit and kept, after the loop and at round 0.
+- `raw/<time>/`: the full log of every round (each prompt, raw answer, candidate and check), in the same
+  format as the experiments.
 
-- Code: Apache-2.0, see [LICENSE](../LICENSE).
-- Technical report and documentation: CC-BY-4.0, as set by the organisers' template.
+## Repository layout
+
+| Path | What it is |
+|------|------------|
+| `src/isochron/app.py` | `make run`: the method on an input file |
+| `src/isochron/repair.py`, `loop_run.py` | The repair loop, and the runner the experiments and `make run` share |
+| `src/isochron/metrics/` | Syllable counting (eSpeak NG) and the NLI meaning check |
+| `src/isochron/language.py` | The language check |
+| `src/isochron/prompts/` | Every prompt, versioned |
+| `src/isochron/judge.py`, `pilot_report.py`, `step2_report.py` | The evaluation-only judge, and the reports |
+| `src/isochron/step4.py` | Step 4: translating to a length budget |
+| `data/` | FLEURS sentences, control pairs and the sample input (`data/README.md`) |
+| `docs/` | Protocol, licences, setups, architecture |
+| `hpc/` | Scripts for the H100 runs (`docs/hpc.md`) |
+| `results/` | Reports; raw runs stay local (`results/raw/`, git-ignored) |
+| `Dockerfile`, `docker-compose*.yml`, `Makefile` | `make run` and `make run-offline` |
+
+## Licences
+
+- **Code:** Apache-2.0 ([LICENSE](../LICENSE)).
+- **Technical report and documentation:** CC BY 4.0, as the organisers' template sets.
+- **Data** (`data/*.jsonl`): CC BY-SA 4.0. The sentences come from FLEURS (CC BY 4.0), whose text comes
+  from FLoRes-101 (CC BY-SA 4.0). See `data/README.md`.
+- **Models:**
+  - Apertus 1.5: Apache-2.0, plus the Apertus 1.5 Acceptable Use Policy.
+  - The NLI model `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`: MIT.
+  - The evaluation judges Qwen3-14B and Qwen3-8B: Apache-2.0. They never take part in generation.
+- **Programs:**
+  - eSpeak NG 1.52.0: GPL-3.0-or-later. It runs as a separate program; the Docker image builds it from
+    its upstream source at build time.
+  - llama.cpp: MIT. vLLM: Apache-2.0. py3langid: BSD-3-Clause. PyTorch: BSD-3-Clause.
+
+Every item, with source, revision and licence: `docs/licences.md`.
