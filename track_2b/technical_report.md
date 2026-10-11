@@ -29,10 +29,11 @@ syllables, a proxy for spoken time, without losing or adding information.
 - **German test (Apertus 8B BF16; 347 sentences × 4 levels × 3 seeds).**
   - The loop raised fit from 34.9 % to 64.7 %, a paired +29.8 points [27.2, 32.4].
   - It raised fit & complete from 14.2 % to 38.4 % (+24.3 points [22.2, 26.3]).
-  - The gain is largest at level 90 and gone at level 60.
 - **French test (332 sentences).**
   - Fit rose from 34.4 % to 67.6 % (+33.2 points [30.6, 35.8]).
   - Fit & complete rose from 15.5 % to 44.2 % (+28.6 points [26.4, 30.9]).
+- **By level.** In both languages the gain is largest at level 90. At level 60 it is small: +1.6 points
+  of fit & complete in German (not distinguishable from zero) and +5.4 in French.
 
 ## 2. Architecture
 
