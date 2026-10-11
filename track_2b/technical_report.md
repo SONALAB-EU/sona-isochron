@@ -30,7 +30,9 @@ syllables, a proxy for spoken time, without losing or adding information.
   - The loop raised fit from 34.9 % to 64.7 %, a paired +29.8 points [27.2, 32.4].
   - It raised fit & complete from 14.2 % to 38.4 % (+24.3 points [22.2, 26.3]).
   - The gain is largest at level 90 and gone at level 60.
-- **French test.** **[PLACEHOLDER: the French result, from `results/step2_test.md`]**
+- **French test (332 sentences).**
+  - Fit rose from 34.4 % to 67.6 % (+33.2 points [30.6, 35.8]).
+  - Fit & complete rose from 15.5 % to 44.2 % (+28.6 points [26.4, 30.9]).
 
 ## 2. Architecture
 
@@ -145,26 +147,32 @@ every later change is in its changelog.
 | Step 2, German test, 8B BF16, without the loop. 347 sentences × 4 levels × 3 seeds (4,164 outputs) | Fit; fact recall; fit & complete | 34.9 % [32.5, 37.3]; 59.9 % [57.0, 62.8]; 14.2 % [12.4, 16.1] |
 | **Ours**, German test | Same | 64.7 % [62.1, 67.2]; 78.0 % [75.9, 80.0]; 38.4 % [35.7, 41.2] |
 | Effect of the loop, German test (paired) | Difference in points [95 % CI] | Fit +29.8 [27.2, 32.4]; fact recall +18.0 [16.0, 20.1]; fit & complete +24.3 [22.2, 26.3] |
-| Step 2, French test, without and with the loop | Same | **[PLACEHOLDER]** |
+| Step 2, French test, 8B BF16, without the loop. 332 sentences × 4 levels × 3 seeds (3,984 outputs) | Fit; fact recall; fit & complete | 34.4 % [31.7, 37.0]; 61.6 % [58.6, 64.7]; 15.5 % [13.5, 17.6] |
+| **Ours**, French test | Same | 67.6 % [65.0, 70.2]; 80.2 % [78.0, 82.3]; 44.2 % [41.3, 47.0] |
+| Effect of the loop, French test (paired) | Difference in points [95 % CI] | Fit +33.2 [30.6, 35.8]; fact recall +18.5 [16.5, 20.6]; fit & complete +28.6 [26.4, 30.9] |
 
-**Step 2 on German test (`results/step2_test.md`; final numbers).**
+**Step 2 on test, German and French (`results/step2_test.md`; final numbers).**
 - The loop's gain in fit & complete shrinks as the target tightens:
 
-  | Level | Gain in points |
-  |------:|----------------|
-  | 90 % | +56.7 [52.7, 60.5] |
-  | 80 % | +28.5 [24.9, 32.2] |
-  | 70 % | +10.2 [7.7, 12.8] |
-  | 60 % | +1.6 [−0.6, +3.8] |
+  | Level | German | French |
+  |------:|--------|--------|
+  | 90 % | +56.7 [52.7, 60.5] | +61.7 [57.9, 65.5] |
+  | 80 % | +28.5 [24.9, 32.2] | +32.9 [29.2, 36.6] |
+  | 70 % | +10.2 [7.7, 12.8] | +14.5 [11.5, 17.5] |
+  | 60 % | +1.6 [−0.6, +3.8] | +5.4 [3.2, 7.6] |
 
-- At 60 %, fit does not improve (−1.5 points [−5.6, +2.5]). The loop keeps the meaning instead: NLI kept
-  rises from 52 % to 96 %, and outputs average 1.08 × the target.
-- Without the loop, Apertus over-shortens (0.83 × the target overall, 0.71 at level 90). With the loop,
-  outputs average 1.05 × the target.
+- At 60 %, fit barely moves: −1.5 points [−5.6, +2.5] in German and +4.5 [0.4, 8.6] in French.
+  - The loop keeps the meaning instead. In German, NLI kept rises from 52 % to 96 %, and outputs average
+    1.08 × the target.
+- Without the loop, Apertus over-shortens (0.83 × the target in German and 0.82 in French). With the
+  loop, outputs average 1.05 and 1.03 × the target.
 - The runs were clean:
   - no output was in the wrong language;
-  - none of the 8,328 judge verdicts was invalid;
-  - round 0 left 28 items without a usable answer, and the loop left none.
+  - none of the 16,296 judge verdicts was invalid;
+  - in German, round 0 left 28 items without a usable answer, and the loop left none.
+- French answers break JSON more often: 2.9 % of rounds against 0.5 % in German. Most of these are
+  apostrophes escaped as `\'`. After the loop, 11 French items (3 sentences) have no usable answer, and
+  they count as failures.
 - The added-fact rate is about 0 in both conditions.
 - An output takes 10.5 s with the loop and 0.7 s for round 0, with 16 items in flight on one H100.
 
@@ -240,6 +248,11 @@ every later change is in its changelog.
   - The final output is the input unchanged in 9.4 %, 4.7 %, 3.0 % and 2.0 % of items at levels 90, 80,
     70 and 60 %.
   - Such outputs count as not fitting.
+- **French answers break the answer format more often.**
+  - Apertus often escapes French apostrophes as `\'` inside its JSON answer, and strict JSON rejects
+    that: 215 of the 253 invalid French answers.
+  - 11 French test items from 3 sentences ended without a usable answer, counted as failures.
+  - A more lenient parser is a fix to tune on dev first.
 - **Grammar is not checked.** Some outputs are ungrammatical (for example *"den 18. Jahrhundert Markt"*).
   No check in the loop looks at grammar.
 - **Development ran on a derived 4-bit model.** The go/no-go and the pilot used a Q4_K_M text-only
@@ -264,7 +277,7 @@ every later change is in its changelog.
 - **Hardware.**
   - Development: an Apple M3 with 16 GB.
   - Final runs: one NVIDIA H100 80 GB per job, on HPI's cluster (driver 590.48.01).
-  - **[PLACEHOLDER: total H100-hours; 2.68 by 11 October 12:44 UTC (sacct), out of a budget of 12]**
+  - **[PLACEHOLDER: total H100-hours; 3.63 by 11 October 13:57 UTC (sacct), out of a budget of 12]**
 - **Seeds.**
   - Generation uses seeds 0, 1 and 2, plus 1000 × the round for revisions.
   - The judge runs at temperature 0 with seed 0.

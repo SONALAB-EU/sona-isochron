@@ -1,25 +1,25 @@
 # Status
 
-## Summary (2026-10-11, 12:50 UTC)
+## Summary (2026-10-11, 14:05 UTC)
 
-**Step 2 on German test is done** (job 2636592, 11:40–12:42 UTC). The numbers are in
-`results/step2_test.md`. Apertus 1.5 8B BF16; 347 sentences × 4 levels × 3 seeds; judge Qwen3-14B:
+**Step 2 on test is done, German and French** (jobs 2636592 and 2636593). The numbers are in
+`results/step2_test.md`. Apertus 1.5 8B BF16; every test sentence × 4 levels × 3 seeds; judge Qwen3-14B:
 
-| German test, all levels pooled | Fit | Fit & complete |
-|--------------------------------|-----|----------------|
-| Without the loop | 34.9 % [32.5, 37.3] | 14.2 % [12.4, 16.1] |
-| With the loop | 64.7 % [62.1, 67.2] | 38.4 % [35.7, 41.2] |
-| Paired difference (points) | +29.8 [27.2, 32.4] | +24.3 [22.2, 26.3] |
+| Pooled over the levels | Fit, without → with the loop | Fit & complete, without → with | Paired gain (points): fit; fit & complete |
+|------------------------|-----------------------------:|-------------------------------:|-------------------------------------------|
+| German (347 sentences) | 34.9 % → 64.7 % | 14.2 % → 38.4 % | +29.8 [27.2, 32.4]; +24.3 [22.2, 26.3] |
+| French (332 sentences) | 34.4 % → 67.6 % | 15.5 % → 44.2 % | +33.2 [30.6, 35.8]; +28.6 [26.4, 30.9] |
 
-- Fit & complete gains +56.7 points at level 90 and +1.6 [−0.6, +3.8] at level 60, where the loop keeps
-  meaning over length.
-- **French (job 2636593) waits for a free H100.** Every H100 was busy when the German job ended. Step 4 on
-  dev (job 2636594) follows it.
-- GPU: 2.68 H100-hours used (sacct). With the remaining limits (3.5 + 1.5 h), the worst case is 7.68.
+- The gain shrinks as the target tightens. Fit & complete rises by +57 to +62 points at level 90, but
+  only +1.6 (German) and +5.4 (French) at 60 %.
+- French answers break JSON more often: apostrophes escaped as `\'`. 11 French items are left without an
+  answer and count as failures. This is documented, not fixed: it was found on test.
+- **Step 4 on dev** (job 2636594) has been running since 13:57.
+- GPU: 3.63 H100-hours used (sacct). With step 4's limit (1.5 h), the worst case is 5.13.
 - Your local tasks are done and committed:
-  - `make run` and `make run-offline`: Docker is not installed here, so the images are not built. Every
-    other part was tested from a fresh clone.
-  - `README.md`, and `technical_report.md` with the German numbers filled in.
+  - `make run` and `make run-offline`: Docker is not installed here, so the images are not built.
+  - `README.md`, and `technical_report.md`, which has every test number. Still to fill: step 4, team,
+    demo, the Docker check and the final commit.
 
 The earlier summary, written while the weights were missing, follows.
 
@@ -332,6 +332,19 @@ workflows. Ultracode mode was switched on in this session, but your rules say no
     (`results/hpc_8b_step2_de_test.md`).
 - **12:44. French (job 2636593) waits for resources.** No H100 was free when the German job ended, so it
   could not take that GPU. It starts when one frees up; I do not touch it.
+
+- **13:57. Step 2 on French test is complete** (job 2636593: 12:59:52–13:57:20, 3,448 s, 0.96 H100-hours).
+  - It waited 17 min for a free H100.
+  - 3,984 items and 3,984 verdicts, 0 invalid verdicts, 0 wrong-language outputs.
+  - Without the loop, 89 round-0 items had no usable answer; with the loop, 11 still have none (3
+    sentences).
+  - The cause is invalid JSON: 2.9 % of French rounds against 0.5 % of German. 215 of the 253 are
+    apostrophes escaped as `\'`, which strict JSON rejects.
+  - Decision: report it as a limitation and do not change the parser. It was found on test, and a fix must
+    be tuned on dev before any use.
+  - `results/step2_test.md` was generated again with both languages (commit 7bce3a4). The header now lists
+    every run's endpoint and judge endpoint.
+- **13:57. Step 4 on dev** (job 2636594) took the GPU the French job freed.
 
 ## Local work while the H100 jobs run (your second message on 11 October)
 

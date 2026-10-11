@@ -32,17 +32,17 @@ baseline we compare against, not our method.
 
 The loop never sees the evaluation judge.
 
-Results on FLEURS German test (Apertus 1.5 8B in BF16; 347 sentences × 4 levels × 3 seeds; scored by an
+Results on FLEURS test (Apertus 1.5 8B in BF16; every sentence × 4 levels × 3 seeds; scored by an
 independent judge, Qwen3-14B):
 
-| Share of outputs | Without the loop | With the loop |
-|------------------|-----------------:|--------------:|
-| Fit the target | 34.9 % | 64.7 % |
-| Fit, with every fact kept and nothing added | 14.2 % | 38.4 % |
+| Share of outputs | German: without the loop | German: with it | French: without the loop | French: with it |
+|------------------|------------------:|-------------:|------------------:|-------------:|
+| Fit the target | 34.9 % | 64.7 % | 34.4 % | 67.6 % |
+| Fit, with every fact kept and nothing added | 14.2 % | 38.4 % | 15.5 % | 44.2 % |
 
-- The gain is largest for small cuts (90 % of the syllables) and gone at 60 %, where the loop keeps the
+- The gain is largest for small cuts (90 % of the syllables) and small at 60 %, where the loop keeps the
   meaning rather than the length.
-- Details are in `technical_report.md` and `results/step2_test.md`. French is still running.
+- Details are in `technical_report.md` and `results/step2_test.md`.
 
 ## Run it
 

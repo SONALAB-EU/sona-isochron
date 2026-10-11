@@ -13,7 +13,8 @@ On 2026-10-10 the cluster facts below were checked and steps 1–3 were run:
 On 2026-10-11 the Apertus weights were downloaded with your token (step 4). The chain in step 5 then ran:
 - The smoke test passed: job 2636579, 12 min.
 - Step 2 on German test is done: job 2636592, 62 min, `results/step2_test.md`.
-- French (job 2636593) and step 4 on dev (job 2636594) were queued when this was written.
+- Step 2 on French test is done: job 2636593, 57 min. It queued 17 min for a free H100.
+- Step 4 on dev (job 2636594) started at 13:57 UTC.
 
 ## What runs where
 

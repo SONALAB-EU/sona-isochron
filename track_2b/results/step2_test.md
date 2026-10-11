@@ -1,73 +1,82 @@
 # Step 2 on test: prompt v1 without and with the repair loop
 
-- Date: 2026-10-11 12:48 UTC
-- Git commit (report): d98b12e966443e3121ca4ec5064ffa3608ef2604 (with uncommitted changes to tracked files); runs: `hpc_8b_step2_de_test` (68492f2 (synced copy, recorded by hpc/sync.sh))
-- Model: apertus-v1.5-8b-bf16, quantisation BF16, endpoint http://127.0.0.1:38657/v1, backend vLLM 0.23.1rc1.dev1029+ga601a9d99
+- Date: 2026-10-11 14:00 UTC
+- Git commit (report): 7bce3a4312d2086a600d03f94476cb7004d88d48; runs: `hpc_8b_step2_de_test` (68492f2 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step2_fr_test` (68492f2 (synced copy, recorded by hpc/sync.sh))
+- Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:38657/v1, fr http://127.0.0.1:51465/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; round seeds: item seed + 1000 × round (round 0 uses the item seed)
 - Prompt `shorten_syllables_v1` (fe4fbfdd800d); repair `revise_v1` (ab0593b9716e), at most 2 rounds
 - Loop checks: eSpeak NG text-to-speech: 1.52.0, NLI MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, cuda, float32, argmax label, language check py3langid 0.4.0, restricted to de/en/fr/it; wrong language = top label is another language with probability >= 0.9
-- Judge (evaluation only): qwen3-14b-bf16 (BF16), endpoint http://127.0.0.1:53663/v1, backend vLLM 0.23.1rc1.dev1029+ga601a9d99, temperature 0, seed 0, mode perfact_v3
-- Items: de test: 347 sentences × levels [90, 80, 70, 60] × seeds [0, 1, 2]; TTS: none
+- Judge (evaluation only): qwen3-14b-bf16 (BF16), backend vLLM 0.23.1rc1.dev1029+ga601a9d99, temperature 0, seed 0, mode perfact_v3; endpoint de http://127.0.0.1:53663/v1, fr http://127.0.0.1:51087/v1
+- Items: de test: 347 sentences × levels [90, 80, 70, 60] × seeds [0, 1, 2]; fr test: 332 sentences × levels [90, 80, 70, 60] × seeds [0, 1, 2]; TTS: none
 - 95 % intervals: bootstrap over sentences (each carries its levels and seeds), 10000 resamples, seed 0.
 
 <!-- Hand-written summary section of results/step2_test.md, inserted by `python -m isochron.step2_report RUN_DIR... --notes results/step2_test_notes.md`. Date, commits, model, endpoint, TTS, seeds and n are in that report's header. -->
 
 ## Summary
 
-These are the final numbers for FLEURS German test: 347 sentences × levels 90, 80, 70 and 60 % × seeds 0, 1
-and 2, so 4,164 outputs per condition.
-- Apertus 1.5 8B ran in BF16 (the official weights) on vLLM, on one H100. The judge, Qwen3-14B BF16, was
-  used for evaluation only.
+These are the final numbers for FLEURS test, German and French: every sentence × levels 90, 80, 70 and
+60 % × seeds 0, 1 and 2.
+- German: 347 sentences, 4,164 outputs per condition. French: 332 sentences, 3,984 outputs.
+- Apertus 1.5 8B ran in BF16 (the official weights) on vLLM, on one H100 per language. The judge,
+  Qwen3-14B BF16, was used for evaluation only.
 - Both conditions come from the same run: "without the loop" is the closest round-0 candidate.
-- **French: pending.** Job 2636593 has waited for a free H100 since 12:42 UTC. This report will be
-  generated again with both languages.
 
-**German, pooled over the four levels:**
-- **The repair loop helps.**
-  - Fit rises from 34.9 % to 64.7 % (+29.8 points [27.2, 32.4], paired).
-  - Fit & complete rises from 14.2 % to 38.4 % (+24.3 points [22.2, 26.3]).
-  - Fact recall rises from 59.9 % to 78.0 % (+18.0 points [16.0, 20.1]).
+**The repair loop helps in both languages.** Pooled over the four levels:
+
+| Language | Fit, without → with | Fit & complete, without → with | Paired gain: fit | Paired gain: fit & complete |
+|----------|--------------------:|-------------------------------:|-----------------:|----------------------------:|
+| German | 34.9 % → 64.7 % | 14.2 % → 38.4 % | +29.8 points [27.2, 32.4] | +24.3 points [22.2, 26.3] |
+| French | 34.4 % → 67.6 % | 15.5 % → 44.2 % | +33.2 points [30.6, 35.8] | +28.6 points [26.4, 30.9] |
+
+- **Fact recall** rises from 59.9 % to 78.0 % in German and from 61.6 % to 80.2 % in French (+18.0 and
+  +18.5 points).
 - **The gain shrinks as the target tightens.** Fit & complete rises by:
 
-  | Level | Gain in points |
-  |------:|----------------|
-  | 90 % | +56.7 [52.7, 60.5] |
-  | 80 % | +28.5 [24.9, 32.2] |
-  | 70 % | +10.2 [7.7, 12.8] |
-  | 60 % | +1.6 [−0.6, +3.8], which cannot be told from zero |
+  | Level | German | French |
+  |------:|--------|--------|
+  | 90 % | +56.7 | +61.7 |
+  | 80 % | +28.5 | +32.9 |
+  | 70 % | +10.2 | +14.5 |
+  | 60 % | +1.6 [−0.6, +3.8] | +5.4 [3.2, 7.6] |
 
-- **At 60 % the loop does not improve fit** (−1.5 points [−5.6, +2.5]).
+- **At 60 %, fit barely moves:** −1.5 points [−5.6, +2.5] in German and +4.5 [0.4, 8.6] in French.
   - When no candidate both fits and keeps the meaning, the loop keeps the meaning. NLI kept rises from
-    52 % to 96 %.
-  - So the outputs run long: achieved ÷ target is 1.08.
-- **Without the loop, Apertus over-shortens:** achieved ÷ target is 0.83 overall, and 0.71 at level 90.
-  With the loop it is 1.05.
-- **With the loop, misses run long, and some outputs are the input unchanged.** This is analysis of the
-  same outputs, not a new metric.
-  - Misses that are too long outnumber those too short at every level. At 60 %, 321 are too long and 145
-    too short, of 1,041.
-  - The final output is the input unchanged in this share of items:
+    52 % to 96 % (German) and from 56 % to 98 % (French).
+- **Without the loop, Apertus over-shortens:** achieved ÷ target is 0.83 (German) and 0.82 (French), and
+  0.71 at level 90 in both. With the loop it is 1.05 and 1.03.
 
-    | Level | Unchanged input |
-    |------:|----------------:|
-    | 90 % | 9.4 % |
-    | 80 % | 4.7 % |
-    | 70 % | 3.0 % |
-    | 60 % | 2.0 % |
+**What goes wrong** (analysis of the same outputs, not a new metric):
+- **Misses run long.** Too long outnumbers too short at every level in both languages. At 60 %: 321
+  against 145 in German, and 243 against 158 in French.
+- **Some outputs are the input unchanged.** At 90 %, an unchanged input is about 1.11 × the target, just
+  outside the ±10 % band. Share of items by level:
 
-  - At 90 %, an unchanged input is about 1.11 × the target, just outside the ±10 % band.
-- **Clean runs.**
-  - No output is in the wrong language, in either condition.
-  - Round 0 left 28 items without a usable answer. With the loop there are none, after 33 retries.
-  - None of the 8,328 judge verdicts is invalid.
-- **Added facts.** The added-fact rate is about 0 % in both conditions. The judge caught 16 of 20
-  inserted facts on the controls, so this means few added facts, not none.
-- **Cost.** With 16 items in flight on one H100, an output takes 10.5 s with the loop (every round and
-  check) and 0.7 s for round 0. The loop adds 1.21 rounds on average.
+  | Language | 90 % | 80 % | 70 % | 60 % |
+  |----------|-----:|-----:|-----:|-----:|
+  | German | 9.4 % | 4.7 % | 3.0 % | 2.0 % |
+  | French | 4.2 % | 2.3 % | 0.9 % | 0.3 % |
+
+- **French answers break JSON more often.**
+  - Invalid JSON: 2.9 % of French rounds against 0.5 % of German rounds. Most French failures (215 of 253)
+    are apostrophes escaped as `\'`, which strict JSON rejects.
+  - So round 0 left 89 French items without a usable answer (German: 28). After the loop, 11 French items
+    from 3 sentences still have none (German: 0). They count as failures.
+  - A more lenient parser could recover these answers, but it would be tuned on dev before any use.
+
+**Clean runs.**
+- No output is in the wrong language, in either language or condition.
+- None of the 16,296 judge verdicts is invalid.
+- **Added facts.** The added-fact rate is about 0 % everywhere. The judge caught 16 of 20 inserted facts on
+  the controls, so this means few added facts, not none.
+
+**Cost.** With 16 items in flight on one H100, an output takes about 10 s with the loop (every round and
+check) and 0.7 s for round 0. The loop adds 1.21 rounds on average in German and 1.17 in French.
 
 **Caveats.**
 - Fact recall and fit & complete are upper bounds. The judge misses half of the lost qualifiers on the
   hard controls (7 of 14), and the NLI misses most of them (3 of 14).
+- The judge's hard controls are German only. French judging relies on the NLI suite (French: 95–100 % per
+  control type).
 - Syllables stand in for spoken time; no speech was synthesised.
 - Outputs are not checked for grammar.
 
@@ -123,6 +132,55 @@ Higher is better, except for the added-fact rate. Sentences that lack a judge ve
 |---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
 | v1 | without | 1041 | 56.8 [52.7, 60.6] | 56.7 [53.6, 59.9] | 0.1 [0.0, 0.3] | 19.1 [15.9, 22.4] | 52 % | 0.96 | 0.00 | 0 | 0.7 | 9 | 0 | 0 |
 | v1 | with | 1041 | 55.2 [51.3, 59.1] | 65.7 [62.7, 68.7] | 0.0 [0.0, 0.0] | 20.7 [17.4, 24.1] | 96 % | 1.08 | 1.22 | 11 | 10.5 | 0 | 0 | 0 |
+
+## FR (test)
+
+### FR: all levels (90 %, 80 %, 70 %, 60 %)
+
+| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |
+|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
+| v1 | without | 3984 | 34.4 [31.7, 37.0] | 61.6 [58.6, 64.7] | 0.1 [0.0, 0.2] | 15.5 [13.5, 17.6] | 59 % | 0.82 | 0.00 | 0 | 0.7 | 89 | 0 | 0 |
+| v1 | with | 3984 | 67.6 [65.0, 70.2] | 80.2 [78.0, 82.3] | 0.1 [0.0, 0.1] | 44.2 [41.3, 47.0] | 98 % | 1.03 | 1.17 | 112 | 10.2 | 11 | 0 | 0 |
+
+### FR: effect of the repair loop (with − without, percentage points)
+
+| Levels | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete |
+|--------|-----------|-------------|-----------------|----------------|
+| all | +33.2 [+30.6, +35.8] | +18.5 [+16.5, +20.6] | -0.0 [-0.1, +0.1] | +28.6 [+26.4, +30.9] |
+| 90 % | +71.7 [+68.2, +75.1] | +28.3 [+25.3, +31.4] | -0.0 [-0.3, +0.3] | +61.7 [+57.9, +65.5] |
+| 80 % | +40.0 [+35.7, +44.2] | +22.9 [+20.2, +25.7] | -0.1 [-0.3, +0.0] | +32.9 [+29.2, +36.6] |
+| 70 % | +16.8 [+12.9, +20.8] | +13.9 [+11.4, +16.4] | +0.0 [+0.0, +0.0] | +14.5 [+11.5, +17.5] |
+| 60 % | +4.5 [+0.4, +8.6] | +9.0 [+6.7, +11.4] | +0.1 [+0.0, +0.3] | +5.4 [+3.2, +7.6] |
+
+Higher is better, except for the added-fact rate. Sentences that lack a judge verdict in one condition are left out of that column's difference.
+
+### FR: level 90 %
+
+| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |
+|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
+| v1 | without | 996 | 9.9 [7.5, 12.6] | 63.6 [60.4, 66.7] | 0.1 [0.0, 0.3] | 6.5 [4.7, 8.5] | 63 % | 0.71 | 0.00 | 0 | 0.7 | 23 | 0 | 0 |
+| v1 | with | 996 | 81.6 [78.6, 84.4] | 91.9 [90.1, 93.6] | 0.1 [0.0, 0.3] | 68.3 [64.7, 71.8] | 99 % | 1.01 | 1.18 | 29 | 10.6 | 3 | 0 | 0 |
+
+### FR: level 80 %
+
+| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |
+|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
+| v1 | without | 996 | 25.9 [22.3, 29.6] | 63.3 [59.9, 66.5] | 0.1 [0.0, 0.3] | 14.6 [11.8, 17.4] | 60 % | 0.78 | 0.00 | 0 | 0.7 | 21 | 0 | 0 |
+| v1 | with | 996 | 65.9 [62.1, 69.7] | 86.2 [83.9, 88.4] | 0.0 [0.0, 0.0] | 47.5 [43.5, 51.5] | 99 % | 1.02 | 1.23 | 27 | 10.5 | 3 | 0 | 0 |
+
+### FR: level 70 %
+
+| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |
+|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
+| v1 | without | 996 | 46.6 [42.2, 50.8] | 61.7 [58.3, 64.9] | 0.0 [0.0, 0.0] | 21.7 [18.4, 25.0] | 59 % | 0.86 | 0.00 | 0 | 0.7 | 23 | 0 | 0 |
+| v1 | with | 996 | 63.4 [59.6, 67.1] | 75.6 [72.6, 78.4] | 0.0 [0.0, 0.0] | 36.1 [32.2, 40.2] | 97 % | 1.02 | 1.14 | 30 | 10.0 | 4 | 0 | 0 |
+
+### FR: level 60 %
+
+| Variant | Repair loop | Outputs | Fit ±10 % | Fact recall | Added-fact rate | Fit & complete | NLI kept | Achieved ÷ target | Avg. rounds | Retries | Time / output (s) | No output | Wrong language | Judge invalid |
+|---------|-------------|--------:|-----------|-------------|-----------------|----------------|---------:|------------------:|------------:|--------:|------------------:|----------:|---------------:|--------------:|
+| v1 | without | 996 | 55.1 [51.0, 59.2] | 58.1 [54.7, 61.5] | 0.0 [0.0, 0.0] | 19.3 [16.2, 22.5] | 56 % | 0.94 | 0.00 | 0 | 0.7 | 22 | 0 | 0 |
+| v1 | with | 996 | 59.6 [55.7, 63.6] | 67.1 [63.7, 70.5] | 0.1 [0.0, 0.3] | 24.7 [21.2, 28.3] | 98 % | 1.05 | 1.14 | 26 | 9.8 | 1 | 0 | 0 |
 
 ## Judge validation
 
@@ -599,6 +657,467 @@ Higher is better, except for the added-fact rate. Sentences that lack a judge ve
   "git_commit": "68492f2b8ffc59be4c08c78fa26bd8728a6007e6 (synced copy, recorded by hpc/sync.sh)",
   "model": "qwen3-14b-bf16",
   "endpoint": "http://127.0.0.1:53663/v1",
+  "backend": {
+    "type": "vLLM",
+    "build_info": "vLLM 0.23.1rc1.dev1029+ga601a9d99",
+    "model_path": "/sc/home/kaushik.mukherjee/isochron_work/models/Qwen/Qwen3-14B",
+    "max_model_len": 8192
+  },
+  "quantisation": "BF16",
+  "generation": {
+    "temperature": 0.0,
+    "max_tokens": 1024,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "seed": 0,
+  "mode": "perfact_v3",
+  "prompts": {
+    "judge_facts_v1": "80c765ed80def67ca4b13456fe389ac7b8c695d2422cb4e3cc5fa73a7f0a6fe1",
+    "judge_fact_v3": "5b74445c3470663b94c768aad4833a295a6ee67c73d61deb7591670fab4a1587",
+    "judge_added_v3": "61d024e2989124746bdf0e220432222d69b384071873362d61f3043ec3595c54"
+  }
+}
+```
+
+</details>
+
+### `hpc_8b_step2_fr_test`
+
+<details><summary>config.json</summary>
+
+```json
+{
+  "date": "2026-10-11T13:05:24+00:00",
+  "git_commit": "68492f2b8ffc59be4c08c78fa26bd8728a6007e6 (synced copy, recorded by hpc/sync.sh)",
+  "phase": 2,
+  "kind": "loop run",
+  "variant": "v1",
+  "lang": "fr",
+  "split": "test",
+  "levels": [
+    90,
+    80,
+    70,
+    60
+  ],
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "repair": true,
+  "max_revisions": 2,
+  "round_seed": "item seed + 1000 × round (round 0 uses the item seed)",
+  "mock": false,
+  "model": "apertus-v1.5-8b-bf16",
+  "quantisation": "BF16",
+  "endpoint": "http://127.0.0.1:51465/v1",
+  "backend": {
+    "type": "vLLM",
+    "build_info": "vLLM 0.23.1rc1.dev1029+ga601a9d99",
+    "model_path": "/sc/home/kaushik.mukherjee/isochron_work/models/swiss-ai/Apertus-v1.5-8B",
+    "max_model_len": 8192
+  },
+  "generation": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "top_k": 0,
+    "min_p": 0.0,
+    "max_tokens": 1024,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "prompt": {
+    "name": "shorten_syllables_v1",
+    "sha256": "fe4fbfdd800d69b613fd49ba747507aa44a9a868556ceca15421d33edd661a5c"
+  },
+  "revise_prompt": {
+    "name": "revise_v1",
+    "sha256": "ab0593b9716e97e17444e36c243206f65a62f5d46d3421423cfdeda2f55c5c57"
+  },
+  "length_counter": {
+    "syllables": "eSpeak NG text-to-speech: 1.52.0",
+    "counter": "espeak"
+  },
+  "nli": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, cuda, float32, argmax label",
+  "nli_model": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb38ab63efdd7f280f8c144ea8b13f978ce",
+  "language_check": "py3langid 0.4.0, restricted to de/en/fr/it; wrong language = top label is another language with probability >= 0.9",
+  "loop_uses": "language identifier, syllable counter and NLI only; never the final judge",
+  "data": {
+    "file": "data/fleurs_fr_test.jsonl",
+    "sha256": "0240aaa0d8e0a4e4865c76498546906642a4227d0054c982df89c7885f27153f"
+  },
+  "items": {
+    "selection": "all sentences in file order",
+    "n": 332,
+    "ids": [
+      "1660",
+      "1661",
+      "1662",
+      "1663",
+      "1664",
+      "1665",
+      "1666",
+      "1667",
+      "1668",
+      "1669",
+      "1670",
+      "1671",
+      "1672",
+      "1673",
+      "1674",
+      "1675",
+      "1676",
+      "1677",
+      "1679",
+      "1680",
+      "1682",
+      "1683",
+      "1684",
+      "1685",
+      "1686",
+      "1687",
+      "1688",
+      "1689",
+      "1690",
+      "1691",
+      "1692",
+      "1693",
+      "1694",
+      "1695",
+      "1696",
+      "1697",
+      "1698",
+      "1700",
+      "1701",
+      "1702",
+      "1703",
+      "1704",
+      "1705",
+      "1706",
+      "1707",
+      "1708",
+      "1709",
+      "1710",
+      "1711",
+      "1712",
+      "1713",
+      "1714",
+      "1715",
+      "1717",
+      "1718",
+      "1719",
+      "1720",
+      "1721",
+      "1722",
+      "1723",
+      "1724",
+      "1725",
+      "1726",
+      "1727",
+      "1728",
+      "1729",
+      "1730",
+      "1731",
+      "1732",
+      "1733",
+      "1734",
+      "1735",
+      "1736",
+      "1737",
+      "1738",
+      "1739",
+      "1740",
+      "1741",
+      "1742",
+      "1743",
+      "1744",
+      "1745",
+      "1746",
+      "1747",
+      "1748",
+      "1749",
+      "1750",
+      "1751",
+      "1752",
+      "1753",
+      "1754",
+      "1755",
+      "1757",
+      "1758",
+      "1759",
+      "1760",
+      "1761",
+      "1762",
+      "1763",
+      "1764",
+      "1765",
+      "1766",
+      "1767",
+      "1768",
+      "1769",
+      "1770",
+      "1771",
+      "1772",
+      "1773",
+      "1774",
+      "1775",
+      "1776",
+      "1777",
+      "1778",
+      "1779",
+      "1780",
+      "1781",
+      "1782",
+      "1783",
+      "1784",
+      "1785",
+      "1786",
+      "1787",
+      "1788",
+      "1789",
+      "1790",
+      "1791",
+      "1792",
+      "1793",
+      "1794",
+      "1795",
+      "1796",
+      "1797",
+      "1798",
+      "1799",
+      "1800",
+      "1801",
+      "1802",
+      "1803",
+      "1805",
+      "1806",
+      "1807",
+      "1808",
+      "1809",
+      "1810",
+      "1811",
+      "1812",
+      "1813",
+      "1815",
+      "1816",
+      "1817",
+      "1818",
+      "1819",
+      "1820",
+      "1821",
+      "1822",
+      "1823",
+      "1824",
+      "1825",
+      "1826",
+      "1827",
+      "1828",
+      "1829",
+      "1830",
+      "1831",
+      "1832",
+      "1833",
+      "1834",
+      "1835",
+      "1836",
+      "1838",
+      "1839",
+      "1840",
+      "1841",
+      "1842",
+      "1843",
+      "1844",
+      "1845",
+      "1846",
+      "1848",
+      "1849",
+      "1850",
+      "1851",
+      "1852",
+      "1853",
+      "1854",
+      "1855",
+      "1856",
+      "1857",
+      "1858",
+      "1859",
+      "1860",
+      "1861",
+      "1862",
+      "1863",
+      "1864",
+      "1865",
+      "1866",
+      "1867",
+      "1868",
+      "1869",
+      "1870",
+      "1871",
+      "1872",
+      "1873",
+      "1874",
+      "1875",
+      "1876",
+      "1877",
+      "1878",
+      "1879",
+      "1880",
+      "1881",
+      "1882",
+      "1883",
+      "1884",
+      "1885",
+      "1887",
+      "1888",
+      "1890",
+      "1891",
+      "1892",
+      "1893",
+      "1894",
+      "1895",
+      "1896",
+      "1898",
+      "1899",
+      "1900",
+      "1901",
+      "1902",
+      "1903",
+      "1904",
+      "1905",
+      "1906",
+      "1907",
+      "1908",
+      "1909",
+      "1910",
+      "1911",
+      "1912",
+      "1913",
+      "1915",
+      "1916",
+      "1917",
+      "1918",
+      "1919",
+      "1920",
+      "1921",
+      "1922",
+      "1923",
+      "1924",
+      "1925",
+      "1926",
+      "1927",
+      "1928",
+      "1929",
+      "1930",
+      "1931",
+      "1932",
+      "1933",
+      "1934",
+      "1935",
+      "1936",
+      "1937",
+      "1938",
+      "1939",
+      "1940",
+      "1941",
+      "1942",
+      "1943",
+      "1944",
+      "1945",
+      "1946",
+      "1947",
+      "1948",
+      "1949",
+      "1950",
+      "1951",
+      "1952",
+      "1953",
+      "1954",
+      "1955",
+      "1956",
+      "1957",
+      "1958",
+      "1959",
+      "1960",
+      "1963",
+      "1964",
+      "1965",
+      "1966",
+      "1967",
+      "1968",
+      "1969",
+      "1971",
+      "1972",
+      "1973",
+      "1974",
+      "1975",
+      "1976",
+      "1977",
+      "1978",
+      "1979",
+      "1980",
+      "1981",
+      "1982",
+      "1983",
+      "1984",
+      "1985",
+      "1986",
+      "1987",
+      "1988",
+      "1989",
+      "1990",
+      "1991",
+      "1992",
+      "1993",
+      "1994",
+      "1996",
+      "1997",
+      "1998",
+      "2000",
+      "2001",
+      "2002",
+      "2003",
+      "2004",
+      "2005",
+      "2006",
+      "2007",
+      "2008",
+      "2009"
+    ]
+  },
+  "tts": "none",
+  "workers": 16,
+  "sessions": [
+    {
+      "started": "2026-10-11T13:05:24+00:00",
+      "git_commit": "68492f2b8ffc59be4c08c78fa26bd8728a6007e6 (synced copy, recorded by hpc/sync.sh)",
+      "workers": 16,
+      "endpoint": "http://127.0.0.1:51465/v1",
+      "backend": {
+        "type": "vLLM",
+        "build_info": "vLLM 0.23.1rc1.dev1029+ga601a9d99",
+        "model_path": "/sc/home/kaushik.mukherjee/isochron_work/models/swiss-ai/Apertus-v1.5-8B",
+        "max_model_len": 8192
+      },
+      "nli": "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, cuda, float32, argmax label"
+    }
+  ]
+}
+```
+
+</details>
+
+<details><summary>judge_config.json</summary>
+
+```json
+{
+  "date": "2026-10-11T13:57:14+00:00",
+  "git_commit": "68492f2b8ffc59be4c08c78fa26bd8728a6007e6 (synced copy, recorded by hpc/sync.sh)",
+  "model": "qwen3-14b-bf16",
+  "endpoint": "http://127.0.0.1:51087/v1",
   "backend": {
     "type": "vLLM",
     "build_info": "vLLM 0.23.1rc1.dev1029+ga601a9d99",

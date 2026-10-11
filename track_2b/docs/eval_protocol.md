@@ -491,8 +491,8 @@ numbers are reported on test, as before. The work goes in this order.
          measured.
    - **Decided on 2026-10-10:** prompt v1 with the repair loop is the method;
      v2a is dropped.
-6. **Full runs (planned 2026-10-10; German test done on 2026-10-11, French
-   pending).**
+6. **Full runs (planned 2026-10-10; German and French test done on
+   2026-10-11).**
    - **HPC** (`docs/hpc.md`).
      - Models: Apertus 1.5 8B and 70B in BF16, the official weights in the
        official vLLM container.
@@ -513,6 +513,19 @@ numbers are reported on test, as before. The work goes in this order.
          90 %, +28.5 at 80 %, +10.2 at 70 %, and +1.6 [−0.6, +3.8] at 60 %.
        - At 60 % the loop does not improve fit (−1.5 points [−5.6, +2.5]): it
          keeps the meaning (NLI kept 52 % → 96 %) and outputs run long.
+     - **French test result (2026-10-11, job 2636593, run commit 68492f2;
+       `results/step2_test.md`).**
+       - 332 sentences × 4 levels × 3 seeds, 3,984 outputs per condition.
+       - Pooled: fit 34.4 % [31.7, 37.0] without the loop and 67.6 %
+         [65.0, 70.2] with it.
+       - Fit & complete: 15.5 % [13.5, 17.6] and 44.2 % [41.3, 47.0].
+       - Paired differences: +33.2 points [30.6, 35.8] fit, and +28.6
+         [26.4, 30.9] fit & complete.
+       - The gain in fit & complete: +61.7 points at 90 %, +32.9 at 80 %,
+         +14.5 at 70 %, and +5.4 [3.2, 7.6] at 60 %.
+       - French answers break JSON more often (2.9 % of rounds against 0.5 %),
+         mostly with apostrophes escaped as `\'`. 11 items are left without
+         an answer, and they count as failures.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -623,3 +636,5 @@ used.
 - 2026-10-11, v2.13: the step 2 result on German test is recorded (section
   "Phase 2", item 6). French and step 4 on dev are still running. The method
   and the metrics are unchanged.
+- 2026-10-11, v2.14: the step 2 result on French test is recorded. The
+  method and the metrics are unchanged.
