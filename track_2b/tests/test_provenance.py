@@ -11,8 +11,10 @@ import pytest
 from isochron import provenance
 
 
-def test_git_commit_in_this_checkout() -> None:
-    assert re.match(r"[0-9a-f]{40}( \(with uncommitted changes to tracked files\))?$", provenance.git_commit())
+def test_git_commit_here() -> None:
+    """A git checkout (the Mac) or a copy made by hpc/sync.sh (the cluster): either way a full hash."""
+    assert re.match(r"[0-9a-f]{40}( \(with uncommitted changes( to tracked files)?\))?"
+                    r"( \(synced copy, recorded by hpc/sync\.sh\))?$", provenance.git_commit())
 
 
 def test_git_commit_in_a_synced_copy(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
