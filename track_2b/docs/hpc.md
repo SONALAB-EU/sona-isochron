@@ -10,7 +10,10 @@ On 2026-10-10 the cluster facts below were checked and steps 1–3 were run:
 - Qwen3-14B and the NLI model were downloaded without a token (`download_models.sh --open`).
 - The judge was validated on the cluster: `results/judge_validation_{hard,nli}_v3_qwen3-14b_hpc_8b.md`.
 
-Apertus 1.5 needs your token (step 4). No Apertus job has run yet.
+On 2026-10-11 the Apertus weights were downloaded with your token (step 4). The chain in step 5 then ran:
+- The smoke test passed: job 2636579, 12 min.
+- Step 2 on German test is done: job 2636592, 62 min, `results/step2_test.md`.
+- French (job 2636593) and step 4 on dev (job 2636594) were queued when this was written.
 
 ## What runs where
 
