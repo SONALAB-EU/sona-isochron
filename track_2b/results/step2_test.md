@@ -1,7 +1,7 @@
 # Step 2 on test: prompt v1 without and with the repair loop
 
-- Date: 2026-10-11 12:46 UTC
-- Git commit (report): 837e3804dfd20a8151e99ccf192e171a17e757e1; runs: `hpc_8b_step2_de_test` (68492f2 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-11 12:48 UTC
+- Git commit (report): d98b12e966443e3121ca4ec5064ffa3608ef2604 (with uncommitted changes to tracked files); runs: `hpc_8b_step2_de_test` (68492f2 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, endpoint http://127.0.0.1:38657/v1, backend vLLM 0.23.1rc1.dev1029+ga601a9d99
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; round seeds: item seed + 1000 × round (round 0 uses the item seed)
 - Prompt `shorten_syllables_v1` (fe4fbfdd800d); repair `revise_v1` (ab0593b9716e), at most 2 rounds
@@ -42,6 +42,20 @@ and 2, so 4,164 outputs per condition.
   - So the outputs run long: achieved ÷ target is 1.08.
 - **Without the loop, Apertus over-shortens:** achieved ÷ target is 0.83 overall, and 0.71 at level 90.
   With the loop it is 1.05.
+- **With the loop, misses run long, and some outputs are the input unchanged.** This is analysis of the
+  same outputs, not a new metric.
+  - Misses that are too long outnumber those too short at every level. At 60 %, 321 are too long and 145
+    too short, of 1,041.
+  - The final output is the input unchanged in this share of items:
+
+    | Level | Unchanged input |
+    |------:|----------------:|
+    | 90 % | 9.4 % |
+    | 80 % | 4.7 % |
+    | 70 % | 3.0 % |
+    | 60 % | 2.0 % |
+
+  - At 90 %, an unchanged input is about 1.11 × the target, just outside the ±10 % band.
 - **Clean runs.**
   - No output is in the wrong language, in either condition.
   - Round 0 left 28 items without a usable answer. With the loop there are none, after 33 retries.

@@ -235,7 +235,10 @@ every later change is in its changelog.
     unchanged. These were at levels 60 and 80 %.
   - The HPC smoke test had one unchanged line among its 10.
   - On German test at level 60 %, the loop does not improve fit (−1.5 points), and outputs average
-    1.08 × the target.
+    1.08 × the target. Misses that are too long outnumber those too short at every level (at 60 %: 321
+    against 145, of 1,041).
+  - The final output is the input unchanged in 9.4 %, 4.7 %, 3.0 % and 2.0 % of items at levels 90, 80,
+    70 and 60 %.
   - Such outputs count as not fitting.
 - **Grammar is not checked.** Some outputs are ungrammatical (for example *"den 18. Jahrhundert Markt"*).
   No check in the loop looks at grammar.

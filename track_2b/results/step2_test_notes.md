@@ -30,6 +30,20 @@ and 2, so 4,164 outputs per condition.
   - So the outputs run long: achieved ÷ target is 1.08.
 - **Without the loop, Apertus over-shortens:** achieved ÷ target is 0.83 overall, and 0.71 at level 90.
   With the loop it is 1.05.
+- **With the loop, misses run long, and some outputs are the input unchanged.** This is analysis of the
+  same outputs, not a new metric.
+  - Misses that are too long outnumber those too short at every level. At 60 %, 321 are too long and 145
+    too short, of 1,041.
+  - The final output is the input unchanged in this share of items:
+
+    | Level | Unchanged input |
+    |------:|----------------:|
+    | 90 % | 9.4 % |
+    | 80 % | 4.7 % |
+    | 70 % | 3.0 % |
+    | 60 % | 2.0 % |
+
+  - At 90 %, an unchanged input is about 1.11 × the target, just outside the ±10 % band.
 - **Clean runs.**
   - No output is in the wrong language, in either condition.
   - Round 0 left 28 items without a usable answer. With the loop there are none, after 33 retries.
