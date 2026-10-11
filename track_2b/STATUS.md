@@ -275,6 +275,34 @@ workflows. Ultracode mode was switched on in this session, but your rules say no
      commit (synced copy), the seed and n.
   6. Reading the 10 final outputs, they are German shortenings of their sources.
   - If any fails, I stop at the gate, find the cause, fix it and retry, at most twice.
+- **11:41. The smoke test is clean, so I opened the gate at 11:41:40** (job 2636579 ran 11:28:54–11:40:25 on
+  gx07: 691 s, 0.19 H100-hours, sacct).
+  1. Pass: generate, judge and report all ran, with no traceback.
+  2. Pass: 0 of 10 outputs are missing or in the wrong language, after the loop and at round 0.
+  3. Pass: 0 of 20 judge verdicts are invalid.
+  4. Pass: fit with the loop is 7 of 10.
+  5. Pass: `config.json` records apertus-v1.5-8b-bf16, BF16, vLLM 0.23.1rc1 (swiss-ai fork a601a9d99),
+     the endpoint, commit 68492f2 (synced copy), seed 0, n = 5 sentences.
+  6. Pass, with one exception noted here. All 10 final outputs are German and come from their sources,
+     and 9 are shorter.
+     - The exception: for 1528 at level 80 the final output is the source sentence unchanged (24
+       syllables for a target of 19).
+     - No candidate both fit and kept the meaning, so the loop kept the closest candidate that kept it,
+       and that was the source. The scores count it as a miss, as the method intends. It is not a setup
+       fault.
+  - Quality notes, which reflect the model, not the setup:
+    - 1525 has grammar errors: "Der 18. Jahrhundert Markt", "mediterranes Europa-Stimmung".
+    - 1528 at level 90 drops the qualifier "Manche", and the NLI still calls it kept.
+  - The same 10 items against the local Q4 pilot (`results/hpc_smoke_vs_local.md`; a smoke test, not a
+    measurement):
+    - Fit without the loop: 4 (Q4) and 3 (BF16) of 10. With the loop: 6 and 7.
+    - NLI kept with the loop: 9 and 10.
+  - Timing: Apertus was healthy after 420 s, the 10 items took under a minute with 8 workers, and the
+    judge was healthy after 210 s.
+  - The German job 2636592 started at 11:40:28 on the GPU the smoke test freed. The gate opened before its
+    server was healthy, so it did not wait.
+  - GPU so far: 1.45 + 0.19 = 1.64 H100-hours. Worst case with the remaining limits (4 + 3.5 + 1.5 h):
+    10.64.
 
 ## Previous status (2026-10-10, before the autonomous run)
 
