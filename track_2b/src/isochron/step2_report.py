@@ -96,14 +96,15 @@ def main(argv: list[str] | None = None) -> None:
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
         f"- Git commit (report): {git_commit()}; runs: "
         + ", ".join(f"`{run.name}` ({short(cfg['git_commit'])})" for run, cfg, _, _ in runs),
-        f"- Model: {c0['model']}, quantisation {c0['quantisation']}, endpoint {c0['endpoint']}, "
-        f"backend {c0['backend'].get('build_info')}",
+        f"- Model: {c0['model']}, quantisation {c0['quantisation']}, backend {c0['backend'].get('build_info')}; "
+        "endpoint " + ", ".join(f"{cfg['lang']} {cfg['endpoint']}" for _, cfg, _, _ in runs),
         f"- Generation: {json.dumps(c0['generation'])}; round seeds: {c0['round_seed']}",
         f"- Prompt `{c0['prompt']['name']}` ({c0['prompt']['sha256'][:12]}); repair `{c0['revise_prompt']['name']}` "
         f"({c0['revise_prompt']['sha256'][:12]}), at most {c0['max_revisions']} rounds",
         f"- Loop checks: {c0['length_counter']['syllables']}, NLI {c0['nli']}, language check {describe_language()}",
-        f"- Judge (evaluation only): {j0['model']} ({j0['quantisation']}), endpoint {j0['endpoint']}, backend "
-        f"{j0['backend'].get('build_info')}, temperature 0, seed {j0['seed']}, mode {j0['mode']}",
+        f"- Judge (evaluation only): {j0['model']} ({j0['quantisation']}), backend {j0['backend'].get('build_info')}, "
+        f"temperature 0, seed {j0['seed']}, mode {j0['mode']}; endpoint "
+        + ", ".join(f"{cfg['lang']} {jc['endpoint']}" for _, cfg, _, jc in runs),
         "- Items: " + "; ".join(f"{cfg['lang']} {cfg['split']}: {cfg['items']['n']} sentences × levels {cfg['levels']} "
                                 f"× seeds {cfg['seeds']}" for _, cfg, _, _ in runs) + "; TTS: none",
         f"- 95 % intervals: bootstrap over sentences (each carries its levels and seeds), {N_BOOT} resamples, seed {BOOT_SEED}.",
