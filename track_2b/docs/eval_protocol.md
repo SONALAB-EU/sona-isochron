@@ -491,7 +491,8 @@ numbers are reported on test, as before. The work goes in this order.
          measured.
    - **Decided on 2026-10-10:** prompt v1 with the repair loop is the method;
      v2a is dropped.
-6. **Full runs (planned 2026-10-10; scripts ready, nothing run yet).**
+6. **Full runs (planned 2026-10-10; German test done on 2026-10-11, French
+   pending).**
    - **HPC** (`docs/hpc.md`).
      - Models: Apertus 1.5 8B and 70B in BF16, the official weights in the
        official vLLM container.
@@ -499,6 +500,19 @@ numbers are reported on test, as before. The work goes in this order.
        and 2. That is 4,164 items per model, with prompt v1 and the loop.
      - Judge: Qwen3-14B, validated on both suites in the same job.
      - French is optional.
+     - **German test result (2026-10-11, job 2636592, run commit 68492f2;
+       `results/step2_test.md`).**
+       - Apertus 1.5 8B BF16, 347 sentences × 4 levels × 3 seeds, 4,164
+         outputs per condition.
+       - Pooled: fit 34.9 % [32.5, 37.3] without the loop and 64.7 %
+         [62.1, 67.2] with it.
+       - Fit & complete: 14.2 % [12.4, 16.1] and 38.4 % [35.7, 41.2].
+       - Paired differences: +29.8 points [27.2, 32.4] fit, and +24.3
+         [22.2, 26.3] fit & complete.
+       - The gain in fit & complete shrinks with the level: +56.7 points at
+         90 %, +28.5 at 80 %, +10.2 at 70 %, and +1.6 [−0.6, +3.8] at 60 %.
+       - At 60 % the loop does not improve fit (−1.5 points [−5.6, +2.5]): it
+         keeps the meaning (NLI kept 52 % → 96 %) and outputs run long.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -606,3 +620,6 @@ used.
   bootstrap: sentences are resampled once per resample (10,000, seed 0), and
   both conditions are scored on the same resample. The per-condition
   intervals stay as they were.
+- 2026-10-11, v2.13: the step 2 result on German test is recorded (section
+  "Phase 2", item 6). French and step 4 on dev are still running. The method
+  and the metrics are unchanged.
