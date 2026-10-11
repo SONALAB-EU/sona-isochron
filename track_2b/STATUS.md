@@ -1,15 +1,19 @@
 # Status
 
-## Summary (2026-10-11, 08:40 UTC)
+## Summary (2026-10-11, 11:50 UTC)
 
-**Blocked all night: the Apertus 1.5 8B weights never arrived.**
-- From 18:37 to 08:37 UTC the watcher checked the cluster 29 times, every 30 minutes, and SSH worked each
-  time.
-- It never found `hpc/logs/download.log` or an Apertus file, and no download job ran.
-- So the smoke test and step 2 have not run, and no step 2 test number exists.
-- Everything else is ready on the cluster. The code there is commit bf8f429, recorded by `hpc/sync.sh`.
-- A new watcher checks every 15 minutes until about 20:40 UTC today. Once your download is complete,
-  the smoke test starts, then step 2 (plan steps 3 and 5), unless you say otherwise.
+**Running: step 2 on German test** (job 2636592, on an H100 since 11:40). The smoke test was clean, so I
+opened the gate at 11:41:40.
+- At 11:48, 201 of 4,164 items were done (about 67 per minute).
+- Estimates, not measurements: German finishes about 14:00 UTC, French (job 2636593) about 16:15, and step
+  4 on dev (job 2636594) about 17:15. Each job starts only if the one before succeeds.
+- GPU: 1.64 H100-hours used (sacct). Even if every job ran to its limit, the total would be 10.64.
+- Your local tasks are done and committed:
+  - `make run` and `make run-offline`: Docker is not installed here, so the images are not built. Every
+    other part was tested from a fresh clone.
+  - `README.md`, and `technical_report.md` with placeholders.
+
+The earlier summary, written while the weights were missing, follows.
 
 **Done**
 - Cluster: the environment passes its tests on an H100. The vLLM container is imported and unpacked once.
