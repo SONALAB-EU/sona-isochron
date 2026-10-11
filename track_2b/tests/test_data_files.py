@@ -6,11 +6,11 @@ from pathlib import Path
 
 import pytest
 
-from isochron.schema import ControlPair, OverlongRecord, SentenceRecord, read_jsonl
+from isochron.schema import AppInput, ControlPair, OverlongRecord, SentenceRecord, read_jsonl
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 SCHEMAS: dict[str, type] = {"fleurs_": SentenceRecord, "overlong_": OverlongRecord, "nli_controls": ControlPair,
-                            "judge_controls": ControlPair}
+                            "judge_controls": ControlPair, "sample_input": AppInput}
 FILES = sorted(DATA.glob("*.jsonl"))
 
 
@@ -25,6 +25,7 @@ def test_expected_files_exist() -> None:
     names = {p.name for p in FILES}
     assert "nli_controls.jsonl" in names
     assert "judge_controls_de.jsonl" in names
+    assert "sample_input.jsonl" in names
     for lang in ("de", "fr", "it"):
         for split in ("dev", "test"):
             assert f"fleurs_{lang}_{split}.jsonl" in names

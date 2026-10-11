@@ -89,7 +89,25 @@ class ControlPair:
     """The edit, as "old → new" (judge_controls_de only)."""
 
 
-R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord, ControlPair)
+@dataclass
+class AppInput:
+    """One line of the input of `make run` (data/sample_input.jsonl), as isochron.app reads it.
+
+    The app needs id, lang, text and level, and ignores any other field (README.md, "Input and output").
+    """
+
+    id: str
+    lang: str
+    """de or fr: the language of the line."""
+    text: str
+    """The line to shorten."""
+    level: int
+    """The target length, in % of the line's syllables."""
+    license: str | None = None
+    source: str | None = None
+
+
+R = TypeVar("R", InputRecord, OutputRecord, SentenceRecord, OverlongRecord, ControlPair, AppInput)
 
 
 def from_dict(cls: type[R], d: dict[str, Any]) -> R:
