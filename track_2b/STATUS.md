@@ -1,12 +1,15 @@
 # Status
 
-## Summary (2026-10-10, 18:45 UTC)
+## Summary (2026-10-11, 08:40 UTC)
 
-**Blocked: the Apertus 1.5 8B weights are missing.** Your download (`download_models.sh` with your
-token) has not started: there is no `hpc/logs/download.log` and no Apertus file on the cluster.
-- Everything else is ready on the cluster.
-- A watcher on the Mac checks every 30 minutes until about 08:40 UTC.
-- When the weights are complete, the smoke test runs, then step 2 on test (plan steps 3 and 5).
+**Blocked all night: the Apertus 1.5 8B weights never arrived.**
+- From 18:37 to 08:37 UTC the watcher checked the cluster 29 times, every 30 minutes, and SSH worked each
+  time.
+- It never found `hpc/logs/download.log` or an Apertus file, and no download job ran.
+- So the smoke test and step 2 have not run, and no step 2 test number exists.
+- Everything else is ready on the cluster. The code there is commit bf8f429, recorded by `hpc/sync.sh`.
+- A new watcher checks every 15 minutes until about 20:40 UTC today. Once your download is complete,
+  the smoke test starts, then step 2 (plan steps 3 and 5), unless you say otherwise.
 
 **Done**
 - Cluster: the environment passes its tests on an H100. The vLLM container is imported and unpacked once.
@@ -35,12 +38,23 @@ token) has not started: there is no `hpc/logs/download.log` and no Apertus file 
 - Not started either: the 70B model.
 
 **Blockers**
-- The Apertus weights need your token. In the tmux commands from my earlier message, the
-  `until … .env-ready` wait now passes at once.
+- The Apertus weights need your token, and your Hugging Face account must have accepted the terms of
+  `swiss-ai/Apertus-v1.5-8B`. These lines start the download so that it survives a logout:
+
+  ```
+  ssh hpi-login
+  tmux new -s isochron-download
+  cd ~/isochron/track_2b
+  read -rs HF_TOKEN
+  export HF_TOKEN
+  { for attempt in 1 2 3 4 5 6 7 8; do srun --account=aisc --partition=pot-hpi-aisc-shortrun --nodes=1 --exclude=ga03 --cpus-per-task=8 --mem=32G --time=01:00:00 --job-name=isochron-download bash hpc/download_models.sh && break; sleep 60; done; } 2>&1 | tee -a hpc/logs/download.log; unset HF_TOKEN
+  ```
+
+  Then detach with Ctrl-b d, and `exit`.
 
 **Next steps**
-1. You: start the download (`docs/hpc.md`, step 4). Apertus 8B alone should take about 15 minutes (an
-   estimate).
+1. You: start the download (above, or `docs/hpc.md`, step 4). Apertus 8B alone should take about 15
+   minutes (an estimate).
 2. Smoke test: 5 German dev sentences, levels 90 and 80, seed 0. Then compare with the local Q4
    outputs (`isochron.compare_runs`).
 3. Step 2 on test, German and French: 4 levels × 3 seeds, 8,148 items. Then `results/step2_test.md`
@@ -203,6 +217,17 @@ is not started. Nothing is pushed.
     the results.
   - Checked: the pilot tables regenerate identically. A mock run in the current format goes through
     `isochron.compare_runs`, so the smoke comparison is ready.
+- **08:37 (11 October). The weights never arrived.**
+  - 29 checks from 18:37 to 08:37 all reached the cluster. None found a download log, an Apertus file or
+    a download job.
+  - No GPU was used overnight. The total is still 1.45 H100-hours (sacct); the only job since 18:36 is a
+    1-second CPU-only check.
+  - Decision: following your plan ("if the weights never arrive, skip to step 6"), nothing else ran on the
+    cluster. Step 6 was already done. The insurance run stays off, because the HPC has not failed.
+  - Decision: a new watcher checks every 15 minutes until about 20:40 UTC. If your download completes,
+    the smoke test runs first, and step 2 is submitted only if the smoke test is clean.
+  - Why keep watching: you are back today. Your plan already covers what follows the download, so it
+    can start without another round trip.
 
 ## Previous status (2026-10-10, before the autonomous run)
 
