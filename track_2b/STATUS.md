@@ -229,6 +229,53 @@ is not started. Nothing is pushed.
   - Why keep watching: you are back today. Your plan already covers what follows the download, so it
     can start without another round trip.
 
+## Second autonomous run, from 2026-10-11 11:08 UTC (decision log)
+
+Your instruction: the smoke test now, then step 2 on test (German, then French) only if the smoke test is
+clean, then step 4 on dev. Same rules: at most 12 H100-hours in total, no 70B, commit locally only, no
+workflows. Ultracode mode was switched on in this session, but your rules say no workflows, so I run none.
+
+- **11:08. The weights are verified.**
+  - All 17 files of `swiss-ai/Apertus-v1.5-8B` carry the pinned revision a411d838 in their download
+    metadata.
+  - All 6 shards in the index are present (18 GB), with no partial files.
+- **11:08. Smoke test submitted** (job 2636579, 1.5 h limit; phases generate, judge, report).
+  - It waits for a GPU: all 60 H100s on the cluster are busy. The earliest scheduled end is about 14:30
+    UTC, though jobs often end early.
+  - For a single H100 we are first in line. The jobs ahead need 4–8 GPUs on one node or are held by
+    per-user limits.
+- **11:17. Decision: chain the jobs with dependencies instead of submitting each one after the last.**
+  - Why: with every H100 busy, a job submitted after its predecessor ends queues again for hours.
+    With `--dependency=afterok`, it can take the GPU the previous job frees.
+  - The chain: smoke → step 2 German test → step 2 French test → step 4 dev.
+  - **A gate keeps "only if the smoke test is clean".** The German job starts Apertus (about 11 min),
+    then waits for `hpc/gates/step2_test.go`, created by me only after I have checked the smoke test, or
+    for `hpc/gates/step2_test.go.stop`.
+    - It waits at most 45 min.
+    - Stopping fails the job, so the jobs after it never start.
+    - No test sentence is generated before the gate opens.
+  - Time limits: smoke 1.5 h, German 4 h, French 3.5 h, step 4 1.5 h. With the 1.45 H100-hours already
+    used, the worst case (every job runs to its limit) is 11.95 H100-hours.
+  - Estimates, not measurements: German about 2.5 h, French about 2.5 h, step 4 about 1 h.
+  - Submitted at 11:17: German 2636592 (gated), French 2636593, step 4 2636594, each `afterok` on the
+    one before.
+- **11:17. Step 4 on dev: what runs.**
+  - German and French dev, without the 50 go/no-go sentences (as the pilot and the local step 4 smoke
+    test). Seeds 0, 1, 2; both budgets; Apertus 8B BF16; NLI scoring; no judge.
+  - Checked on a cluster CPU node (job 2636588): the step 4 tests pass there, including a dry run, and
+    eSpeak NG's `en-us` voice (needed for English syllables) works.
+- **11:17. The smoke test counts as clean only if all of these hold** (fixed now, before any output):
+  1. The job completes, with the generate, judge and report phases and no traceback in its log.
+  2. Of the 10 items (5 sentences × 2 levels), at most 1 final output (with the loop) is missing or in
+     the wrong language, and at most 1 round-0 output.
+  3. At most 1 of the 20 judge verdicts is invalid.
+  4. Fit with the loop is at least 3 of 10. On the same items the local Q4 run fits 6 of 10, and if
+     the true rate were 0.6, 2 of 10 or fewer would happen about 1 % of the time.
+  5. The run's `config.json` records the model, BF16, the vLLM backend and version, the endpoint, the
+     commit (synced copy), the seed and n.
+  6. Reading the 10 final outputs, they are German shortenings of their sources.
+  - If any fails, I stop at the gate, find the cause, fix it and retry, at most twice.
+
 ## Previous status (2026-10-10, before the autonomous run)
 
 
