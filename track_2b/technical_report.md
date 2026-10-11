@@ -225,7 +225,24 @@ every later change is in its changelog.
 - Each is run under an isometric (characters) and an isosyllabic (syllables × speech-rate ratio)
   budget.
 - It is implemented and was smoke-tested on 5 sentences per language (`results/step4_smoke_local.md`).
-- **[PLACEHOLDER: step 4 on dev, 8B BF16, from `results/hpc_8b_step4_dev.md` (exploratory)]**
+- **Step 4 on dev (`results/hpc_8b_step4_dev.md`; exploratory).** Apertus 8B BF16, 97 German and 90
+  French dev sentences outside the go/no-go 50, × 3 seeds. Fit within ±10 % of the budget:
+
+  | Direction, budget | (a) plain | (b) one step | (c) translate, then shorten (ours) |
+  |-------------------|----------:|-------------:|-----------------------------------:|
+  | EN → DE, characters | 26.8 % | 58.1 % | 80.1 % [73.9, 85.6] |
+  | EN → DE, syllables | 13.4 % | 66.0 % | 69.4 % [62.5, 75.9] |
+  | EN → FR, characters | 17.4 % | 67.4 % | 79.3 % [72.6, 85.6] |
+  | EN → FR, syllables | 60.7 % | 46.7 % | 74.8 % [66.3, 82.6] |
+
+  - The meaning check here is the NLI against the human reference. (c) keeps meaning about as often as
+    plain translation: 79–82 % against 79 % in German, and 75–79 % against 73 % in French.
+  - (b) keeps it no better than (c).
+  - In German with syllables, (b) and (c) are within noise of each other.
+  - Plain French translation already meets the syllable budget 61 % of the time. That budget is
+    generous, because French is spoken faster: 1.160 × the English syllables.
+  - In French, one-step answers again broke JSON: 15 of the 270 under the character budget have no
+    answer.
 
 ## 6. Limitations
 
@@ -278,7 +295,8 @@ every later change is in its changelog.
 - **Hardware.**
   - Development: an Apple M3 with 16 GB.
   - Final runs: one NVIDIA H100 80 GB per job, on HPI's cluster (driver 590.48.01).
-  - **[PLACEHOLDER: total H100-hours; 3.63 by 11 October 13:57 UTC (sacct), out of a budget of 12]**
+  - Compute: 4.46 H100-hours in total (sacct), out of a budget of 12. That is, each rounded: setup
+    and checks 1.22, judge validation 0.23, the smoke test 0.19, German 1.04, French 0.96 and step 4 0.83.
 - **Seeds.**
   - Generation uses seeds 0, 1 and 2, plus 1000 × the round for revisions.
   - The judge runs at temperature 0 with seed 0.

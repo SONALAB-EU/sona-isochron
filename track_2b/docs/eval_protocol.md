@@ -526,6 +526,17 @@ numbers are reported on test, as before. The work goes in this order.
        - French answers break JSON more often (2.9 % of rounds against 0.5 %),
          mostly with apostrophes escaped as `\'`. 11 items are left without
          an answer, and they count as failures.
+   - **Step 4 on dev (2026-10-11, job 2636594, run commit 68492f2;
+     `results/hpc_8b_step4_dev.md`; exploratory).**
+     - Apertus 1.5 8B BF16; 97 German and 90 French dev sentences outside the
+       go/no-go 50; seeds 0, 1 and 2.
+     - Fit within ±10 % of the budget, (a) / (b) / (c):
+       - EN → DE: 26.8 / 58.1 / 80.1 % with characters, and 13.4 / 66.0 /
+         69.4 % with syllables.
+       - EN → FR: 17.4 / 67.4 / 79.3 % with characters, and 60.7 / 46.7 /
+         74.8 % with syllables.
+     - Kept against the reference (NLI): (c) is about level with (a), and (b)
+       is no better than (c).
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -638,3 +649,5 @@ used.
   and the metrics are unchanged.
 - 2026-10-11, v2.14: the step 2 result on French test is recorded. The
   method and the metrics are unchanged.
+- 2026-10-11, v2.15: step 4 on dev (exploratory) is recorded. No step 4
+  test run is planned yet.

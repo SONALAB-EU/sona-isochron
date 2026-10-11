@@ -14,7 +14,8 @@ On 2026-10-11 the Apertus weights were downloaded with your token (step 4). The 
 - The smoke test passed: job 2636579, 12 min.
 - Step 2 on German test is done: job 2636592, 62 min, `results/step2_test.md`.
 - Step 2 on French test is done: job 2636593, 57 min. It queued 17 min for a free H100.
-- Step 4 on dev (job 2636594) started at 13:57 UTC.
+- Step 4 on dev is done: job 2636594, 50 min, `results/hpc_8b_step4_dev.md`.
+- In all, the work used 4.46 H100-hours (sacct).
 
 ## What runs where
 

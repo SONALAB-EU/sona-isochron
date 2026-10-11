@@ -1,25 +1,59 @@
 # Status
 
-## Summary (2026-10-11, 14:05 UTC)
+## Summary (2026-10-11, 14:55 UTC): every planned job is done
 
-**Step 2 on test is done, German and French** (jobs 2636592 and 2636593). The numbers are in
-`results/step2_test.md`. Apertus 1.5 8B BF16; every test sentence × 4 levels × 3 seeds; judge Qwen3-14B:
+**Done**
+- **Smoke test on an H100:** clean on all six criteria, which were fixed before any output (job 2636579).
+- **Step 2 on test, German and French:** Apertus 1.5 8B BF16, every test sentence × 4 levels × 3 seeds;
+  `results/step2_test.md`.
+- **Step 4 on dev (exploratory):** `results/hpc_8b_step4_dev.md`.
+- **`make run` and `make run-offline`:** written. Docker is not installed on this Mac, so they have not run
+  in Docker. The app was tested from a fresh clone, including under a sandbox that allows only localhost.
+- **`README.md` and `technical_report.md`:** filled in. The placeholders left are team, demo, the Docker
+  check and the final commit.
 
-| Pooled over the levels | Fit, without → with the loop | Fit & complete, without → with | Paired gain (points): fit; fit & complete |
-|------------------------|-----------------------------:|-------------------------------:|-------------------------------------------|
+**Numbers**
+
+Step 2 on test (final; judge Qwen3-14B BF16), pooled over levels 90 to 60 %:
+
+| Language | Fit, without → with the loop | Fit & complete, without → with | Paired gain (points): fit; fit & complete |
+|----------|-----------------------------:|-------------------------------:|-------------------------------------------|
 | German (347 sentences) | 34.9 % → 64.7 % | 14.2 % → 38.4 % | +29.8 [27.2, 32.4]; +24.3 [22.2, 26.3] |
 | French (332 sentences) | 34.4 % → 67.6 % | 15.5 % → 44.2 % | +33.2 [30.6, 35.8]; +28.6 [26.4, 30.9] |
 
-- The gain shrinks as the target tightens. Fit & complete rises by +57 to +62 points at level 90, but
-  only +1.6 (German) and +5.4 (French) at 60 %.
-- French answers break JSON more often: apostrophes escaped as `\'`. 11 French items are left without an
-  answer and count as failures. This is documented, not fixed: it was found on test.
-- **Step 4 on dev** (job 2636594) has been running since 13:57.
-- GPU: 3.63 H100-hours used (sacct). With step 4's limit (1.5 h), the worst case is 5.13.
-- Your local tasks are done and committed:
-  - `make run` and `make run-offline`: Docker is not installed here, so the images are not built.
-  - `README.md`, and `technical_report.md`, which has every test number. Still to fill: step 4, team,
-    demo, the Docker check and the final commit.
+- Fit & complete gains +57 to +62 points at level 90, and only +1.6 (German) and +5.4 (French) at 60 %.
+
+Step 4 on dev (exploratory; NLI against the reference). Fit for (a) plain / (b) one step / (c) translate,
+then shorten:
+
+| Direction | Characters budget | Syllables budget |
+|-----------|-------------------|------------------|
+| EN → DE | 27 / 58 / 80 % | 13 / 66 / 69 % |
+| EN → FR | 17 / 67 / 79 % | 61 / 47 / 75 % |
+
+- (c) keeps the meaning about as often as plain translation.
+
+GPU: 4.46 H100-hours of the 12 used (sacct). No job is queued.
+
+**Decisions** (each with its reason in the logs below)
+- Jobs ran as a chain, with a gate after the smoke test.
+- French JSON escapes are reported, not fixed: they were found on test.
+- The method's selection rule is unchanged, although it returns long lines when nothing fits.
+- torch in the container is the CPU build. The offline mode uses `network_mode: none` plus a shared
+  namespace.
+
+**Blockers:** none on the cluster.
+- Docker is missing on this Mac, so `make run` is untested in Docker.
+
+**Next steps (your call)**
+1. Run `make run` and `make run-offline` on a machine with Docker (or install it here), then fill that
+   placeholder in the report.
+2. Fill in the team, the demo link and the final commit. The report is about 3,800 words and probably
+   needs trimming for the 6-page PDF.
+3. The 70B run: 7.5 H100-hours are left. `docs/hpc.md` estimates 4–8 GPU-hours for German on two H100s
+   (an estimate).
+4. A more lenient JSON parser for French apostrophes, tuned on dev.
+5. A native-speaker check of outputs and control pairs.
 
 The earlier summary, written while the weights were missing, follows.
 
@@ -345,6 +379,15 @@ workflows. Ultracode mode was switched on in this session, but your rules say no
   - `results/step2_test.md` was generated again with both languages (commit 7bce3a4). The header now lists
     every run's endpoint and judge endpoint.
 - **13:57. Step 4 on dev** (job 2636594) took the GPU the French job freed.
+
+- **14:47. Step 4 on dev is complete** (job 2636594: 13:57:21–14:47:09, 2,988 s, 0.83 H100-hours).
+  - 561 items (291 German, 270 French), with no traceback.
+  - The report was written on the cluster, with commit 68492f2 recorded.
+  - (c), translate then shorten, has the highest fit in all four settings. Its meaning check against the
+    reference is level with plain translation.
+  - French one-step answers broke JSON again: 15 of 270 have no answer under the character budget.
+- **14:50. Every planned job is done.** The total is 4.46 H100-hours (sacct), of a budget of 12. The 70B was
+  not started.
 
 ## Local work while the H100 jobs run (your second message on 11 October)
 

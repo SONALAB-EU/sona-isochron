@@ -43,6 +43,9 @@ independent judge, Qwen3-14B):
 - The gain is largest for small cuts (90 % of the syllables) and small at 60 %, where the loop keeps the
   meaning rather than the length.
 - Details are in `technical_report.md` and `results/step2_test.md`.
+- When translating from English to a length budget (step 4, on dev, exploratory), translating first and
+  then shortening with the loop met the budget most often: 69–80 % within ±10 %. Meaning held up as
+  well as in plain translation.
 
 ## Run it
 
