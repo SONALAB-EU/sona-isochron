@@ -105,6 +105,14 @@ def test_paired_difference_of_the_loop() -> None:
     assert paired_diff([], fit, every) == "–"
 
 
+def test_first_table_stops_at_the_end_of_the_first_table() -> None:
+    from isochron.step2_report import first_table
+
+    lines = ["# Title", "", "| a | b |", "|---|---|", "| 1 | 2 |", "", "| Id | x |", "|----|---|"]
+    assert first_table(lines) == ["| a | b |", "|---|---|", "| 1 | 2 |"]
+    assert first_table(["no table"]) == []
+
+
 def test_control_halves() -> None:
     nli = list(read_jsonl(ROOT / "data/nli_controls.jsonl", ControlPair))
     assert len(control_half(nli, "A")) == len(control_half(nli, "B")) == 100

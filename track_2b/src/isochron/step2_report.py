@@ -55,6 +55,17 @@ def paired_diff(rows: list[dict], value, counts) -> str:
     return f"{100 * point:+.1f} [{100 * lo:+.1f}, {100 * hi:+.1f}]"
 
 
+def first_table(lines: list[str]) -> list[str]:
+    """The first markdown table in lines: its header, separator and rows, up to the first other line."""
+    table: list[str] = []
+    for line in lines:
+        if line.startswith("|"):
+            table.append(line)
+        elif table:
+            break
+    return table
+
+
 def effect_table(rows: list[dict], lang: str, levels: list[int]) -> list[str]:
     out = [f"### {lang}: effect of the repair loop (with − without, percentage points)", "",
            "| Levels | " + " | ".join(name for name, _, _ in METRICS) + " |",
@@ -115,7 +126,7 @@ def main(argv: list[str] | None = None) -> None:
         out += ["## Judge validation", ""]
         for path in args.validation:
             text = path.read_text(encoding="utf-8").splitlines()
-            tab = [line for line in text if line.startswith("|")][:9]
+            tab = first_table(text)
             mean = next((line for line in text if line.startswith("- Mean accuracy")), "")
             out += [f"`{path}`{': ' + mean[2:] if mean else ''}", "", *tab, ""]
     out += ["## Run configurations", ""]
