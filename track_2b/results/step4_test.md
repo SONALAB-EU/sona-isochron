@@ -1,7 +1,7 @@
 # Step 4 on test: translation to a length budget
 
-- Date: 2026-10-12 14:07 UTC
-- Git commit (report): 25c2d705d8fa2f918018271047032b27a8cc379c; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 14:16 UTC
+- Git commit (report): ef9e0e584fec0bed7ab7505906a2c8aaa0a91982; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; seeds [0, 1, 2] ((a), (b): item seed; (c): item seed + 1000 × round)
 - Prompts: `translate_plain_v1` (5fe6dd58bf7e), `translate_budget_chars_v1` (e81efebd7d4f), `translate_budget_syllables_v1` (a3ffa4ea51a7), `shorten_chars_v1` (004890c41f25), `shorten_syllables_v1` (fe4fbfdd800d), `revise_chars_v1` (62a308e266ab), `revise_v1` (ab0593b9716e)
@@ -78,7 +78,30 @@ no fact kept).
     French).
   - The other (1873, French only) ends in a parenthesis, and the answer closes it after the JSON string.
 - (c)'s loop gave no output for 9 more French items (characters) and 1 more German item (syllables).
-- Counts per system are in the "No output" column.
+- Counts per system are in the "No output" column, and per language and budget in "Parse failures".
+
+**JSON sensitivity (post-hoc, added after test outputs existed; no new generation).** The row under (b)
+re-reads only the answers strict JSON rejected, with one tolerant rule (`\'` becomes `'`), and chooses
+as (b) does.
+- It recovers 70 of the 114 rejected (b) answers: 51 of 83 French with characters, 18 of 23 French with
+  syllables, 1 of 6 German with characters, 0 of 2 German with syllables. These are exactly the answers
+  whose first parse error was `\'`.
+- Fit of (b), strict → tolerant: French 59.8 → 63.2 % with characters and 44.7 → 45.3 % with syllables;
+  German 59.4 → 59.5 % and 71.6 % unchanged.
+- Kept against the reference (NLI), French: 69.7 → 73.8 % with characters, 74.9 → 76.6 % with
+  syllables.
+- So the order of the systems does not change: with characters, (c) still fits 14.1 points more often
+  than (b) in French (77.3 against 63.2 %).
+- The judge never saw the recovered outputs, so this row has no fit & complete.
+
+**How (c)'s loop met parse failures** (table "Parse failures"; `isochron.repair`).
+- A round whose answer is not valid JSON gives no candidate. If no earlier round gave one, the next
+  round sends the first prompt again with a new seed (a retry). Otherwise the best candidate so far
+  stays, and the next round revises it. There are at most 3 rounds; if none parsed, (c) has no output.
+- French with characters: 89 of 1,691 rounds (5.3 %) gave no candidate, in 60 of 739 loop runs. 51 of
+  those runs still ended with an output, and 9 did not.
+- Elsewhere it was rare: 15 of 1,662 rounds (German, characters), 13 of 1,841 (German, syllables) and 7
+  of 461 (French, syllables). 1 German run ended without an output.
 
 **Otherwise clean.** 2 of 10,185 outputs are in the wrong language, and none of the 10,185 judge
 verdicts is invalid.
@@ -92,6 +115,7 @@ often plain translation already meets the budget.
 |--------|--------:|-----------|-------------------|--------------:|----------------:|----------------|------------------:|-------------------:|--------------------------|---------:|------------:|---------------:|----------:|
 | (a) plain translation | 1041 | 27.2 [23.0, 31.4] | 79.5 [75.7, 83.3] | 13 % | 14 % | 78.2 [74.2, 82.1] | 1.17 | 1.00 | 130.4 / 21.2 / 44.1 | – | – | 0 | 3 |
 | (b) one step to the budget | 1041 | 59.4 [55.1, 63.5] | 74.1 [70.3, 77.8] | 9 % | 21 % | 69.5 [65.7, 73.4] | 0.91 | 0.78 | 101.0 / 15.3 / 34.2 | – | – | 0 | 6 |
+| (b), `\'` read as `'`: sensitivity (post-hoc, added after test outputs existed) | 1041 | 59.5 [55.2, 63.6] | 74.2 [70.4, 77.9] | 9 % | 21 % | 69.6 [65.8, 73.5] | 0.91 | 0.78 | 101.0 / 15.3 / 34.2 | – | – | 0 | 5 |
 | (c) translate, then shorten | 1041 | 80.2 [77.1, 83.2] | 80.6 [77.0, 84.1] | 9 % | 15 % | 79.2 [75.6, 82.5] | 1.03 | 0.88 | 114.3 / 17.9 / 38.7 | 28 % | 0.88 | 0 | 3 |
 
 ### EN → DE, isometric budget (chars): final judge
@@ -115,6 +139,7 @@ often plain translation already meets the budget.
 |--------|--------:|-----------|-------------------|--------------:|----------------:|----------------|------------------:|-------------------:|--------------------------|---------:|------------:|---------------:|----------:|
 | (a) plain translation | 1041 | 19.6 [15.8, 23.6] | 79.5 [75.7, 83.3] | 13 % | 14 % | 78.2 [74.2, 82.1] | 1.25 | 1.00 | 130.4 / 21.2 / 44.1 | – | – | 0 | 3 |
 | (b) one step to the budget | 1041 | 71.6 [67.7, 75.2] | 76.8 [73.2, 80.2] | 11 % | 18 % | 72.5 [68.9, 76.1] | 1.01 | 0.81 | 105.9 / 16.3 / 35.5 | – | – | 1 | 2 |
+| (b), `\'` read as `'`: sensitivity (post-hoc, added after test outputs existed) | 1041 | 71.6 [67.7, 75.2] | 76.8 [73.2, 80.2] | 11 % | 18 % | 72.5 [68.9, 76.1] | 1.01 | 0.81 | 105.9 / 16.3 / 35.5 | – | – | 1 | 2 |
 | (c) translate, then shorten | 1041 | 70.3 [66.9, 73.8] | 81.6 [78.2, 84.6] | 8 % | 14 % | 77.7 [74.2, 81.1] | 1.04 | 0.84 | 108.9 / 17.0 / 36.7 | 21 % | 0.98 | 0 | 4 |
 
 ### EN → DE, isosyllabic budget (syllables): final judge
@@ -138,6 +163,7 @@ often plain translation already meets the budget.
 |--------|--------:|-----------|-------------------|--------------:|----------------:|----------------|------------------:|-------------------:|--------------------------|---------:|------------:|---------------:|----------:|
 | (a) plain translation | 996 | 23.9 [19.7, 28.3] | 79.7 [75.7, 83.6] | 13 % | 16 % | 73.5 [69.0, 77.8] | 1.19 | 1.00 | 131.5 / 24.9 / 41.8 | – | – | 0 | 6 |
 | (b) one step to the budget | 996 | 59.8 [55.5, 64.1] | 69.7 [65.8, 73.5] | 11 % | 19 % | 64.7 [60.7, 68.6] | 0.95 | 0.80 | 105.1 / 18.8 / 33.2 | – | – | 0 | 83 |
+| (b), `\'` read as `'`: sensitivity (post-hoc, added after test outputs existed) | 996 | 63.2 [58.9, 67.3] | 73.8 [70.1, 77.4] | 10 % | 19 % | 68.5 [64.6, 72.3] | 0.95 | 0.79 | 104.9 / 18.8 / 33.1 | – | – | 0 | 32 |
 | (c) translate, then shorten | 996 | 77.3 [74.0, 80.6] | 80.7 [77.1, 84.1] | 10 % | 14 % | 76.9 [73.1, 80.5] | 1.02 | 0.86 | 113.0 / 20.8 / 36.0 | 25 % | 0.96 | 0 | 15 |
 
 ### EN → FR, isometric budget (chars): final judge
@@ -161,6 +187,7 @@ often plain translation already meets the budget.
 |--------|--------:|-----------|-------------------|--------------:|----------------:|----------------|------------------:|-------------------:|--------------------------|---------:|------------:|---------------:|----------:|
 | (a) plain translation | 996 | 55.6 [50.9, 60.3] | 79.7 [75.7, 83.6] | 13 % | 16 % | 73.5 [69.0, 77.8] | 1.00 | 1.00 | 131.5 / 24.9 / 41.8 | – | – | 0 | 6 |
 | (b) one step to the budget | 996 | 44.7 [40.1, 49.3] | 74.9 [71.2, 78.5] | 12 % | 18 % | 72.4 [68.6, 76.0] | 0.88 | 0.89 | 116.6 / 21.1 / 36.9 | – | – | 0 | 23 |
+| (b), `\'` read as `'`: sensitivity (post-hoc, added after test outputs existed) | 996 | 45.3 [40.7, 49.9] | 76.6 [72.9, 80.1] | 12 % | 17 % | 73.7 [69.9, 77.3] | 0.88 | 0.89 | 116.6 / 21.1 / 36.9 | – | – | 0 | 5 |
 | (c) translate, then shorten | 996 | 69.9 [65.7, 74.1] | 81.5 [77.8, 85.1] | 12 % | 15 % | 74.4 [70.2, 78.5] | 0.96 | 0.97 | 127.4 / 24.0 / 40.5 | 79 % | 0.26 | 1 | 6 |
 
 ### EN → FR, isosyllabic budget (syllables): final judge
@@ -177,6 +204,17 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +25.2 [+20.0, +30.3] | +26.2 [+20.9, +31.3] | +6.6 [+2.7, +10.6] |
 | (c) − (a) | +14.3 [+11.2, +17.5] | +13.2 [+10.2, +16.3] | +1.8 [+0.3, +3.5] |
+
+### Parse failures (strict JSON, as frozen)
+
+| Language, budget | (b) rejected | (b) recovered by the rule | (c) loop runs | (c) rounds | (c) rounds without a candidate | (c) retry rounds | (c) runs with such a round | of those, with an output | (c) runs without an output |
+|------------------|-------------:|--------------------------:|--------------:|-----------:|-------------------------------:|-----------------:|---------------------------:|-------------------------:|---------------------------:|
+| DE, isometric | 6 | 1 | 743 | 1662 | 15 | 13 | 11 | 11 | 0 |
+| DE, isosyllabic | 2 | 0 | 823 | 1841 | 13 | 8 | 10 | 9 | 1 |
+| FR, isometric | 83 | 51 | 739 | 1691 | 89 | 56 | 60 | 51 | 9 |
+| FR, isosyllabic | 23 | 18 | 204 | 461 | 7 | 2 | 5 | 5 | 0 |
+
+(a) asks again with the next seed after an unparsable answer, at most 3 times. DE: 4 of 1041 items needed another try, and 3 ended without a translation; FR: 6 of 996 items needed another try, and 6 ended without a translation. Without (a), (c) has no output either.
 
 ## Judge validation
 
