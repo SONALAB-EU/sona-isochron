@@ -60,6 +60,22 @@ the report. No workflows; commit locally only.
   - The main step 4 meaning check, NLI against the human reference, is monolingual and unaffected.
 - **GPU:** 4.46 + 0.22 = 4.68 H100-hours (sacct). The worst case with the German and French limits is 7.68.
 
+- **12:13. The French job would have failed, so I resubmitted it** (2647420 cancelled while pending; now
+  2647517, `RUN_SUFFIX=_fr`).
+  - A step 4 run folder is named without its language (`results/raw/hpc_8b_step4_test`), so both jobs would
+    have used the same folder.
+  - Resuming requires the same `langs`, so the French job would have stopped with "holds a different run",
+    after holding a GPU for its server start.
+  - German writes `hpc_8b_step4_test`, French `hpc_8b_step4_test_fr`.
+- **12:13. Docker.** Docker was not installed, so I installed Colima 0.10.3 and the Docker CLI 29.9 with
+  Compose 5.6 and Buildx (Homebrew).
+  - The VM runs on Apple's virtualisation: 6 CPUs, 10 GB RAM, 60 GB disk.
+  - Its image came from Colima's release (v0.10.4), fetched in parallel and checked against its SHA-512,
+    because Colima's own download ran at 0.13 MB/s.
+  - First build from a fresh clone: GitHub returned 504 for the eSpeak NG tarball on all 6 tries.
+  - Fix (commit eaa0bbb): longer retries, and a fallback that fetches the same commit with git and checks
+    its id. The rebuild then got the tarball, its SHA-256 matched, and it built eSpeak NG 1.52.0.
+
 ## The loop round by round (2026-10-12; from the logged runs, no new generation)
 
 - **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and
