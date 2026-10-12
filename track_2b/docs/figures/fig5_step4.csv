@@ -1,16 +1,17 @@
-# drawn by isochron.figures (code last changed in commit edf04e3)
+# drawn by isochron.figures (code last changed in commit 19fa1f6)
+# input results/step4_test.md: blob cd69c265f0db, last changed in commit d3feab9 (2026-10-12T15:44:53+02:00)
 # input results/hpc_8b_step4_dev.md: blob c6873cb9b036, last changed in commit 5ac84d9 (2026-10-11T16:50:07+02:00)
 # date, model, quantisation, endpoint, seeds and n of each run: see the input's header
-lang,budget,system,outputs,fit_pct,ci_low,ci_high
-de,characters,(a) plain translation,291,26.8,19.6,34.7
-de,characters,(b) one step to the budget,291,58.1,50.2,65.6
-de,characters,"(c) translate, then shorten",291,80.1,73.9,85.6
-de,syllables,(a) plain translation,291,13.4,7.6,19.9
-de,syllables,(b) one step to the budget,291,66.0,58.4,72.9
-de,syllables,"(c) translate, then shorten",291,69.4,62.5,75.9
-fr,characters,(a) plain translation,270,17.4,10.7,24.8
-fr,characters,(b) one step to the budget,270,67.4,59.6,74.4
-fr,characters,"(c) translate, then shorten",270,79.3,72.6,85.6
-fr,syllables,(a) plain translation,270,60.7,51.9,69.6
-fr,syllables,(b) one step to the budget,270,46.7,38.5,54.8
-fr,syllables,"(c) translate, then shorten",270,74.8,66.3,82.6
+lang,budget,system,outputs,fit_pct,ci_low,ci_high,fit_complete_pct,fit_complete_ci_low,fit_complete_ci_high,dev_fit_pct
+de,characters,(a) plain translation,1041,27.2,23.0,31.4,26.8,22.7,31.0,26.8
+de,characters,(b) one step to the budget,1041,59.4,55.1,63.5,53.7,49.6,57.8,58.1
+de,characters,"(c) translate, then shorten",1041,80.2,77.1,83.2,70.5,66.8,74.2,80.1
+de,syllables,(a) plain translation,1041,19.6,15.8,23.6,19.5,15.8,23.4,13.4
+de,syllables,(b) one step to the budget,1041,71.6,67.7,75.2,61.5,57.4,65.4,66.0
+de,syllables,"(c) translate, then shorten",1041,70.3,66.9,73.8,56.9,52.9,60.7,69.4
+fr,characters,(a) plain translation,996,23.9,19.7,28.3,23.5,19.4,27.9,17.4
+fr,characters,(b) one step to the budget,996,59.8,55.5,64.1,53.0,48.7,57.3,67.4
+fr,characters,"(c) translate, then shorten",996,77.3,74.0,80.6,68.6,64.9,72.2,79.3
+fr,syllables,(a) plain translation,996,55.6,50.9,60.3,54.9,50.2,59.7,60.7
+fr,syllables,(b) one step to the budget,996,44.7,40.1,49.3,41.9,37.4,46.4,46.7
+fr,syllables,"(c) translate, then shorten",996,69.9,65.7,74.1,68.1,63.7,72.4,74.8

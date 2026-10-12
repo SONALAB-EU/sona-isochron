@@ -1,4 +1,4 @@
-# drawn by isochron.figures (code last changed in commit edf04e3)
+# drawn by isochron.figures (code last changed in commit 19fa1f6)
 kind,name,label,to
 box,deployment,make run-offline: no network (network_mode: none),
 box,app,app container (CPU),

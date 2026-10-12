@@ -1,4 +1,4 @@
-# drawn by isochron.figures (code last changed in commit edf04e3)
+# drawn by isochron.figures (code last changed in commit 19fa1f6)
 # input results/step2_test_rounds.csv: blob 949c164aec9a, last changed in commit c71ca39 (2026-10-12T12:48:37+02:00)
 # date, model, quantisation, endpoint, seeds and n of each run: see the input's header
 lang,level,round,fit_pct,fit_complete_low_pct,fit_complete_high_pct
