@@ -3,9 +3,10 @@
 Inputs (each must be tracked by git and unchanged; the run stops otherwise):
 - results/step2_test.md            figure 2: fit & complete per level, with the 95 % intervals
 - results/step2_test_lengths.csv   figure 3: achieved ÷ target syllables of every output
-- results/hpc_8b_step4_dev.md      figure 4: step 4 fit per system and budget
+- results/step2_test_rounds.csv    figure 4: fit and fit & complete after each round of the loop
+- results/hpc_8b_step4_dev.md      figure 5: step 4 fit per system and budget
 - results/judge_validation_hard_v3_all.md, results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md
-                                   figure 5: what the NLI and the two judges catch on the hard controls
+                                   figure 6: what the NLI and the two judges catch on the hard controls
 Figure 1, the pipeline, is drawn from the description in this file.
 
 Output, in --out (default docs/figures/): figN_<name>.pdf (vector), .png (300 dpi) and .csv (the numbers
@@ -33,15 +34,18 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 STEP2 = Path("results/step2_test.md")
 LENGTHS = Path("results/step2_test_lengths.csv")
+ROUNDS_CSV = Path("results/step2_test_rounds.csv")
 STEP4 = Path("results/hpc_8b_step4_dev.md")
 JUDGE_8B = Path("results/judge_validation_hard_v3_all.md")
 JUDGE_14B = Path("results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md")
-INPUTS = (STEP2, LENGTHS, STEP4, JUDGE_8B, JUDGE_14B)
+INPUTS = (STEP2, LENGTHS, ROUNDS_CSV, STEP4, JUDGE_8B, JUDGE_14B)
 
 WITHOUT = "#E69F00"  # Okabe & Ito orange: without the repair loop, in every figure
 WITH = "#0072B2"  # Okabe & Ito blue: with the repair loop (our method), in every figure
 PLAIN = "#999999"  # grey: plain translation, no length instruction
 NLI_COLOUR, J8_COLOUR, J14_COLOUR = "#999999", "#CC79A7", "#009E73"
+LEVEL_COLOURS = {90: "#9ECAE1", 80: "#6BAED6", 70: "#2171B5", 60: "#08306B"}  # ColorBrewer Blues: all with the loop
+LEVEL_MARKERS = {90: "o", 80: "s", 70: "^", 60: "D"}
 WIDTH = 3.5  # inches: one column
 LEVELS = (90, 80, 70, 60)
 LANGS = {"DE": "German", "FR": "French"}
@@ -273,7 +277,48 @@ def fig3_ratio_histogram(out: Path) -> list[Path]:
     return save(fig, out, "fig3_ratio_histogram")
 
 
-def fig4_step4(out: Path) -> list[Path]:
+def fig4_rounds(out: Path) -> list[Path]:
+    """Fit and fit & complete after round 0, 1 and 2 of the loop, per level, German and French test."""
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    with open(ROOT / ROUNDS_CSV, encoding="utf-8") as f:
+        data = [r for r in csv.DictReader(line for line in f if not line.startswith("#"))]
+    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.2), sharex=True, sharey="row", layout="constrained")
+    x = np.array([0, 1, 2])
+    rows = []
+    for col, lang in enumerate(LANGS):
+        for level in (*LEVEL_COLOURS, "all"):
+            sel = sorted((r for r in data if r["lang"] == lang.lower() and r["level"] == str(level)),
+                         key=lambda r: int(r["round"]))
+            fit = np.array([float(r["fit_pct"]) for r in sel])
+            low = np.array([float(r["fit_complete_low_pct"]) for r in sel])
+            high = np.array([float(r["fit_complete_high_pct"]) for r in sel])
+            style = ({"color": "#000000", "lw": 1.8, "marker": None} if level == "all" else
+                     {"color": LEVEL_COLOURS[level], "lw": 1.1, "marker": LEVEL_MARKERS[level], "ms": 3})
+            axes[0, col].plot(x, fit, **style)
+            axes[1, col].errorbar(x, low, yerr=[np.zeros(3), high - low], capsize=1.5, elinewidth=0.7, **style)
+            rows += [{"lang": lang.lower(), "level": level, "round": k, "fit_pct": f, "fit_complete_low_pct": lo,
+                      "fit_complete_high_pct": hi} for k, f, lo, hi in zip(x, fit, low, high)]
+        axes[0, col].set_title(LANGS[lang])
+    for ax in axes.flat:
+        ax.set_xticks(x, ["0", "1", "2"])
+        ax.set_ylim(0, 90)
+        ax.grid(axis="y", lw=0.4, color="#DDDDDD")
+        ax.set_axisbelow(True)
+    axes[0, 0].set_ylabel("Fit (%)")
+    axes[1, 0].set_ylabel("Fit & complete (%)")
+    for ax in axes[1]:
+        ax.set_xlabel("after round")
+    handles = [Line2D([], [], color=LEVEL_COLOURS[lv], marker=LEVEL_MARKERS[lv], ms=3, lw=1.1, label=f"{lv} %")
+               for lv in LEVEL_COLOURS] + [Line2D([], [], color="#000000", lw=1.8, label="all levels")]
+    fig.legend(handles=handles, loc="outside lower center", ncol=3, handlelength=1.6, columnspacing=1.0,
+               title="target length (% of the line's syllables)", title_fontsize=7)
+    write_csv(out / "fig4_rounds.csv", (ROUNDS_CSV,), list(rows[0]), rows)
+    return save(fig, out, "fig4_rounds")
+
+
+def fig5_step4(out: Path) -> list[Path]:
     """Step 4 on dev: fit per system under the character and the syllable budget, German and French."""
     import matplotlib.pyplot as plt
 
@@ -315,11 +360,11 @@ def fig4_step4(out: Path) -> list[Path]:
                      xytext=(0.78, 111.5), fontsize=6.2, ha="center", va="top",
                      arrowprops={"arrowstyle": "-|>", "lw": 0.7, "color": "#333333", "mutation_scale": 6})
     fig.legend(*axes[0].get_legend_handles_labels(), loc="outside lower center", ncol=1, handlelength=1.2)
-    write_csv(out / "fig4_step4.csv", (STEP4,), list(rows[0]), rows)
-    return save(fig, out, "fig4_step4")
+    write_csv(out / "fig5_step4.csv", (STEP4,), list(rows[0]), rows)
+    return save(fig, out, "fig5_step4")
 
 
-def fig5_judges(out: Path) -> list[Path]:
+def fig6_judges(out: Path) -> list[Path]:
     """What the NLI and the two judges get right on the hard controls (German)."""
     import matplotlib.pyplot as plt
 
@@ -353,8 +398,8 @@ def fig5_judges(out: Path) -> list[Path]:
     ax.tick_params(axis="y", length=0)
     fig.legend(*ax.get_legend_handles_labels(), loc="outside lower center", ncol=3, handlelength=1.2,
                columnspacing=0.9)
-    write_csv(out / "fig5_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
-    return save(fig, out, "fig5_judges")
+    write_csv(out / "fig6_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
+    return save(fig, out, "fig6_judges")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -364,7 +409,7 @@ def main(argv: list[str] | None = None) -> None:
     provenance(INPUTS)  # stops before drawing anything if an input is not committed
     style()
     args.out.mkdir(parents=True, exist_ok=True)
-    for draw in (fig1_pipeline, fig2_compression, fig3_ratio_histogram, fig4_step4, fig5_judges):
+    for draw in (fig1_pipeline, fig2_compression, fig3_ratio_histogram, fig4_rounds, fig5_step4, fig6_judges):
         for path in draw(args.out):
             print(f"wrote {path}")
 

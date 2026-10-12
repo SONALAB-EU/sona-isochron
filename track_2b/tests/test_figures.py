@@ -38,7 +38,8 @@ def test_inputs_must_be_committed() -> None:
 def test_every_figure_is_drawn_one_column_wide(tmp_path: Path) -> None:
     pytest.importorskip("matplotlib")
     figures.main(["--out", str(tmp_path)])
-    names = ("fig1_pipeline", "fig2_compression", "fig3_ratio_histogram", "fig4_step4", "fig5_judges")
+    names = ("fig1_pipeline", "fig2_compression", "fig3_ratio_histogram", "fig4_rounds", "fig5_step4",
+             "fig6_judges")
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(f"{n}.{ext}" for n in names for ext in ("csv", "pdf", "png"))
     for name in names:
         png = (tmp_path / f"{name}.png").read_bytes()
