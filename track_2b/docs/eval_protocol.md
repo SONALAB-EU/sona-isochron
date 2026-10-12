@@ -622,7 +622,9 @@ used.
   is not clearly better than Qwen3-8B (p = 0.34), and it misses half the lost
   qualifiers. So the native-speaker check still carries the meaning results
   for qualifiers.
-- Which outputs the 50 native-speaker lines come from, and who checks them.
+- Who checks the 50 native-speaker lines. Which lines they are was decided on 2026-10-12: German step 2
+  test outputs, 25 without and 25 with the loop, from 50 different sentences, seeded
+  (`docs/native_check.md`, `results/native_check/sheet_de.csv`).
 - A native-speaker review of the NLI control pairs.
 - A near-tie test on paired differences, instead of overlapping intervals
   (suggested by the pilot). For step 2 on test, the report now gives the
