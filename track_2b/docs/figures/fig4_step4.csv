@@ -1,0 +1,16 @@
+# drawn by isochron.figures (code last changed in commit 95daa62)
+# input results/hpc_8b_step4_dev.md: blob c6873cb9b036, last changed in commit 5ac84d9 (2026-10-11T16:50:07+02:00)
+# date, model, quantisation, endpoint, seeds and n of each run: see the input's header
+lang,budget,system,outputs,fit_pct,ci_low,ci_high
+de,characters,(a) plain translation,291,26.8,19.6,34.7
+de,characters,(b) one step to the budget,291,58.1,50.2,65.6
+de,characters,"(c) translate, then shorten",291,80.1,73.9,85.6
+de,syllables,(a) plain translation,291,13.4,7.6,19.9
+de,syllables,(b) one step to the budget,291,66.0,58.4,72.9
+de,syllables,"(c) translate, then shorten",291,69.4,62.5,75.9
+fr,characters,(a) plain translation,270,17.4,10.7,24.8
+fr,characters,(b) one step to the budget,270,67.4,59.6,74.4
+fr,characters,"(c) translate, then shorten",270,79.3,72.6,85.6
+fr,syllables,(a) plain translation,270,60.7,51.9,69.6
+fr,syllables,(b) one step to the budget,270,46.7,38.5,54.8
+fr,syllables,"(c) translate, then shorten",270,74.8,66.3,82.6
