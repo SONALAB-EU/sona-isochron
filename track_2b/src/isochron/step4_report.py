@@ -20,6 +20,9 @@ markdown report.
 - (c) keeps (a) unchanged when (a) is at most 1.10 × the budget; "(a) kept" is how often.
 - A wrong-language output (isochron.language) counts as a failure, like a missing one.
 - 95 % intervals: bootstrap over sentences (each carries its seeds), 10,000 resamples, seed 0.
+- Paired differences: (c) − (b) and (c) − (a), in percentage points, for fit, fit & complete and kept vs
+  reference. All systems translate the same sentences, so the bootstrap resamples sentences once per
+  resample and scores both systems on it (step 2's paired interval, isochron.step2_report.paired_diff).
 
     uv run python -m isochron.step4_report RUN_DIR [RUN_DIR ...] [--validation FILE ...] [--out FILE]
 """
@@ -42,9 +45,15 @@ from isochron.language import describe as describe_language
 from isochron.metrics.length import hit, length
 from isochron.pilot_report import BOOT_SEED, N_BOOT, ci, short
 from isochron.provenance import git_commit
-from isochron.step2_report import first_table
+from isochron.step2_report import first_table, paired_diff
 
 SYSTEMS = {"a": "(a) plain translation", "b": "(b) one step to the budget", "c": "(c) translate, then shorten"}
+PAIRS = (("c", "b"), ("c", "a"))
+DIFFS = (  # name, value per output, judge needed
+    ("Fit ±10 %", lambda r: r["fit"], False),
+    ("Fit & complete", lambda r: r["complete"], True),
+    ("Kept vs reference", lambda r: bool(r["ref"] and r["ref"]["kept"]), False),
+)
 
 
 def outputs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -185,6 +194,18 @@ def judge_table(rows: list[dict[str, Any]], title: str) -> list[str]:
     return out
 
 
+def diff_table(rows: list[dict[str, Any]], title: str, judged: bool) -> list[str]:
+    metrics = [(name, value) for name, value, needs_judge in DIFFS if judged or not needs_judge]
+    out = [f"### {title}: paired differences (percentage points)", "",
+           "| Difference | " + " | ".join(name for name, _ in metrics) + " |",
+           "|------------|" + "|".join("-" * (len(name) + 2) for name, _ in metrics) + "|"]
+    for x, y in PAIRS:
+        pair = [{**r, "cond": "with" if r["system"] == x else "without"} for r in rows if r["system"] in (x, y)]
+        out.append(f"| ({x}) − ({y}) | "
+                   + " | ".join(paired_diff(pair, value, lambda r: True) for _, value in metrics) + " |")
+    return out
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Step 4 tables.")
     ap.add_argument("runs", type=Path, nargs="+")
@@ -257,6 +278,7 @@ def main(argv: list[str] | None = None) -> None:
         lines += table(rs, title) + [""]
         if judged:
             lines += judge_table(rs, title) + [""]
+        lines += diff_table(rs, title, bool(judged)) + [""]
     if args.validation:
         lines += ["## Judge validation", ""]
         for path in args.validation:

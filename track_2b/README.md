@@ -43,9 +43,10 @@ independent judge, Qwen3-14B):
 - The gain is largest for small cuts (90 % of the syllables) and small at 60 %, where the loop keeps the
   meaning rather than the length.
 - Details are in `technical_report.md` and `results/step2_test.md`.
-- When translating from English to a length budget (step 4, on dev, exploratory), translating first and
-  then shortening with the loop met the budget most often: 69–80 % within ±10 %. Meaning held up as
-  well as in plain translation.
+- When translating from English to a length budget (step 4, on test), translating first and then
+  shortening with the loop met the budget most often in three of four settings: 70–80 % within ±10 %. In
+  German with a syllable budget, translating to the budget in one step did as well. Meaning held up as
+  well as in plain translation (`results/step4_test.md`).
 
 ## Run it
 
@@ -76,6 +77,8 @@ What happens:
   `data/sample_input.jsonl`.
 - The results go to `output/results.jsonl` and `output/summary.md`.
 - The NLI and the language check run on the CPU, inside the container.
+- Measured on an Apple M3 (Docker in Colima, arm64): the first build took 40 min, and the run 4 min
+  against llama-server on the same Mac.
 
 ### `make run-offline` (no network at all)
 
@@ -92,7 +95,8 @@ make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
 - `docs/local_llm.md` explains which GGUF we use and its caveat: it is a text-only conversion of the
   official weights.
 - Build the images once while online. After that, `make run-offline` needs no network.
-- Everything runs on the CPU here, so it is slower than with a GPU server.
+- Everything runs on the CPU here, so it is slower than with a GPU server. On the Apple M3 (6 CPUs for
+  Docker), the 10 lines took 26 min, including 4 min to load the GGUF.
 
 ### Without Docker
 

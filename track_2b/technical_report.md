@@ -53,16 +53,18 @@ Diagrams in `docs/architecture.md`.*
 - **b) Air-gapped:** `make run-offline`.
   - llama.cpp's server runs a local GGUF in a container with `network_mode: none`, and the app joins its
     namespace. The NLI model and the language identifier are inside the image.
-  - Tested without Docker: from a fresh clone, under a macOS sandbox that allows only localhost
-    connections, the 10 sample lines ran, external connections failed, and the outputs were identical to
-    a networked run.
-  - **[PLACEHOLDER: `make run-offline` in Docker; Docker was not installed on our development machine]**
+  - Tested in Docker (Colima on an Apple M3, arm64) from a fresh clone: `make run-offline` ran the 10
+    sample lines on the CPU in 26 min, exit 0. A container without a network has only a loopback
+    interface, and outbound requests fail.
+  - Also tested without Docker, under a macOS sandbox that allows only localhost: the outputs were
+    identical to a networked run.
 - **a) On-premise:** the evaluation ran on HPI's H100 cluster. Apertus ran in the official vLLM container
   under Slurm, with the weights on the cluster's storage and Hugging Face offline.
 - **Build time** needs the internet: Debian packages; the eSpeak NG source (SHA-256-pinned); the
   hash-checked packages of `uv.lock`, with torch as its CPU build; the NLI model at a pinned revision; and
   base images pinned by digest.
-- **Run time:** `make run` needs only the LLM endpoint, and `make run-offline` needs nothing.
+- **Run time:** `make run` needs only the LLM endpoint, and `make run-offline` needs nothing. In Docker,
+  `make run` against llama-server on the Mac took 4 min for the 10 lines.
 
 ## 3. Use of Apertus
 

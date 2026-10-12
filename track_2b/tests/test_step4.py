@@ -42,6 +42,23 @@ nli_cached = isinstance(try_to_load_from_cache(MODEL_ID, "model.safetensors", re
 
 
 @pytest.mark.skipif(not nli_cached or not espeak_available(), reason="needs the cached NLI model and espeak-ng")
+def test_paired_differences_compare_systems_on_the_same_sentences() -> None:
+    from isochron.step4_report import diff_table
+
+    def row(i: str, system: str, fit: bool, complete: bool, kept: bool) -> dict:
+        return {"id": i, "system": system, "fit": fit, "complete": complete, "ref": {"kept": kept}}
+
+    rows = [row("1", "a", False, False, True), row("1", "b", True, False, False), row("1", "c", True, True, True),
+            row("2", "a", False, False, True), row("2", "b", False, False, True), row("2", "c", True, True, True)]
+    table = diff_table(rows, "EN → DE, isometric budget (chars)", judged=True)
+    assert table[2] == "| Difference | Fit ±10 % | Fit & complete | Kept vs reference |"
+    c_b, c_a = ([cell.strip() for cell in line.strip("|").split("|")] for line in table[4:6])
+    assert c_b[0] == "(c) − (b)" and c_b[1].startswith("+50.0 [") and c_b[2].startswith("+100.0 [")
+    assert c_b[3].startswith("+50.0 [")
+    assert c_a == ["(c) − (a)", "+100.0 [+100.0, +100.0]", "+100.0 [+100.0, +100.0]", "+0.0 [+0.0, +0.0]"]
+    assert "Fit & complete" not in diff_table(rows, "without a judge", judged=False)[2]
+
+
 def test_dry_run_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from isochron import step4, step4_report
 
@@ -102,6 +119,7 @@ def test_judge_and_report_score_against_the_english_source(tmp_path: Path, monke
     step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
     text = report.read_text(encoding="utf-8")
     assert "EN → FR, isosyllabic budget (syllables): final judge" in text and "Judge (evaluation only): stub" in text
+    assert "EN → DE, isometric budget (chars): paired differences (percentage points)" in text
     # a second pass reuses every NLI score from the cache
     cached = (tmp_path / "nli.jsonl").read_text(encoding="utf-8")
     step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
