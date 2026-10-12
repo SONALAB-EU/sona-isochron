@@ -70,6 +70,7 @@ CONTROL_TYPES = {
 
 
 def build(run: Path, out: Path) -> None:
+    commit = git_commit()  # before the files are rewritten: rewriting a tracked file would mark the tree dirty
     cfg = json.loads((run / "config.json").read_text(encoding="utf-8"))
     if cfg["lang"] != "de" or cfg["split"] != "test":
         raise SystemExit(f"{run} is not a German test run")
@@ -107,7 +108,7 @@ def build(run: Path, out: Path) -> None:
                         "drops_information": "", "grammar_problem": "", "comment": ""})
     with open(out / "step2_key_de.csv", "w", encoding="utf-8", newline="") as f:
         f.write(f"# The key to step2_sheet_de.csv: never show it to the checker. Written by isochron.native_check on "
-                f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC, git commit {git_commit()}; run {run.name} "
+                f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC, git commit {commit}; run {run.name} "
                 f"({cfg['model']}, {cfg['quantisation']}); NLI labels from the run's own check\n")
         w = csv.DictWriter(f, fieldnames=KEY_FIELDS)
         w.writeheader()
@@ -121,6 +122,7 @@ def build_step4(run: Path, out: Path, nli_cache: Path, nli2_cache: Path | None =
                 budget: str = "isosyllabic", seed: int = 0) -> None:
     from isochron.meaning_check import key, read_cache
 
+    commit = git_commit()  # before the files are rewritten: rewriting a tracked file would mark the tree dirty
     cfg = json.loads((run / "config.json").read_text(encoding="utf-8"))
     if cfg["langs"] != ["de"] or cfg["split"] != "test":
         raise SystemExit(f"{run} is not a German step 4 test run")
@@ -164,7 +166,7 @@ def build_step4(run: Path, out: Path, nli_cache: Path, nli2_cache: Path | None =
                         "meaning": "", "added_info": "", "natural_german": "", "comment": ""})
     with open(out / "step4_key_de.csv", "w", encoding="utf-8", newline="") as f:
         f.write(f"# The key to step4_sheet_de.csv: never show it to the checker. Written by isochron.native_check on "
-                f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC, git commit {git_commit()}; run {run.name} "
+                f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC, git commit {commit}; run {run.name} "
                 f"({cfg['model']}, {cfg['quantisation']}), seed {seed}, (c) under the {budget} budget; NLI: "
                 f"{nli_cache.name}" + (f", second NLI: {nli2_cache.name}" if nli2_cache else ", no second NLI yet") + "\n")
         w = csv.DictWriter(f, fieldnames=STEP4_KEY)
