@@ -1,5 +1,37 @@
 # Status
 
+## Step 4 on test (from 2026-10-12, 11:16 UTC; decision log)
+
+Your instruction: freeze step 4 as it ran on dev, run it on test (German and French, both budgets, seeds
+0–2, all three systems), score it as in step 2 (judge included), write `results/step4_test.md` and update
+the report. No workflows; commit locally only.
+
+- **Frozen before any test generation** (protocol v2.17, commit 7b22d93).
+  - The step 4 code and prompts are unchanged since the dev run's 68492f2, and all seven prompt hashes match
+    what the dev run recorded.
+  - French JSON is not fixed: a broken answer is a miss.
+- **New: the final judge for step 4.** It lists the English source's facts and marks them in the German or
+  French output.
+  - It was only validated on same-language pairs, so it is validated in the same pipeline on cross-lingual
+    copies of both suites (`data/{nli,judge}_controls_xl.jsonl`: the same 340 pairs, with the English
+    FLEURS original as the source).
+  - Rule fixed beforehand: under 90 % on identity pairs flags the judge's step 4 numbers as unreliable.
+- **Scoring runs on the Mac** (lengths, language, NLI; `isochron.step4_report`), not in the GPU jobs.
+  - On dev, the report step held the H100 for 31 min, mostly for CPU work.
+  - The refactored report reproduces the dev report's 12 table rows exactly.
+- **Jobs (11:16), chained with `afterok`:** sanity check 2647418 (dev, 5 sentences per language, seed 0, 1 h
+  limit) → German test 2647419 (gated, 1.5 h) → French test 2647420 (1.5 h).
+  - Estimate: about 1.6 H100-hours, against 4.46 used before. The worst case is 8.46 of 12.
+- **The sanity check is clean only if all of these hold** (fixed now, before any output):
+  1. The job completes generate, validate (`nli_xl`, `hard_xl`) and judge, with no traceback.
+  2. 10 items, with all 5 outputs each. At most 3 of the 50 outputs are missing or in the wrong language.
+  3. The judge scores every output; at most 2 of 50 are invalid.
+  4. Both cross-lingual validation reports are written.
+  5. `isochron.step4_report` scores the run on the Mac, judge tables included.
+  6. Reading the outputs, they are German or French translations of their sources.
+  - If any fails, I stop at the gate (`hpc/gates/step4_test.go.stop`), fix the cause and retry, at most
+    twice.
+
 ## The loop round by round (2026-10-12; from the logged runs, no new generation)
 
 - **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and
