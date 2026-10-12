@@ -18,7 +18,8 @@ Only the inference runs on the GPU:
   models, with 95 % bootstrap intervals over sentences; how often the two agree; (c) − (a) and (c) − (b)
   under both models; and how much more each system gains from the evaluation NLI than from the second.
   No NLI chooses (b)'s output, so (c)'s gain beyond (b)'s is the part that selection by the evaluation NLI
-  inside the loop could add.
+  inside the loop could add; it is also given on the lines the loop shortened, because elsewhere (c) is the
+  plain translation itself.
 
 The second model is 2-way (entailment, not entailment). Kept, added and dropped only ask whether a direction is
 entailment, so they mean the same for both models.
@@ -217,8 +218,8 @@ def meaning_table(rows: list[dict[str, Any]], title: str) -> list[str]:
 
 
 def diff_table(rows: list[dict[str, Any]], title: str) -> list[str]:
-    def pair(x: str, y: str) -> list[dict[str, Any]]:
-        return [{**r, "cond": "with" if r["system"] == x else "without"} for r in rows if r["system"] in (x, y)]
+    def pair(x: str, y: str, rs: list[dict[str, Any]] = rows) -> list[dict[str, Any]]:
+        return [{**r, "cond": "with" if r["system"] == x else "without"} for r in rs if r["system"] in (x, y)]
 
     def kept(model: str):
         return lambda r: bool(r["usable"] and r[f"ref{model}"]["kept"])
@@ -232,11 +233,18 @@ def diff_table(rows: list[dict[str, Any]], title: str) -> list[str]:
     def gap(r: dict[str, Any]) -> float:
         return float(kept("1")(r)) - float(kept("2")(r))
 
-    gaps = "; ".join(f"({x}) − ({y}) {paired_diff(pair(x, y), gap, lambda r: True)}"
-                     for x, y in (("c", "a"), ("b", "a"), ("c", "b")))
+    def gaps(rs: list[dict[str, Any]]) -> str:
+        return "; ".join(f"({x}) − ({y}) {paired_diff(pair(x, y, rs), gap, lambda r: True)}"
+                         for x, y in (("c", "a"), ("b", "a"), ("c", "b")))
+
+    # the lines the loop shortened: elsewhere (c) is (a) itself, so (c) − (a) is 0 there by construction
+    shortened = {(r["id"], r["seed"]) for r in rows if r["system"] == "c" and r["plain"] and not r["kept_plain"]}
+    looped = [r for r in rows if (r["id"], r["seed"]) in shortened]
     out += ["", "How much more a system gains from the evaluation NLI than from the second, on kept vs reference "
-            f"(evaluation minus second NLI, paired, points): {gaps}. No NLI chooses (b)'s output, so the part that "
-            "selection by the evaluation NLI inside the loop could add is (c) − (b)."]
+            f"(evaluation minus second NLI, paired, points): {gaps(rows)}. No NLI chooses (b)'s output, so the part "
+            "that selection by the evaluation NLI inside the loop could add is (c) − (b).",
+            "", f"The same on the {len(shortened)} lines that the loop shortened (elsewhere (c) is the plain "
+            f"translation itself): {gaps(looped)}."]
     return out
 
 

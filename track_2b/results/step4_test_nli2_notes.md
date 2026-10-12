@@ -31,24 +31,27 @@ least as often (deletions in German and French: 39 of 40, against 33). But in Ge
 - Ours still keeps the meaning more often than one step to the budget in three settings under both
   models. German with syllables is within noise under the second.
 
-**Is the difference the loop choosing with the evaluation NLI? Mostly not.** How much more each system
-gains from the evaluation NLI than from the second (paired, points):
+**Is the difference the loop choosing with the evaluation NLI? In part, at least in one setting.** How
+much more each system gains from the evaluation NLI than from the second (paired, points):
 
-| EN →, budget | (c) − (a) | (b) − (a): no NLI chooses (b) | (c) − (b): what selection could add |
-|--------------|-----------|-------------------------------|-------------------------------------|
-| DE, characters | +4.6 [+1.8, +7.5] | +4.5 [+0.2, +8.9] | +0.1 [−4.0, +4.1] |
-| DE, syllables | +7.3 [+3.8, +11.0] | +5.1 [+0.9, +9.3] | +2.2 [−1.9, +6.4] |
-| FR, characters | +3.8 [+0.8, +6.8] | +2.7 [−1.6, +7.1] | +1.1 [−2.4, +4.6] |
-| FR, syllables | +2.3 [+0.6, +4.2] | +1.7 [−2.4, +6.0] | +0.6 [−3.5, +4.7] |
+| EN →, budget | All lines: (c) − (a) | (b) − (a): no NLI chooses (b) | (c) − (b) | Lines the loop shortened: (c) − (b) |
+|--------------|----------------------|-------------------------------|-----------|-------------------------------------|
+| DE, characters | +4.6 [+1.8, +7.5] | +4.5 [+0.2, +8.9] | +0.1 [−4.0, +4.1] | +2.0 [−2.6, +6.6] (743 lines) |
+| DE, syllables | +7.3 [+3.8, +11.0] | +5.1 [+0.9, +9.3] | +2.2 [−1.9, +6.4] | +6.0 [+1.3, +10.7] (823) |
+| FR, characters | +3.8 [+0.8, +6.8] | +2.7 [−1.6, +7.1] | +1.1 [−2.4, +4.6] | +1.4 [−2.5, +5.2] (739) |
+| FR, syllables | +2.3 [+0.6, +4.2] | +1.7 [−2.4, +6.0] | +0.6 [−3.5, +4.7] | +5.9 [−2.5, +14.2] (204) |
 
-- (b) shortens without any NLI, yet it shows almost the same gap as (c). What (c) adds beyond (b) is +0.1
-  to +2.2 points, and every interval includes 0.
-- So the two models mainly disagree about shortened lines in general. The second is more sensitive to
-  omissions, and it rates shortened lines further below plain translations than the evaluation NLI does.
-  These data cannot show a selection effect of the loop, nor rule out a small one.
-- What holds: the claim that ours keeps the meaning as well as plain translation rests on the pre-registered
-  NLI. An independent NLI finds that shortening costs 2.8–5.3 points of meaning in three settings. The
-  native-speaker check (`docs/native_check.md`) compares (a) and (c) directly.
+- (b) shortens without any NLI, yet it shows a similar gap over all lines. So part of the difference is
+  how the two models judge shortened lines: the second is more sensitive to omissions.
+- Over all lines, what (c) adds beyond (b) is +0.1 to +2.2 points, every interval including 0. But (c)
+  is the plain translation itself on 21–79 % of lines, which dilutes this. On the lines the loop
+  shortened, it is +1.4 to +6.0 points, and in German with syllables +6.0 [+1.3, +10.7] excludes 0.
+- So the loop's selection with the evaluation NLI probably inflates (c)'s meaning score in German with
+  syllables. Elsewhere it can be neither shown nor ruled out.
+- What holds: ours keeps the meaning as well as plain translation only by the pre-registered NLI, which is
+  the loop's own. By an independent NLI, shortening costs 2.8–5.3 points of meaning in three settings.
+  The native-speaker sheet (`docs/native_check.md`) compares (a) and (c) directly, but with 25 sources
+  per system it can show only large differences.
 
 **Agreement between the two models** on kept vs reference, over usable outputs: 78–84 %, Cohen's kappa
 0.31–0.43.
@@ -56,5 +59,8 @@ gains from the evaluation NLI than from the second (paired, points):
 **The evaluation NLI's catch rates** on the planted controls, run again in this job, are identical to the
 NLI column of every validation report (22 of 22 cells).
 
-**Checked independently.** A separate script, written from scratch, reproduced every number above within
-0.05 point. The placebo comparison with (b) came from that check.
+**Checked independently.** A separate script, written from scratch, reproduced every all-lines number
+above within 0.05 point. The placebo comparison with (b), and its restriction to the lines the loop
+shortened, came from that check and from a review of the report; the report tool now prints both. The
+reviewers' versions of the shortened-lines comparison, with slightly different filters, gave similar
+values (German with syllables: +5.9 and +6.1, both excluding 0).
