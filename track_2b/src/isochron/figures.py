@@ -1,11 +1,11 @@
 """`make figures`: the report's figures, drawn from committed results files only.
 
 Inputs (each must be tracked by git and unchanged; the run stops otherwise):
-- results/step2_test.md            figure 2: fit & complete per level, with the 95 % intervals
-- results/step2_test_lengths.csv   figure 3: achieved ÷ target syllables of every output
-- results/step2_test_rounds.csv    figure 4: fit and fit & complete after each round of the loop
-- results/step4_test.md            figure 5: step 4 on test, fit and fit & complete per system and budget
-- results/hpc_8b_step4_dev.md      figure 5: step 4 on dev (exploratory), fit, as markers
+- results/step4_test.md            figure 2: step 4 on test, fit and fit & complete per system and budget
+- results/hpc_8b_step4_dev.md      figure 2: step 4 on dev (exploratory), fit, as markers
+- results/step2_test.md            figure 3: step 2, fit & complete per level, with the 95 % intervals
+- results/step2_test_lengths.csv   figure 4: achieved ÷ target syllables of every step 2 output
+- results/step2_test_rounds.csv    figure 5: fit and fit & complete after each round of the loop
 - results/judge_validation_hard_v3_all.md, results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md
                                    figure 6: what the NLI and the two judges catch on the hard controls
 Figure 1, the pipeline, is drawn from the description in this file.
@@ -214,7 +214,7 @@ def fig1_pipeline(out: Path) -> list[Path]:
     return save(fig, out, "fig1_pipeline")
 
 
-def fig2_compression(out: Path) -> list[Path]:
+def fig3_compression(out: Path) -> list[Path]:
     """Fit & complete per target level, without and with the loop, German and French test."""
     import matplotlib.pyplot as plt
 
@@ -244,14 +244,14 @@ def fig2_compression(out: Path) -> list[Path]:
         ax.set_ylim(0, 80)
         ax.grid(axis="y", lw=0.4, color="#DDDDDD")
         ax.set_axisbelow(True)
-    axes[0].set_ylabel("Fit & every fact kept (%)")
+    axes[0].set_ylabel("Fit & complete (%)")
     axes[0].legend(loc="upper right", handlelength=2.2)
     fig.supxlabel("Target length (% of the line's syllables)", fontsize=8)
-    write_csv(out / "fig2_compression.csv", (STEP2,), list(rows[0]), rows)
-    return save(fig, out, "fig2_compression")
+    write_csv(out / "fig3_compression.csv", (STEP2,), list(rows[0]), rows)
+    return save(fig, out, "fig3_compression")
 
 
-def fig3_ratio_histogram(out: Path) -> list[Path]:
+def fig4_ratio_histogram(out: Path) -> list[Path]:
     """Achieved ÷ target syllables of every German test output, without and with the loop."""
     import matplotlib.pyplot as plt
 
@@ -275,11 +275,11 @@ def fig3_ratio_histogram(out: Path) -> list[Path]:
     rows = [{"bin_from": f"{a:.2f}", "bin_to": f"{b:.2f}", "outputs_without": int(cw), "outputs_with": int(cl),
              "pct_without": round(100 * cw / counts["without"][1], 3), "pct_with": round(100 * cl / counts["with"][1], 3)}
             for a, b, cw, cl in zip(edges[:-1], edges[1:], counts["without"][0], counts["with"][0])]
-    write_csv(out / "fig3_ratio_histogram.csv", (LENGTHS,), list(rows[0]), rows)
-    return save(fig, out, "fig3_ratio_histogram")
+    write_csv(out / "fig4_ratio_histogram.csv", (LENGTHS,), list(rows[0]), rows)
+    return save(fig, out, "fig4_ratio_histogram")
 
 
-def fig4_rounds(out: Path) -> list[Path]:
+def fig5_rounds(out: Path) -> list[Path]:
     """Fit and fit & complete after round 0, 1 and 2 of the loop, per level, German and French test."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -316,11 +316,11 @@ def fig4_rounds(out: Path) -> list[Path]:
                for lv in LEVEL_COLOURS] + [Line2D([], [], color="#000000", lw=1.8, label="all levels")]
     fig.legend(handles=handles, loc="outside lower center", ncol=3, handlelength=1.6, columnspacing=1.0,
                title="target length (% of the line's syllables)", title_fontsize=7)
-    write_csv(out / "fig4_rounds.csv", (ROUNDS_CSV,), list(rows[0]), rows)
-    return save(fig, out, "fig4_rounds")
+    write_csv(out / "fig5_rounds.csv", (ROUNDS_CSV,), list(rows[0]), rows)
+    return save(fig, out, "fig5_rounds")
 
 
-def fig5_step4(out: Path) -> list[Path]:
+def fig2_step4(out: Path) -> list[Path]:
     """Step 4 on test (final): fit and fit & complete per system and budget, German and French; dev as markers."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -377,8 +377,8 @@ def fig5_step4(out: Path) -> list[Path]:
     handles.append(Line2D([], [], marker="D", ms=3.5, ls="", color="#000000"))
     labels.append("dev (exploratory), fit")
     fig.legend(handles, labels, loc="outside lower center", ncol=1, handlelength=1.2)
-    write_csv(out / "fig5_step4.csv", (STEP4_TEST, STEP4), list(rows[0]), rows)
-    return save(fig, out, "fig5_step4")
+    write_csv(out / "fig2_step4.csv", (STEP4_TEST, STEP4), list(rows[0]), rows)
+    return save(fig, out, "fig2_step4")
 
 
 def fig6_judges(out: Path) -> list[Path]:
@@ -426,7 +426,7 @@ def main(argv: list[str] | None = None) -> None:
     provenance(INPUTS)  # stops before drawing anything if an input is not committed
     style()
     args.out.mkdir(parents=True, exist_ok=True)
-    for draw in (fig1_pipeline, fig2_compression, fig3_ratio_histogram, fig4_rounds, fig5_step4, fig6_judges):
+    for draw in (fig1_pipeline, fig2_step4, fig3_compression, fig4_ratio_histogram, fig5_rounds, fig6_judges):
         for path in draw(args.out):
             print(f"wrote {path}")
 

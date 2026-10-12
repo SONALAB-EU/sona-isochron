@@ -43,7 +43,7 @@ def test_inputs_must_be_committed() -> None:
 def test_every_figure_is_drawn_one_column_wide(tmp_path: Path) -> None:
     pytest.importorskip("matplotlib")
     figures.main(["--out", str(tmp_path)])
-    names = ("fig1_pipeline", "fig2_compression", "fig3_ratio_histogram", "fig4_rounds", "fig5_step4",
+    names = ("fig1_pipeline", "fig2_step4", "fig3_compression", "fig4_ratio_histogram", "fig5_rounds",
              "fig6_judges")
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(f"{n}.{ext}" for n in names for ext in ("csv", "pdf", "png"))
     for name in names:
@@ -51,7 +51,7 @@ def test_every_figure_is_drawn_one_column_wide(tmp_path: Path) -> None:
         width = struct.unpack(">I", png[16:20])[0]
         assert width == round(figures.WIDTH * 300), f"{name}: {width} px"
         assert (tmp_path / f"{name}.csv").read_text(encoding="utf-8").startswith("# drawn by isochron.figures")
-    rows = [line for line in (tmp_path / "fig2_compression.csv").read_text(encoding="utf-8").splitlines()
+    rows = [line for line in (tmp_path / "fig3_compression.csv").read_text(encoding="utf-8").splitlines()
             if not line.startswith("#")]
     assert len(rows) == 1 + 2 * 4 * 2  # header + languages × levels × conditions
     # the committed figures show the committed results: same numbers in every CSV (run make figures if not)
