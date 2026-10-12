@@ -25,6 +25,11 @@ def test_tables_read_the_committed_reports() -> None:
     step4 = figures.tables(figures.STEP4)
     plain = step4["EN → FR, isosyllabic budget (syllables)"][0]
     assert plain["System"] == "(a) plain translation" and figures.ci(plain["Fit ±10 %"])[0] == 60.7
+    step4_test = figures.tables(figures.STEP4_TEST)
+    judged = step4_test["EN → DE, isometric budget (chars): final judge"]
+    assert [r["System"] for r in judged] == ["(a) plain translation", "(b) one step to the budget",
+                                            "(c) translate, then shorten"]
+    assert all(figures.ci(r["Fit & complete"])[0] <= figures.ci(r["Fit ±10 %"])[0] for r in judged)
     judge = next(rows for rows in figures.tables(figures.JUDGE_14B).values() if rows and "Control" in rows[0])
     assert {r["Control"]: r["All"] for r in judge}["qualifier_changed"] == "50 % (7/14)"
 
