@@ -56,8 +56,10 @@ chooses (c)'s candidates with the same NLI that scores meaning here, so step 4 w
 NLI model that the loop never sees (`MoritzLaurer/bge-m3-zeroshot-v2.0-c`).
 - Under it, (c) keeps the meaning 2.8–5.3 points less often than plain translation in three settings
   (level in French with syllables), and still more often than one step to the budget in three.
-- (b), which no NLI chooses, shows almost the same gap between the two models as (c). So the gap mostly
-  reflects how the two models judge shortened lines, not the loop's selection.
+- (b), which no NLI chooses, shows a similar gap between the two models over all lines, so part of it is
+  how the two models judge shortened lines. On the lines the loop shortened, (c) gains 1.4–6.0 points more
+  from the evaluation NLI than (b) does; in German with syllables, +6.0 [+1.3, +10.7]. So the loop's
+  selection probably inflates (c)'s score there, and elsewhere it can be neither shown nor ruled out.
 - The second NLI is lenient on small changes (1 of 14 qualifier changes caught in German), so neither
   model settles the question. The native-speaker check compares (a) and (c) directly.
 

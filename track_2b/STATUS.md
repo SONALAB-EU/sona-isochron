@@ -1,5 +1,72 @@
 # Status
 
+## Step 4 follow-ups (from 2026-10-12, 14:01 UTC; decision log)
+
+Your instruction: keep v2.18 and label the paired differences "post-hoc, added after test outputs existed"
+everywhere; then (1) a JSON sensitivity analysis, (2) an independent meaning check, (3) the native-speaker
+sheet from step 4, (4) the report led by step 4. README.md and results/docker_check.md belong to the
+other session (isochron-b1) and were not touched. Commit locally only.
+
+- **Labels.** Every step 4 paired difference now says "post-hoc, added after test outputs existed": the
+  report tool's headings, `results/step4_test.md`, the notes, the technical report, this file and the
+  protocol (v2.18 kept). Commits 25c2d70, bb4e466.
+- **Independent checks of my numbers.** A workflow ran three read-only agents on the raw logs, each with
+  its own code: JSON sensitivity, (c)'s parse failures, and cost per line. Every count they report equals
+  what the committed tools now print.
+- **1. JSON sensitivity (post-hoc; no new generation; protocol v2.19).**
+  - `step4_report` adds a row under (b) that re-reads only the answers strict JSON rejected, with `\'`
+    read as `'`, and chooses as (b) does.
+  - It recovers 70 of 114 rejected (b) answers: exactly those whose first error was `\'`. French (b) fit
+    rises from 59.8 to 63.2 % with characters and from 44.7 to 45.3 % with syllables; German barely moves.
+  - (c) − (b), paired, with (b) read this way: +14.2 [9.0, 19.5] points of fit in French with characters
+    (strict: +17.5). The order of the systems does not change.
+  - (c)'s loop: 124 of 5,655 rounds gave no candidate (89 of them French with characters). The next round
+    then sent the first prompt again 79 times and the revision again 16 times; 29 were the last round. 10
+    loops ended without an output. The same rule would have rescued 62 of the 124 rounds, but (c) cannot
+    be re-run without new generation, so the comparison favours (b), if anything.
+  - Also found: 686 loop rounds and 91 (b) answers had a candidate count other than 4, and 21 outputs
+    contain a literal backslash. All are counted as they are.
+- **Cost per line** (`isochron.step4_cost`, `results/step4_test_cost.md`): LLM calls (a) 1.01, (b) 1.00,
+  (c) 2.40 including (a); completion tokens 42, 124, 197. H100-seconds per line are an estimate, because
+  only the generation windows are measured (1,689 s German, 1,207 s French): (a) 0.04–0.10, (b) 0.08–0.29,
+  (c) 0.47–0.65, depending on whether the window is shared out by completion tokens or by worker time.
+- **2. Independence of the meaning check (post-hoc; protocol v2.20).**
+  - Confirmed in the code: the loop and the step 4 evaluation use the same NLI (mDeBERTa @ b5113eb).
+  - Second NLI: `MoritzLaurer/bge-m3-zeroshot-v2.0-c` @ 705510d, MIT, base bge-m3-retromae (XLM-R
+    large), trained on English MNLI, FEVER-NLI and Mixtral-written data. Two research agents ranked it
+    first, and a critic agent confirmed it after checking the sources. The critic also measured a
+    partial overlap: 38.6 % of the loop model's German and French training pairs appear in English in
+    this model's data (its scratchpad check, not a project result). Licence in `docs/licences.md`.
+  - One GPU job (2647862, 105 s on an H100): the model was copied from the Mac and its SHA-256 checked
+    on the cluster.
+  - The evaluation NLI's catch rates on the planted controls, run again in that job, equal the
+    validation reports' NLI column in all 22 rows.
+  - **Result** (`results/step4_test_nli2.md`): under the second NLI, (c) keeps the meaning 2.8–5.3 points
+    less often than plain translation in three settings (French with syllables: −0.5, within noise).
+    Under the evaluation NLI they are level (+1.0 to +2.0). (c) still beats (b) in three settings under
+    both models.
+  - The second NLI is lenient on small changes: in German it catches 1 of 14 qualifier and 1 of 13 modal
+    changes (evaluation NLI: 3 and 10), but 39 of 40 deleted clauses (33).
+  - **Two readings of mine were corrected by checks.**
+    - First I wrote that the larger gap for (c) was the loop's selection with the evaluation NLI. An
+      independent re-check (every number reproduced within 0.05 point) ran a placebo. (b), which no NLI
+      chooses, shows a similar gap over all lines (+1.7 to +5.1 points, against (c)'s +2.3 to +7.3).
+    - I then wrote "mostly not selection". The report review showed that this is diluted, because (c) is
+      the plain translation itself on 21–79 % of lines. On the lines the loop shortened, (c) − (b) on the
+      gap is +1.4 to +6.0, and +6.0 [+1.3, +10.7] in German with syllables.
+    - Now: part of the gap is how the two models judge shortened lines. The loop's selection probably
+      inflates (c)'s score in German with syllables, and elsewhere it can be neither shown nor ruled out.
+      The report tool prints both comparisons, and the notes, report and protocol say this.
+- **GPU: 5.91 H100-hours of 12 in total** (sacct, 21,293 s). Nothing is queued.
+- **3. Native-speaker sheet from step 4** (protocol v2.21; `docs/native_check.md`).
+  - `results/native_check/step4_sheet_de.csv`: 25 English test sources drawn with seed 0, each with (a)
+    and (c) under the syllable budget, generation seed 0. 50 rows, shuffled and blind. In 5 sources (c)
+    kept (a), so both lines read the same.
+  - Columns: English source, German output, meaning (kept / minor loss / wrong), added info, natural German.
+  - The key holds both NLI models' and the judge's verdicts. `native_check score` gives per-system rates
+    with Wilson intervals and agreement with each check.
+  - The step 2 sheet is the backup (`step2_*`, rebuilt byte-identically).
+
 ## Step 4 on test (from 2026-10-12, 11:16 UTC; decision log)
 
 Your instruction: freeze step 4 as it ran on dev, run it on test (German and French, both budgets, seeds
