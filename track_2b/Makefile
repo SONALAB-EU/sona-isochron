@@ -31,8 +31,9 @@ CHECK_MOUNTS = check_mounts() { \
 # A server on the Docker host's loopback interface (LLM_BASE_URL with localhost, 127.x.x.x, [::1] or 0.0.0.0)
 # is not at that address inside the container, whose loopback is its own. On a Linux host, where the Docker
 # engine runs on the host itself, the app then shares the host's network (docker-compose.host-network.yml) and
-# the URL works unchanged. Docker Desktop and Colima run the engine in a VM, so there the address becomes
-# host.docker.internal, which they forward to the host. Any other LLM_BASE_URL is passed on as it is.
+# the URL works unchanged. Elsewhere (Docker Desktop, or Colima on a Mac) the engine runs in a VM, so the
+# address becomes host.docker.internal, which they forward to the host. Rootless Docker is not handled: its
+# host network is not the host's. Any other LLM_BASE_URL is passed on as it is.
 run: docker-check
 	@mkdir -p output
 	@url="$$(docker compose config --format json 2> /dev/null | sed -n 's/^ *"LLM_BASE_URL": *"\(.*\)",\{0,1\}$$/\1/p' | head -n 1)"; \

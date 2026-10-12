@@ -63,8 +63,16 @@ What you need:
   LLM_API_KEY=<your API key>
   ```
 
-  For a server on the Docker host itself, use `http://host.docker.internal:<port>/v1` as `LLM_BASE_URL`.
+  For a server on the Docker host itself, `http://localhost:<port>/v1` (or `127.0.0.1`) works: on a
+  Linux host, `make run` then gives the app the host's network; on a Mac (Docker Desktop or Colima), it
+  uses `host.docker.internal` instead, which they forward to the host. `make run` prints which one it
+  chose.
+  (Not with rootless Docker, whose host network is not the host's: there, give an address the
+  container can reach.)
   `LLM_QUANTISATION` is optional: if you set it, it is recorded in the summary.
+- With Docker Desktop or Colima, the checkout must be in a folder Docker's VM can see (your home folder,
+  by default). `make run` checks this once the image is built, before the method runs, and says so if
+  not.
 
 Then, from this directory:
 
@@ -77,8 +85,12 @@ What happens:
   `data/sample_input.jsonl`.
 - The results go to `output/results.jsonl` and `output/summary.md`.
 - The NLI and the language check run on the CPU, inside the container.
-- Measured on an Apple M3 (Docker in Colima, arm64): the first build took 40 min, and the run 4 min
-  against llama-server on the same Mac.
+- Measured on an Apple M3 (Docker in Colima, arm64, 6 CPUs, 10 GiB): the first build took 40 min, a
+  later rebuild 13 min, and the run 4–6 min against llama-server on the same Mac.
+- The image also builds and runs for `linux/amd64`, tested under emulation on the Mac: the same results
+  as arm64, line for line. Under that emulation (Rosetta), the build crashed at random and passed when
+  run again; a native amd64 host emulates nothing. `results/docker_check.md` has every timing, and the
+  checks behind them.
 
 ### `make run-offline` (no network at all)
 
@@ -96,7 +108,8 @@ make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
   official weights.
 - Build the images once while online. After that, `make run-offline` needs no network.
 - Everything runs on the CPU here, so it is slower than with a GPU server. On the Apple M3 (6 CPUs for
-  Docker), the 10 lines took 26 min, including 4 min to load the GGUF.
+  Docker), the 10 lines took 10 min, including 1 min to load the GGUF, with the Mac's own llama-server
+  stopped; an earlier run took 26 min.
 
 ### Without Docker
 

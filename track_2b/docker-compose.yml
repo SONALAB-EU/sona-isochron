@@ -1,6 +1,7 @@
 # `make run`: the app container against the LLM named by LLM_NAME, LLM_BASE_URL and LLM_API_KEY. Compose
 # reads them from the environment, or from .env next to this file (see .env.example). For a server on the
-# Docker host, use http://host.docker.internal:<port>/v1 as LLM_BASE_URL.
+# Docker host, http://localhost:<port>/v1 works with make run: it adds docker-compose.host-network.yml on a
+# Linux host, or uses host.docker.internal on a Mac (Makefile).
 name: isochron
 
 services:
