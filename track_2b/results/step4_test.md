@@ -1,7 +1,7 @@
 # Step 4 on test: translation to a length budget
 
-- Date: 2026-10-12 14:16 UTC
-- Git commit (report): ef9e0e584fec0bed7ab7505906a2c8aaa0a91982; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 14:29 UTC
+- Git commit (report): 6b0594143cd93f58a645cab0b4216c5fcdec64fb; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; seeds [0, 1, 2] ((a), (b): item seed; (c): item seed + 1000 × round)
 - Prompts: `translate_plain_v1` (5fe6dd58bf7e), `translate_budget_chars_v1` (e81efebd7d4f), `translate_budget_syllables_v1` (a3ffa4ea51a7), `shorten_chars_v1` (004890c41f25), `shorten_syllables_v1` (fe4fbfdd800d), `revise_chars_v1` (62a308e266ab), `revise_v1` (ab0593b9716e)
@@ -90,14 +90,21 @@ as (b) does.
   German 59.4 → 59.5 % and 71.6 % unchanged.
 - Kept against the reference (NLI), French: 69.7 → 73.8 % with characters, 74.9 → 76.6 % with
   syllables.
-- So the order of the systems does not change: with characters, (c) still fits 14.1 points more often
-  than (b) in French (77.3 against 63.2 %).
+- So the order of the systems does not change. Paired (post-hoc, added after test outputs existed),
+  (c) − (b) with (b) read this way is +14.2 [+9.0, +19.5] points of fit in French with characters
+  (strict: +17.5), +24.6 [+19.4, +29.7] with syllables, and +20.7 [+15.7, +25.8] in German with
+  characters; German with syllables stays a tie.
+- The rule is applied to (b) only. It would also have given candidates in 62 of the 124 (c) rounds that
+  gave none, but (c)'s later rounds depended on each failure, so (c) cannot be re-run without new
+  generation. If anything, the comparison favours (b).
 - The judge never saw the recovered outputs, so this row has no fit & complete.
 
 **How (c)'s loop met parse failures** (table "Parse failures"; `isochron.repair`).
 - A round whose answer is not valid JSON gives no candidate. If no earlier round gave one, the next
   round sends the first prompt again with a new seed (a retry). Otherwise the best candidate so far
   stays, and the next round revises it. There are at most 3 rounds; if none parsed, (c) has no output.
+- Of the 124 rounds without a candidate, 79 were followed by a retry, 16 by the revision of the best
+  candidate again, and 29 were already the last round.
 - French with characters: 89 of 1,691 rounds (5.3 %) gave no candidate, in 60 of 739 loop runs. 51 of
   those runs still ended with an output, and 9 did not.
 - Elsewhere it was rare: 15 of 1,662 rounds (German, characters), 13 of 1,841 (German, syllables) and 7
@@ -105,6 +112,10 @@ as (b) does.
 
 **Otherwise clean.** 2 of 10,185 outputs are in the wrong language, and none of the 10,185 judge
 verdicts is invalid.
+- Apertus often returned fewer candidates than the 4 asked for, mostly 1: 91 (b) answers and 686 of
+  (c)'s 5,655 rounds. They are kept and scored, as frozen.
+- 21 outputs contain a literal backslash from an over-escaped apostrophe (`L\'Islande`): 11 of (b) and 10
+  of (c). They count as they are.
 
 Fit, kept, added and dropped are in %. (a) is the same translation under both budgets; its fit says how
 often plain translation already meets the budget.
@@ -132,6 +143,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +20.8 [+15.8, +25.9] | +16.8 [+11.4, +22.2] | +6.5 [+2.8, +10.4] |
 | (c) − (a) | +53.0 [+49.0, +57.3] | +43.7 [+39.7, +47.8] | +1.1 [-1.4, +3.6] |
+| (c) − (b) with `\'` read as `'` (sensitivity) | +20.7 [+15.7, +25.8] | – | +6.4 [+2.7, +10.3] |
 
 ### EN → DE, isosyllabic budget (syllables)
 
@@ -156,6 +168,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | -1.2 [-6.0, +3.6] | -4.6 [-9.4, +0.2] | +4.8 [+1.1, +8.5] |
 | (c) − (a) | +50.7 [+46.8, +54.8] | +37.4 [+33.7, +41.1] | +2.0 [-0.7, +4.8] |
+| (c) − (b) with `\'` read as `'` (sensitivity) | -1.2 [-6.0, +3.6] | – | +4.8 [+1.1, +8.5] |
 
 ### EN → FR, isometric budget (chars)
 
@@ -180,6 +193,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +17.5 [+12.2, +22.9] | +15.6 [+10.0, +21.3] | +11.0 [+7.3, +14.9] |
 | (c) − (a) | +53.4 [+49.0, +57.6] | +45.1 [+40.8, +49.3] | +1.0 [-2.0, +4.1] |
+| (c) − (b) with `\'` read as `'` (sensitivity) | +14.2 [+9.0, +19.5] | – | +6.9 [+3.2, +10.6] |
 
 ### EN → FR, isosyllabic budget (syllables)
 
@@ -204,6 +218,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +25.2 [+20.0, +30.3] | +26.2 [+20.9, +31.3] | +6.6 [+2.7, +10.6] |
 | (c) − (a) | +14.3 [+11.2, +17.5] | +13.2 [+10.2, +16.3] | +1.8 [+0.3, +3.5] |
+| (c) − (b) with `\'` read as `'` (sensitivity) | +24.6 [+19.4, +29.7] | – | +4.9 [+1.1, +8.7] |
 
 ### Parse failures (strict JSON, as frozen)
 
@@ -215,6 +230,10 @@ often plain translation already meets the budget.
 | FR, isosyllabic | 23 | 18 | 204 | 461 | 7 | 2 | 5 | 5 | 0 |
 
 (a) asks again with the next seed after an unparsable answer, at most 3 times. DE: 4 of 1041 items needed another try, and 3 ended without a translation; FR: 6 of 996 items needed another try, and 6 ended without a translation. Without (a), (c) has no output either.
+
+After a (c) round without a candidate, the next round sent: the first prompt again (a retry) 79; the revision of the best candidate again 16; none: it was the last round 29. The sensitivity rule (`\'` read as `'`) would have given candidates in 62 of these 124 rounds; (c) is left as it ran, because its later rounds depended on each failure.
+
+Answers with fewer or more candidates than the 4 asked for (kept, and scored): (b) 91, (c)'s rounds 686. Outputs that contain a literal backslash (counted as they are): (a) 0, (b) 11, (c) 10.
 
 ## Judge validation
 
