@@ -26,8 +26,9 @@ Results on FLEURS test, with Apertus 1.5 8B in BF16 and a separate evaluation ju
 - Outputs that fit and keep every fact rose from 14.2 % to 38.4 % in German and from 15.5 % to 44.2 % in
   French. The paired gains are +24.3 and +28.6 points.
 - The gain is largest for small cuts and shrinks as the cut deepens (Figure 2).
-- When translating from English to a length budget (dev, exploratory), translating first and then
-  shortening with the loop fits most often (Figure 5).
+- When translating from English to a length budget (test), translating first and then shortening with
+  the loop fits most often in three of four settings, 17–25 points above translating to the budget in one
+  step. In German with a syllable budget, the two tie (Figure 5).
 
 ## 2. Architecture
 
@@ -185,39 +186,63 @@ in round 1, so even at round 2's rate a third round would add about 3 and 4 poin
 
 ![Figure 5](docs/figures/fig5_step4.png)
 
-*Figure 5. Step 4 on dev (exploratory): fit within ±10 % of a character or syllable budget. The three
-systems are plain translation, one step to the budget (no loop), and translation shortened with our
-loop. 97 German and 90 French sentences × 3 seeds; 95 % intervals. The French syllable budget is
-1.16 × the English syllables, so plain French translation often meets it already.*
+*Figure 5. Step 4 on test (final): fit within ±10 % of the budget (top) and fit & complete by the judge
+(bottom; an upper bound, Section 6). 347 German and 332 French sentences × 3 seeds; Apertus 1.5 8B
+BF16; 95 % intervals over sentences. Diamonds: fit on dev (exploratory; 97 and 90 sentences). The French
+syllable budget is 1.16 × the English syllables, so plain French translation often meets it already.*
 
-**Step 4: translate to a length budget** (`results/hpc_8b_step4_dev.md`).
-- Translating first and then shortening with the loop fits most often in all four settings: 69–80 %
-  (Figure 5).
-- Its meaning, checked by the NLI against the human reference, is about level with plain translation:
-  79–82 % against 79 % in German, and 75–79 % against 73 % in French.
-- In German with the syllable budget, one step and ours are within noise.
+**Step 4: translate from English to a length budget** (`results/step4_test.md`; final).
+- **Systems:** (a) plain translation; (b) one step to the budget, the closest of 4 candidates; (c) ours,
+  (a) shortened with the loop, or kept if within 1.10 × the budget.
+- **Budgets:** the English characters without spaces, or the English syllables × the target's rate ÷
+  English's (Pellegrino et al., 2011: German 0.964, French 1.160).
+- **Frozen** as it ran on dev before any test output; dev (`results/hpc_8b_step4_dev.md`) is
+  exploratory.
+
+| EN →, budget | Fit, %: (a) / (b) / (c) | Fit & complete, %: (a) / (b) / (c) |
+|--------------|-------------------------|------------------------------------|
+| DE, chars | 27.2 / 59.4 / **80.2** | 26.8 / 53.7 / **70.5** |
+| DE, syllables | 19.6 / **71.6** / **70.3** | 19.5 / **61.5** / 56.9 |
+| FR, chars | 23.9 / 59.8 / **77.3** | 23.5 / 53.0 / **68.6** |
+| FR, syllables | 55.6 / 44.7 / **69.9** | 54.9 / 41.9 / **68.1** |
+
+- **Ours fits most often in three of the four settings.** Paired over sentences, (c) − (b) is +20.8 [15.8, 25.9]
+  points of fit with German characters, +17.5 [12.2, 22.9] with French characters and +25.2 [20.0, 30.3]
+  with French syllables.
+- **German syllables: a tie on fit** (−1.2 [−6.0, +3.6]). The judge gives one step 4.6 points more fit &
+  complete ([−9.4, +0.2]), but the NLI finds that ours keeps the meaning more often (+4.8 [1.1, 8.5]).
+- **Meaning, by the NLI against the human reference:** ours keeps it as often as plain translation (+1.0
+  to +2.0 points) and more often than one step (+4.8 to +11.0).
+- **Dev agreed** for (c) within 5 points of fit.
 
 ## 6. Limitations
 
 - **Syllables are a proxy for time.** No speech was synthesised or timed.
 - **Weak on small losses.** The NLI misses most dropped qualifiers, and the judge misses half. So fact
   recall and fit & complete are upper bounds, and added facts are likely undercounted.
-- **Unreviewed controls.** No native speaker has reviewed the control pairs or the outputs.
+- **Unreviewed controls.** No native speaker has reviewed the control pairs or the outputs yet. The
+  blind 50-line German sheet is ready (`docs/native_check.md`).
 - **Tight targets give long lines.** The loop prefers meaning over length. Misses therefore run long
   (German, 60 %: 321 too long against 145 too short, of 1,041), and 2–9 % of German outputs per level are
   the input unchanged.
 - **French JSON.** Apertus often escapes French apostrophes as `\'`, which strict JSON rejects: 2.9 % of
-  French rounds against 0.5 % of German ones. 11 French test items ended without an answer, counted as
-  failures. A lenient parser must first be tuned on dev.
+  French rounds against 0.5 % of German ones. 11 French step 2 test items ended without an answer, and in
+  step 4 one step to the budget lost 83 of 996 French items with characters. All count as failures. A
+  lenient parser must first be tuned on dev.
+- **Cross-lingual judge.** In step 4 the judge compares English facts with German or French outputs. On
+  cross-lingual controls it caught 0 of 14 qualifier changes, 4 of 13 modal changes and 5 of 20 inserted
+  facts (7, 10 and 16 within German). Step 4's fit & complete is an upper bound, and its added-fact rate
+  (about 0 %) means little.
 - **No grammar check.** Some outputs are ungrammatical (*"den 18. Jahrhundert Markt"*).
 - **Development model.** Development used a derived 4-bit model; only the final runs used official BF16.
-- **Not tested:** Italian, the 70B model, and the Docker images, which have not been built yet.
+- **Not tested:** Italian and the 70B model. Docker was tested on arm64 only.
 - **Batching.** Processing 16 items at once on the HPC changes outputs slightly against a sequential run.
 
 ## 7. Reproducibility
 
-- **Commits:** the test runs used `68492f2`. **[PLACEHOLDER: the commit of the final reports]**
-- **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All jobs together used 4.46
+- **Commits:** the step 2 test runs used `68492f2`, and the step 4 test runs `7b22d93` (its step 4 code
+  unchanged since `68492f2`). **[PLACEHOLDER: the commit of the final reports]**
+- **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All jobs together used 5.89
   H100-hours (sacct), of a budget of 12.
 - **Seeds:** generation 0, 1 and 2, plus 1000 × the round. Judge: temperature 0, seed 0. Bootstrap:
   seed 0.

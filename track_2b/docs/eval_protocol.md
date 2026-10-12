@@ -599,6 +599,32 @@ numbers are reported on test, as before. The work goes in this order.
          74.8 % with syllables.
      - Kept against the reference (NLI): (c) is about level with (a), and (b)
        is no better than (c).
+   - **Step 4 on test (2026-10-12, jobs 2647419 and 2647517, run commit
+     7b22d93, frozen in v2.17; `results/step4_test.md`; final).**
+     - Apertus 1.5 8B BF16; 347 German and 332 French test sentences × seeds
+       0, 1 and 2; 1,041 and 996 outputs per system and budget.
+     - Fit within ±10 % of the budget, (a) / (b) / (c):
+       - EN → DE: 27.2 / 59.4 / 80.2 % with characters, and 19.6 / 71.6 /
+         70.3 % with syllables.
+       - EN → FR: 23.9 / 59.8 / 77.3 % with characters, and 55.6 / 44.7 /
+         69.9 % with syllables.
+     - Fit & complete (judge), (a) / (b) / (c): German 26.8 / 53.7 / 70.5 and
+       19.5 / 61.5 / 56.9 %; French 23.5 / 53.0 / 68.6 and 54.9 / 41.9 /
+       68.1 %.
+     - Paired (c) − (b), fit: +20.8 [15.8, 25.9] and −1.2 [−6.0, +3.6] points
+       in German, +17.5 [12.2, 22.9] and +25.2 [20.0, 30.3] in French
+       (characters, then syllables).
+     - Kept against the reference (NLI): (c) − (a) is +1.0 to +2.0 points,
+       and (c) − (b) is +4.8 to +11.0.
+     - The cross-lingual judge validation did not trigger the flag (identity
+       100 %), but the judge misses most subtle changes across languages
+       (qualifier 0 of 14, modal 4 of 13, inserted fact 5 of 20). Its step 4
+       numbers are upper bounds.
+     - Broken JSON is a miss: (b) lost 83 and 23 of 996 French items
+       (characters, syllables), mostly to `\'`.
+     - Added after the test outputs existed, as analysis only: the paired
+       differences (c) − (b) and (c) − (a), with step 2's paired bootstrap
+       (v2.12). Systems, metrics and data are as frozen.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -723,3 +749,7 @@ used.
   prompts with hashes, systems, budgets, seeds and scoring. The final judge
   joins the step 4 scoring, validated on cross-lingual versions of both
   suites. The method is unchanged.
+- 2026-10-12, v2.18: the step 4 test result is recorded (section "Phase 2",
+  item 6). The step 4 report adds paired differences between systems, as
+  analysis after the test outputs existed. The method, the systems and the
+  metrics are unchanged.

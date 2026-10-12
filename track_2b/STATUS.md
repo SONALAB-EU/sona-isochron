@@ -99,6 +99,49 @@ the report. No workflows; commit locally only.
     Metal, so sampling diverges.
   - Isolation: in the compose config, `llm` has `network_mode: none` and `app` `service:llm`. A
     `--network none` container has only `lo`, and an outbound HTTPS request fails at name resolution.
+- **13:11. The French test job is done** (2647517, 12:40:12–13:11:17 UTC, 31 min: 0.52 H100-hours).
+  - 996 items and 996 judge lines, no traceback. Pulled to `results/raw/hpc_8b_step4_test_fr`.
+- **GPU: 5.89 H100-hours of 12 in total** (sacct, every isochron job, 21,188 s). Nothing is queued.
+- **13:44. `results/step4_test.md` is written** (commit d3feab9). It was generated at 4ddd5da in a clean
+  worktree, because another session had uncommitted Docker edits here, so its header records a clean
+  commit.
+  - Scored on the Mac: lengths, language and NLI (MPS), with an NLI cache. German took 31 min, French
+    14 min.
+  - Fit, (a) / (b) / (c):
+
+    | | Characters | Syllables |
+    |---|---|---|
+    | German | 27.2 / 59.4 / 80.2 % | 19.6 / 71.6 / 70.3 % |
+    | French | 23.9 / 59.8 / 77.3 % | 55.6 / 44.7 / 69.9 % |
+
+  - (c) leads in three settings by 17–25 points of fit over (b). German with syllables is a tie on fit.
+    There the judge prefers (b) on fit & complete (−4.6 [−9.4, +0.2]), and the NLI prefers (c) (+4.8
+    [+1.1, +8.5]).
+  - Meaning by NLI against the reference: (c) as good as plain translation (+1.0 to +2.0 points).
+  - The added-fact rate is 0.0–0.1 %. That is not a bug: step 2 also had about 0 %, and across languages
+    the judge caught only 5 of 20 inserted facts.
+  - Broken JSON (not fixed, counted as misses). (b) lost 83 and 23 of 996 French items: 69 to `\'`, 27
+    to malformed `\u` escapes, 10 to other causes. (a) has no translation for two sentences in every seed
+    (3 German and 6 French items); (c) then has none either.
+- **One addition after the test outputs existed: paired differences** (c) − (b) and (c) − (a), with step
+  2's paired bootstrap.
+  - Reason: per-system intervals overlapped in German with syllables, so they could not say which
+    system is ahead.
+  - It is analysis only, recorded in protocol v2.18. Every setting and comparison is reported, whatever
+    its sign.
+- **Report and figure:** figure 5 is now a 2 × 2 grid. Rows are fit and fit & complete; columns are German
+  and French. Bars show test (final), and diamonds show dev fit (exploratory).
+  - `technical_report.md` has a step 4 table with test numbers, a summary bullet, the limitations (the
+    cross-lingual judge, step 4's JSON misses), and the GPU total.
+  - The PDF is 5 pages.
+- **Docker image size, measured:** rebuilt at 0436ab3 with `UV_NO_CACHE=1` in 802 s. It is now 3.14 GB
+  (was 4.89 GB), and `/root/.cache` is gone.
+- **Another Claude session (isochron-b1, "Docker check") works in this repo.**
+  - It committed ebe9e7c: `make run` can now reach a server on the host's localhost (host network on
+    Linux, `host.docker.internal` under Docker Desktop and Colima), and README.md is out of the uv layer.
+  - It is running an amd64 build under Rosetta, a Linux-host test inside the VM, and the eSpeak git
+    fallback test. It writes `results/docker_check.md`.
+  - We split the paths, and each commits only its own.
 
 ## The loop round by round (2026-10-12; from the logged runs, no new generation)
 
