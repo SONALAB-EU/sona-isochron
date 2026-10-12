@@ -1,7 +1,7 @@
 # Step 4 on test: translation to a length budget
 
-- Date: 2026-10-12 16:01 UTC
-- Git commit (report): b755fad08b6a84756fd96e36f1a4cf7871e75262; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 16:54 UTC
+- Git commit (report): 42a860e4d4310c6748f852ddfaa5f612cab32136; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; seeds [0, 1, 2] ((a), (b): item seed; (c): item seed + 1000 × round)
 - Prompts: `translate_plain_v1` (5fe6dd58bf7e), `translate_budget_chars_v1` (e81efebd7d4f), `translate_budget_syllables_v1` (a3ffa4ea51a7), `shorten_chars_v1` (004890c41f25), `shorten_syllables_v1` (fe4fbfdd800d), `revise_chars_v1` (62a308e266ab), `revise_v1` (ab0593b9716e)
@@ -155,6 +155,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +20.8 [+15.8, +25.9] | +16.8 [+11.4, +22.2] | +6.5 [+2.8, +10.4] |
 | (c) − (a) | +53.0 [+49.0, +57.3] | +43.7 [+39.7, +47.8] | +1.1 [-1.4, +3.6] |
+| (b) − (a) | +32.2 [+25.6, +38.7] | +26.9 [+20.7, +33.1] | -5.5 [-9.6, -1.3] |
 | (c) − (b) with `\'` read as `'` (sensitivity) | +20.7 [+15.7, +25.8] | – | +6.4 [+2.7, +10.3] |
 
 ### EN → DE, isosyllabic budget (syllables)
@@ -180,6 +181,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | -1.2 [-6.0, +3.6] | -4.6 [-9.4, +0.2] | +4.8 [+1.1, +8.5] |
 | (c) − (a) | +50.7 [+46.8, +54.8] | +37.4 [+33.7, +41.1] | +2.0 [-0.7, +4.8] |
+| (b) − (a) | +52.0 [+46.6, +57.2] | +42.0 [+36.8, +47.0] | -2.8 [-6.5, +1.2] |
 | (c) − (b) with `\'` read as `'` (sensitivity) | -1.2 [-6.0, +3.6] | – | +4.8 [+1.1, +8.5] |
 
 ### EN → FR, isometric budget (chars)
@@ -205,6 +207,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +17.5 [+12.2, +22.9] | +15.6 [+10.0, +21.3] | +11.0 [+7.3, +14.9] |
 | (c) − (a) | +53.4 [+49.0, +57.6] | +45.1 [+40.8, +49.3] | +1.0 [-2.0, +4.1] |
+| (b) − (a) | +35.9 [+29.2, +42.3] | +29.5 [+22.9, +35.9] | -10.0 [-14.6, -5.5] |
 | (c) − (b) with `\'` read as `'` (sensitivity) | +14.2 [+9.0, +19.5] | – | +6.9 [+3.2, +10.6] |
 
 ### EN → FR, isosyllabic budget (syllables)
@@ -230,6 +233,7 @@ often plain translation already meets the budget.
 |------------|-----------|----------------|-------------------|
 | (c) − (b) | +25.2 [+20.0, +30.3] | +26.2 [+20.9, +31.3] | +6.6 [+2.7, +10.6] |
 | (c) − (a) | +14.3 [+11.2, +17.5] | +13.2 [+10.2, +16.3] | +1.8 [+0.3, +3.5] |
+| (b) − (a) | -10.9 [-17.2, -4.5] | -13.1 [-19.4, -6.6] | -4.8 [-8.9, -0.8] |
 | (c) − (b) with `\'` read as `'` (sensitivity) | +24.6 [+19.4, +29.7] | – | +4.9 [+1.1, +8.7] |
 
 ### Parse failures (strict JSON, as frozen)
