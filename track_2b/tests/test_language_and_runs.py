@@ -147,3 +147,31 @@ def test_control_halves() -> None:
     assert not {p.id for p in a} & {p.id for p in b} and len(a) + len(b) == len(hard)
     for half in (a, b):  # every sentence keeps its identity pair in the same half
         assert {p.fleurs_id for p in half if p.control == "identity"} == {p.fleurs_id for p in half}
+
+
+def test_rounds_follow_the_loops_best_candidate() -> None:
+    from isochron.rounds import item_states, third_round
+
+    def cand(rnd: int, idx: int, text: str, hit: bool, kept: bool) -> dict:
+        return {"round": rnd, "index": idx, "text": text, "hit": hit, "kept": kept, "syllables": 10}
+
+    german = ["Die Stadt hat zwei Brücken.", "Die Stadt besitzt zwei Brücken.", "Zwei Brücken hat die Stadt."]
+    item = {"closest_round0": cand(0, 1, german[0], True, False),
+            "final": cand(2, 0, german[2], True, True),
+            "rounds": [{"candidates": [cand(0, 0, german[1], False, True), cand(0, 1, german[0], True, False)],
+                        "best_after": {"round": 0, "index": 0}},
+                       {"candidates": [cand(1, 0, german[1], True, False)], "best_after": {"round": 1, "index": 0}},
+                       {"candidates": [cand(2, 0, german[2], True, True)], "best_after": {"round": 2, "index": 0}}]}
+    judged = {"without": {"valid": True, "recall": 1.0, "added_any": False},
+              "with": {"valid": True, "recall": 1.0, "added_any": False}}
+    s0, s1, s2 = item_states(item, judged, "de")
+    assert (s0["fit"], s0["low"], s0["high"], s0["accepted"]) == (False, False, False, False)
+    assert (s1["fit"], s1["low"], s1["high"]) == (True, False, True)  # fits, but the judge never saw this text
+    assert (s2["fit"], s2["low"], s2["high"], s2["accepted"]) == (True, True, True, True)
+    # an item accepted in round 0 keeps that output in rounds 1 and 2
+    early = {"closest_round0": item["final"], "final": item["final"],
+             "rounds": [{"candidates": [item["final"]], "best_after": {"round": 2, "index": 0}}]}
+    assert [s["accepted"] for s in item_states(early, judged, "de")] == [True, True, True]
+    # round 2 turned 10 of the 50 open items into fit & complete; 40 are still open: round 3 adds 8 of 100
+    counts = {"items": 100, "accepted1": 50, "accepted2": 60, "low1": 20, "high1": 20, "low2": 30, "high2": 30}
+    assert third_round(counts) == (8.0, 8.0)
