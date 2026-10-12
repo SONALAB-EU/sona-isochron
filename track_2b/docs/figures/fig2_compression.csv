@@ -1,4 +1,4 @@
-# drawn by isochron.figures (code last changed in commit 19fa1f6)
+# drawn by isochron.figures (code last changed in commit ef9e0e5)
 # input results/step2_test.md: blob 691b32ab5eb1, last changed in commit 5b47ebd (2026-10-11T16:01:16+02:00)
 # date, model, quantisation, endpoint, seeds and n of each run: see the input's header
 lang,level,loop,outputs,fit_and_complete_pct,ci_low,ci_high
