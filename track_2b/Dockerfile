@@ -14,23 +14,35 @@ ARG PYTHON_IMAGE=python:3.11.15-slim-trixie@sha256:90744cff8f32887f075c47d747a17
 FROM ${PYTHON_IMAGE} AS espeak
 ARG ESPEAK_URL=https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz
 ARG ESPEAK_SHA256=bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23
+ARG ESPEAK_COMMIT=4870adfa25b1a32b4361592f1be8a40337c58d6c
 ARG SONIC_URL=https://github.com/waywardgeek/sonic/archive/fbf75c3d6d846bad3bb3d456cbc5d07d9fd8c104.tar.gz
 ARG SONIC_SHA256=715827b5a39b79e56e44397d7b845910df996d4cca74777b3b61629b1ddc98c1
+ARG SONIC_COMMIT=fbf75c3d6d846bad3bb3d456cbc5d07d9fd8c104
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Build tools only, in this stage only; the base image's digest fixes the Debian release they come from
 # hadolint ignore=DL3008
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl gcc g++ make \
+    && apt-get install -y --no-install-recommends ca-certificates curl gcc g++ git make \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --no-cache-dir cmake==3.31.6 ninja==1.11.1.4
 WORKDIR /build
-RUN curl -fsSL --retry 5 -o espeak.tar.gz "$ESPEAK_URL" \
-    && echo "$ESPEAK_SHA256  espeak.tar.gz" | sha256sum -c - \
-    && curl -fsSL --retry 5 -o sonic.tar.gz "$SONIC_URL" \
-    && echo "$SONIC_SHA256  sonic.tar.gz" | sha256sum -c - \
-    && mkdir espeak sonic \
-    && tar -xzf espeak.tar.gz -C espeak --strip-components=1 \
-    && tar -xzf sonic.tar.gz -C sonic --strip-components=1 \
+# Each source is the pinned tarball, checked against its SHA-256. GitHub's archive service sometimes fails to
+# serve a tarball (HTTP 504), so the same commit is then fetched with git and checked against its commit id
+# (espeak-ng has no .gitattributes, so the files are the tarball's).
+RUN fetch() { \
+        local name=$1 url=$2 sha256=$3 repo=$4 commit=$5; \
+        if curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors -o "$name.tar.gz" "$url" \
+            && echo "$sha256  $name.tar.gz" | sha256sum -c -; then \
+            mkdir "$name" && tar -xzf "$name.tar.gz" -C "$name" --strip-components=1; \
+        else \
+            echo "$name: the tarball is unavailable, so fetching commit $commit of $repo"; \
+            rm -rf "$name" "$name.tar.gz" && git init -q "$name" \
+                && git -C "$name" fetch -q --depth 1 "$repo" "$commit" && git -C "$name" checkout -q FETCH_HEAD \
+                && test "$(git -C "$name" rev-parse HEAD)" = "$commit"; \
+        fi; \
+    }; \
+    fetch espeak "$ESPEAK_URL" "$ESPEAK_SHA256" https://github.com/espeak-ng/espeak-ng.git "$ESPEAK_COMMIT" \
+    && fetch sonic "$SONIC_URL" "$SONIC_SHA256" https://github.com/waywardgeek/sonic.git "$SONIC_COMMIT" \
     && cmake -S espeak -B out -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/espeak-ng \
         -DBUILD_SHARED_LIBS=OFF -DUSE_MBROLA=OFF -DUSE_LIBPCAUDIO=OFF -DUSE_ASYNC=OFF -DBUILD_TESTING=OFF \
         -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_SONIC-GIT=/build/sonic \
