@@ -66,6 +66,19 @@ other session (isochron-b1) and were not touched. Commit locally only.
   - The key holds both NLI models' and the judge's verdicts. `native_check score` gives per-system rates
     with Wilson intervals and agreement with each check.
   - The step 2 sheet is the backup (`step2_*`, rebuilt byte-identically).
+- **4. Report** (`technical_report.md`, 6 pages; `uv run scripts/report_pdf.py`).
+  - Step 4 leads, in the summary and in section 5. Its frozen metrics (v2.17) are a full-width table
+    (fit, kept vs reference, kept vs source, fit & complete; 12 rows with intervals).
+  - Then: fit across the four settings, meaning against plain translation (both NLIs), French
+    characters against syllables, the German syllable tie, parse failures and the JSON sensitivity, the
+    second NLI, and a cost table.
+  - Step 2 is "the engine". "What we learned about Apertus" (section 3) uses measured numbers only.
+  - The judge's and both NLIs' catch rates, and the NLI caveat, are under limitations.
+  - Figures are renumbered to follow the text: 2 step 4, 3 compression, 4 histogram, 5 rounds.
+  - Three review agents checked it against the results files. All 48 table cells and the other numbers
+    matched. They found mislabelled or overstated statements, which I fixed: a dev number under a
+    test-runs header, a false "development model" limitation, a missing loop-check time in the cost
+    table, short post-hoc labels, the placebo reading, and the native sheet's power.
 
 ## Step 4 on test (from 2026-10-12, 11:16 UTC; decision log)
 

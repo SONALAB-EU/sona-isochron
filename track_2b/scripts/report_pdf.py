@@ -9,7 +9,8 @@ or Chromium. The layout is fixed here,
 because the page count depends on it:
 - A4 with 16 mm margins, two columns 6 mm apart, 9.5 pt text;
 - the title block (everything before the first "## ") spans both columns;
-- figures fill a column (about 8.6 cm), and each caption stays with its figure.
+- figures fill a column (about 8.6 cm), and each caption stays with its figure;
+- a table inside `<div class="wide">` (blank lines around it) spans both columns.
 
     uv run scripts/report_pdf.py [--out FILE.pdf] [--chrome PATH]
 
@@ -40,6 +41,7 @@ th, td { border-bottom: 0.5pt solid #bbb; padding: 1.2pt 3pt; text-align: left; 
 code { font-size: 8.4pt; } img { display: block; width: 100%; margin: 3pt 0 0; }
 p:has(> img) { break-inside: avoid; break-after: avoid; margin: 0; }
 p:has(> img) + p { font-size: 8pt; margin: 1pt 0 6pt; break-before: avoid; break-inside: avoid; }
+.wide { column-span: all; margin: 2pt 0 4pt; } .wide table { width: 100%; } .wide td { white-space: nowrap; }
 """
 
 
