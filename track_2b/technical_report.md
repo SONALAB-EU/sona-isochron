@@ -34,18 +34,18 @@ French sentences × 3 seeds), with the metrics frozen before any test output (po
 - **The engine (step 2):** shortening in the same language, the loop raised the outputs that fit and, by
   the judge, keep every fact and add nothing (an upper bound) from 14.2 to 38.4 % in German and from 15.5
   to 44.2 % in French.
-- **Caveats:** all three meaning checks miss most qualifier changes, and the second NLI and the judge
-  working from English, as in step 4, also miss most modal changes (Section 6). A blind sheet of 50 German
+- **Caveats:** all three meaning checks miss at least half of the qualifier changes (from English, as in
+  step 4, the judge catches none), and the second NLI and the judge working from English also miss most
+  modal changes (Section 6). A blind sheet of 50 German
   lines for a native speaker, plain translation against ours, is ready but not yet rated.
 
 ## 2. Architecture
 
-The app (`isochron.app`, run by `make run`) runs the engine, the repair loop: it shortens German or
-French lines to a syllable target and writes `output/results.jsonl` and `output/summary.md`. Step 4 runs the
-same
-loop on Apertus's plain translation (`isochron.step4`). The app runs on the CPU in a Docker container
-and reaches Apertus only through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. Each candidate gets three
-checks:
+The app (`isochron.app`, run by `make run`, or with a local model by `make run-offline` as in Figure 1) runs
+the engine, the repair loop: it shortens German or French lines to a syllable target and writes
+`output/results.jsonl` and `output/summary.md`. Step 4 runs the same loop on Apertus's plain translation
+(`isochron.step4`). The app runs on the CPU in a Docker container and reaches Apertus only through
+`LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. Each candidate gets three checks:
 - **Length:** syllables from eSpeak NG 1.52.0's phonemes, or characters for step 4's character budget.
 - **Meaning:** the NLI model `mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` must find entailment in both
   directions.
@@ -56,11 +56,12 @@ generation and never feeds it.
 
 ![Figure 1](docs/figures/fig1_pipeline.png)
 
-*Figure 1. The engine (the repair loop) inside the offline deployment (`make run-offline`). Apertus writes 4
-candidates per
-prompt. The app checks each one and, if the best fails a check, sends a revision prompt with feedback, at
-most twice (blue: the loop). Neither container has a network interface; they share only 127.0.0.1.
-Diagrams in `docs/architecture.md`.*
+*Figure 1. The engine (the repair loop) inside the offline deployment (`make run-offline`). Apertus is
+asked for 4 candidates per prompt. The app checks each one and, if the best fails a check, sends a revision
+prompt with feedback, at most twice (blue: the loop; not drawn: while no candidate exists yet, it sends the
+first prompt again). Neither container has a network interface besides the loopback (127.0.0.1), which
+they share. In step 4, ours runs this loop on Apertus's plain translation when it is over 1.10 × the
+budget, with T = the budget and the NLI against that translation. Diagrams in `docs/architecture.md`.*
 
 ### Target architecture (mandatory)
 
@@ -177,7 +178,7 @@ All values in %; 1,041 German and 996 French outputs per row; (a) is the same tr
 budgets. Bold: the highest fit or fit & complete in its setting, and any system whose paired interval with
 it includes 0. Fit & complete is an upper bound (Section 6).
 
-- **Fit:** ours fits most often in three of the four settings, 17.5–25.2 points above one step there,
+- **Fit (Figure 2):** ours fits most often in three of the four settings, 17.5–25.2 points above one step there,
   and 14.3–53.4 points above plain translation in all four (paired differences, post-hoc, added after
   test outputs existed; every interval excludes 0).
 - **Meaning against plain translation:** by the pre-registered NLI against the reference, ours is level
@@ -190,35 +191,58 @@ it includes 0. Fit & complete is an upper bound (Section 6).
 - **German, syllables: a tie** on fit. Paired (c) − (b), post-hoc, added after test outputs existed: fit
   −1.2 [−6.0, +3.6]; fit & complete (judge) −4.6 [−9.4, +0.2]; kept vs reference +4.8 [+1.1, +8.5] by the
   main NLI and +2.6 [−0.7, +5.8] by the second.
-- **Parse failures** (as frozen, an answer that is not valid JSON is a miss). One step lost 114 of 4,074
-  answers, mostly French; (c)'s loop got no candidate in 124 of 5,655 rounds (89 in French with
-  characters), and then sent the first prompt again (79), revised its best candidate again (16) or had
-  reached its last round (29); 10 lines ended without an output.
+
+![Figure 2](docs/figures/fig2_step4.png)
+
+*Figure 2. Step 4 on test (final): lines within ±10 % of the budget, per system and budget. Apertus 1.5 8B
+BF16; 347 German and 332 French sentences × 3 seeds; 95 % intervals over sentences. Diamonds: fit on dev
+(exploratory; 97 German and 90 French sentences × 3 seeds, same model and prompts), within 5 points of
+test for (c).*
+
+- **Where the lengths fall (Figure 3; post-hoc, added after test outputs existed):** plain translation
+  misses long, except with French syllables, where it is centred on the budget. One step mostly misses
+  short, except with German syllables. Ours misses mostly long, except with French syllables: there 232 of
+  its 293 misses with an output are plain translations the keep rule kept although they are below the band.
+
+![Figure 3](docs/figures/fig3_step4_lengths.png)
+
+*Figure 3. Step 4 on test: output length ÷ budget, per language and ruler (characters without spaces, or
+syllables), as a share of all outputs (Apertus 1.5 8B BF16; 1,041 German and 996 French per system).
+Missing and wrong-language outputs are not drawn; the 10 beyond 0.42–1.78 are counted in the end bins.
+Grey shading: the ±10 % band that fits; the bin around 1.0 holds exact hits. Post-hoc, added after test
+outputs existed.*
+
+- **Parse failures** (as frozen, broken JSON is a miss). One step lost 114 of 4,074 answers, mostly
+  French; (c)'s loop got no candidate in 124 of 5,655 rounds, then retried (79), revised again (16) or
+  stopped at its last round (29); 10 lines ended without an output.
 - **JSON sensitivity (post-hoc, added after test outputs existed):** read again with `\'` as `'`, 70 of the
   114 come back. One step's French character fit rises from 59.8 to 63.2 % and its kept vs reference from
   69.7 to 73.8 %; ours still leads by 14.2 [9.0, 19.5] points of fit and 6.9 [3.2, 10.6] of kept meaning.
 - **A second NLI (post-hoc, added after test outputs existed;** `results/step4_test_nli2.md`): a model the
-  loop never sees, with another base model (XLM-R large) and partly different training data (it shares MNLI
-  and FEVER-NLI, and the author; `MoritzLaurer/bge-m3-zeroshot-v2.0-c`). By it, ours keeps the meaning
-  2.8–5.3 points less often than plain translation in three settings (French, syllables: −0.5 [−1.5, +0.6]).
-  Part of this is how the two NLIs judge shortened lines: one step, which no NLI chooses, shows a similar
-  gap. But on the lines the loop shortened, ours gains more from the main NLI than one step does, by +6.0
-  [+1.3, +10.7] points in German with syllables, so the loop's own NLI probably inflates ours there.
-- **Dev agreed** for (c) within 5 points of fit (Figure 2).
+  loop never sees (`MoritzLaurer/bge-m3-zeroshot-v2.0-c`: another base model, partly different training
+  data). By it, ours keeps the meaning 2.8–5.3 points less often than plain translation in three settings
+  (French, syllables: −0.5 [−1.5, +0.6]). Part of this is how the two NLIs judge shortened lines: one step,
+  which no NLI chooses, shows a similar gap. But on the lines the loop shortened, ours gains more from the
+  main NLI than one step does, by +6.0 [+1.3, +10.7] points in German with syllables: there the loop's own
+  NLI probably inflates ours.
+- **The trade-off (Figure 4; paired, post-hoc, added after test outputs existed):** against plain
+  translation, ours gains 14–53 points of fit and is level on meaning by the main NLI (+1.0 to +2.0 points),
+  but loses 0.5–5.3 points by the second. One step gains −11 to +52 points of fit, less than ours except
+  with German syllables, where the two are level (+52.0 against +50.7), and loses 2.8–10.0 points of
+  meaning by the main NLI and 6.5–12.8 by the second.
 
-![Figure 2](docs/figures/fig2_step4.png)
+![Figure 4](docs/figures/fig4_tradeoff.png)
 
-*Figure 2. Step 4 on test (final): fit within ±10 % of the budget (top) and fit & complete by the judge
-(bottom; an upper bound, Section 6). Apertus 1.5 8B BF16; 347 German and 332 French sentences × 3 seeds;
-judge Qwen3-14B; 95 % intervals over sentences. Diamonds: fit on dev (exploratory; 97 German and 90
-French sentences).*
+*Figure 4. Step 4 on test: fit gained and meaning lost (kept vs reference), both against plain
+translation, per setting, by the main NLI (left) and by the second NLI (right). Apertus 1.5 8B BF16; 347
+German and 332 French sentences × 3 seeds; paired 95 % intervals over sentences; post-hoc, added after
+test outputs existed.*
 
-**Cost per line** (post-hoc, added after test outputs existed; `results/step4_test_cost.md`). Means over
-both languages and budgets.
-Calls, seconds and tokens are measured. LLM seconds are each call's latency at the client, with 16 items
-sharing one H100; loop checks are the NLI, eSpeak and the language check inside (c)'s loop. H100-seconds
-are an estimate: the measured generation time (1,689 s for German, 1,207 s for French) shared out by
-completion tokens or by worker time (LLM seconds plus loop checks).
+**Cost per line** (post-hoc, added after test outputs existed; `results/step4_test_cost.md`; means over
+both languages and budgets). Calls, seconds and tokens are measured; LLM seconds are client-side latency
+with 16 items sharing one H100, and loop checks are (c)'s NLI, eSpeak and language checks. H100-seconds are
+an estimate: the measured generation time (1,689 s German, 1,207 s French) shared out by completion tokens
+or by worker time.
 
 | System | LLM calls | LLM s | Loop checks, s | Completion tokens | H100-s (estimate) |
 |--------|----------:|------:|---------------:|------------------:|------------------:|
@@ -230,15 +254,15 @@ Where the loop runs most, (c) needs 2.60–2.78 calls and 0.53–0.82 H100-s per
 syllables, where it keeps (a) in 79 % of lines, 1.47 calls and 0.21–0.25.
 
 **Step 2: the engine** (`results/step2_test.md`; test, final). Shorten a sentence in its own language to
-90, 80, 70 or 60 % of its syllables (seeds 0, 1, 2), without the loop (the closest of 4 candidates) and
-with it. The metrics are step 4's, with the source sentence as the reference; the loop's effect is a
-paired difference, pre-registered (v2.12).
+90, 80, 70 or 60 % of its syllables (347 German and 332 French test sentences × 4 levels × seeds 0, 1, 2),
+without the loop (the closest of 4 candidates) and with it. The metrics are step 4's, with the source
+sentence as the reference; the loop's effect is a paired difference, pre-registered (v2.12).
 
 | Setup | Fit | Fit & complete |
 |-------|-----|----------------|
-| Go/no-go baseline: prompt v1, closest of 4, no loop; 8B Q4; 50 German dev sentences × 3 seeds; level 80 % | 40.7 % [31.3, 50.0]; **NO-GO**, 60 % needed | – (NLI kept among fits: 62.3 %; 80 % needed) |
-| German test (347 sentences × 4 levels × 3 seeds): without → **with the loop** | 34.9 → **64.7 %** | 14.2 → **38.4 %** |
-| French test (332 sentences): without → **with the loop** | 34.4 → **67.6 %** | 15.5 → **44.2 %** |
+| Go/no-go baseline (dev; 8B Q4; 50 German sentences × 3 seeds; level 80 %) | 40.7 % [31.3, 50.0]; **NO-GO** (60 % needed) | – (NLI kept among fits 62.3 %; 80 % needed) |
+| German test: without → **with the loop** | 34.9 → **64.7 %** | 14.2 → **38.4 %** |
+| French test: without → **with the loop** | 34.4 → **67.6 %** | 15.5 → **44.2 %** |
 | Paired gain, German / French (points) | +29.8 [27.2, 32.4] / +33.2 [30.6, 35.8] | +24.3 [22.2, 26.3] / +28.6 [26.4, 30.9] |
 
 - **The baseline** failed both pre-registered thresholds (`results/gonogo_step2_de.md`); we report it as a
@@ -246,37 +270,35 @@ paired difference, pre-registered (v2.12).
   kinds), by majority of three LLM annotators (dev, Q4).
 - **The pilot** (dev, `results/phase2_pilot.md`): three prompt variants did not help on their own; with
   the loop, all four were within noise, and a rule fixed before the judge's output picked v1.
-- **By level (Figure 3),** fit & complete gains +56.7 points at 90 % and +1.6 [−0.6, +3.8] at 60 % in
-  German (French: +61.7 and +5.4). At 60 %, the loop prefers a candidate its own NLI accepts (NLI kept 52 →
-  96 % in German), but the judge's fact recall rises only from 56.7 to 65.7 %, and misses run long
-  (Figure 4).
-- **Rounds (Figure 5; post-hoc, added after test outputs existed):** a third round would likely help
-  little. Round 2 added about 4 points of fit & complete in German and 5 in French, after about 21 and 24
-  in round 1; at round 2's rate a third round would add about 3 and 4 points (an estimate).
-
-![Figure 3](docs/figures/fig3_compression.png)
-
-*Figure 3. Step 2 test: fit & complete (it fits, and by the judge keeps every fact and adds nothing; an
-upper bound) by target level, without (orange) and with (blue) the repair loop. Apertus 1.5 8B BF16, 3
-seeds; judge Qwen3-14B; 95 % intervals.*
-
-![Figure 4](docs/figures/fig4_ratio_histogram.png)
-
-*Figure 4. Achieved ÷ target syllables of every German step 2 test output, without the loop (4,136 with
-an answer) and with it (4,164). Grey: the ±10 % band that fits.*
-
-![Figure 5](docs/figures/fig5_rounds.png)
-
-*Figure 5. Fit and fit & complete after each round of the loop, by target level, from the logged step 2
-test runs (`results/step2_test_rounds.md`). Round 0 is the loop's own pick before any revision. At round
-1 some best candidates were never judged; the bar spans counting them as incomplete or complete (at most
-0.7 points apart), and is not a confidence interval.*
+- **By level (Figure 5),** fit & complete gains +56.7 points at 90 % and +1.6 [−0.6, +3.8] at 60 % in
+  German (French: +61.7 and +5.4 [+3.2, +7.6]). At 60 %, the loop prefers a candidate its own NLI accepts
+  (NLI kept 52 → 96 % in German), but the judge's fact recall rises only from 56.7 to 65.7 %; and, with the
+  loop, misses run long at every level in both languages (`results/step2_test.md`; German, levels pooled:
+  `docs/figures/extra_step2_lengths.png`; post-hoc, added after test outputs existed).
+- **Rounds (Figure 6; post-hoc, added after test outputs existed):** a third round would likely help little.
+  Round 2 added about 4 points of fit & complete in German and 6 in French, after about 21 and 23 in round
+  1; at round 2's rate a third round would add about 3 and 4 points (an estimate).
 
 **Checking the measures.** eSpeak NG matched Claude's syllable counts (not yet checked by a native
 speaker) on 46 of 50 items, and the cluster's build counts all 963 references exactly as the Mac does.
 The language check flags none of 1,956 German FLEURS sentences. The NLI and the judge were validated on
-planted controls before use (Section 6; `docs/figures/fig6_judges.png`); a rule fixed before the result
-made Qwen3-14B the main judge.
+planted controls before use (Section 6; for the German source, with the choice of Qwen3-14B over
+Qwen3-8B: `docs/figures/extra_judges.png`); a rule fixed before the result made Qwen3-14B the main judge.
+
+![Figure 5](docs/figures/fig5_compression.png)
+
+*Figure 5. Step 2 on test (final): fit & complete (it fits, and by the judge keeps every fact and adds
+nothing; an upper bound) by target level, without (orange) and with (blue) the repair loop. Apertus 1.5 8B
+BF16; 347 German and 332 French sentences × 3 seeds; judge Qwen3-14B; 95 % intervals over sentences per
+condition (the loop's effect is a paired difference, in the text).*
+
+![Figure 6](docs/figures/fig6_rounds.png)
+
+*Figure 6. Step 2 on test: fit & complete after each round of the loop, by target level; dotted: all levels
+pooled (post-hoc, added after test outputs existed; `results/step2_test_rounds.md`). Apertus 1.5 8B BF16;
+1,041 German and 996 French items per level; judge Qwen3-14B. Round 0 is the loop's own pick, which prefers
+a candidate its NLI keeps, so it starts below "without the loop" (German: 13.7 against 14.2 %). A best
+candidate the judge never scored counts as incomplete; counting it as complete adds at most 0.7 points.*
 
 ## 6. Limitations
 
@@ -295,27 +317,22 @@ made Qwen3-14B the main judge.
   So the judge's fit & complete is an upper bound. Step 4's judge works from English, so its fit &
   complete is a looser upper bound than step 2's, and its finding of almost no added facts (0.0–0.1 % of
   outputs) means little.
-- **The main NLI is the loop's own model.** The loop picks (c)'s candidates with the NLI that also scores
-  meaning. The second NLI (post-hoc, added after test outputs existed) rates ours 2.8–5.3 points below plain
-  translation in three settings, where the main NLI finds them level. One step, which no NLI chooses, shows
-  a similar gap between the two models over all lines, so part of it is how they judge shortened lines. On
-  the lines the loop shortened, ours gains 1.4–6.0 points more from the main NLI than one step does, +6.0
-  [+1.3, +10.7] in German with syllables: there the loop's own NLI probably inflates ours.
+- **The main NLI is the loop's own model:** the loop picks (c)'s candidates with the NLI that also
+  scores meaning. The second NLI (post-hoc, added after test outputs existed) rates ours 2.8–5.3 points
+  below plain translation in three settings, where the main NLI finds them level; in German with
+  syllables the loop's selection probably inflates ours (Section 5).
 - **No human judgement yet.** No native speaker has reviewed the control pairs or the outputs. The blind
   sheet is ready (`docs/native_check.md`): 25 English → German test sources, each with (a) and (c) under the
-  syllable budget, generation seed 0; in 5 of them (c) kept (a). With 25 lines per system it can show only
-  large differences.
-- **Tight targets give long lines.** The loop prefers what its own NLI accepts over length, so misses run
-  long (step 2, German, 60 %: 321 too long against 145 too short, of 1,041).
+  syllable budget, generation seed 0. With 25 lines per system it can show only large differences.
+- **Tight targets give long lines:** with the loop, misses run long (Section 5).
 - **Strict JSON.** Answers that are not valid JSON count as failures, as frozen: in step 4, one step lost
-  114 of 4,074 answers, (a) 9 of 2,037, and (c) 28 of 4,074 lines (18 because (a) failed, 10 in the loop;
-  Section 5).
+  114 of 4,074 answers, (a) 9 of 2,037, and (c) 28 of 4,074 lines (Section 5).
 - **No grammar check.** Some outputs are ungrammatical (*"den 18. Jahrhundert Markt"*).
-- **Development model.** The go/no-go, the pilot and prompt development used a derived 4-bit model on the
-  Mac; step 4 dev and all test runs used the official BF16 weights.
-- **Not tested:** Italian and the 70B model. Docker was tested on arm64 only (at `eaa0bbb`).
-- **Batching.** Processing 16 items at once on the HPC may change outputs slightly against a sequential
-  run (expected from batched arithmetic; not measured).
+- **Development model:** the go/no-go, pilot and prompt development used a 4-bit derivative on the Mac;
+  step 4 dev and all test runs used the official BF16 weights.
+- **Not tested:** Italian, the 70B model, and Docker on an amd64 host (amd64 ran only under emulation;
+  `results/docker_check.md`).
+- **Batching:** HPC runs batched 16 items, which may change outputs slightly (not measured).
 
 ## 7. Reproducibility
 
@@ -359,10 +376,9 @@ files are CC BY-SA 4.0 (`docs/licences.md`).
 - Laurer, M. et al. (2024). Less Annotating, More Classifying. *Political Analysis* 32(1).
 - Lui, M. and Baldwin, T. (2012). langid.py: An Off-the-shelf Language Identification Tool. *ACL 2012
   Demos.*
-- Okabe, M. and Ito, K. (2008). Color Universal Design: how to make figures for colorblind people.
+- Okabe, M. and Ito, K. (2008). Color Universal Design (figure colours).
 - Pellegrino, F., Coupé, C. and Marsico, E. (2011). A cross-language perspective on speech information
   rate. *Language* 87(3).
 - Qwen Team (2025). Qwen3 Technical Report. arXiv:2505.09388.
 - Swiss AI Initiative (2025). Apertus 1.5 model cards: huggingface.co/swiss-ai/Apertus-v1.5-8B.
-- eSpeak NG; llama.cpp; py3langid; matplotlib (github.com/espeak-ng, ggml-org/llama.cpp, adbar/py3langid,
-  matplotlib/matplotlib).
+- eSpeak NG, llama.cpp, py3langid and matplotlib, on GitHub.
