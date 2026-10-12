@@ -20,9 +20,10 @@ markdown report.
 - (c) keeps (a) unchanged when (a) is at most 1.10 × the budget; "(a) kept" is how often.
 - A wrong-language output (isochron.language) counts as a failure, like a missing one.
 - 95 % intervals: bootstrap over sentences (each carries its seeds), 10,000 resamples, seed 0.
-- Paired differences: (c) − (b) and (c) − (a), in percentage points, for fit, fit & complete and kept vs
-  reference. All systems translate the same sentences, so the bootstrap resamples sentences once per
-  resample and scores both systems on it (step 2's paired interval, isochron.step2_report.paired_diff).
+- Paired differences (post-hoc, added after test outputs existed): (c) − (b) and (c) − (a), in percentage points, for fit, fit &
+  complete and kept vs reference. All systems translate the same sentences, so the bootstrap resamples
+  sentences once per resample and scores both systems on it (step 2's paired interval,
+  isochron.step2_report.paired_diff).
 
     uv run python -m isochron.step4_report RUN_DIR [RUN_DIR ...] [--validation FILE ...] [--out FILE]
 """
@@ -196,7 +197,7 @@ def judge_table(rows: list[dict[str, Any]], title: str) -> list[str]:
 
 def diff_table(rows: list[dict[str, Any]], title: str, judged: bool) -> list[str]:
     metrics = [(name, value) for name, value, needs_judge in DIFFS if judged or not needs_judge]
-    out = [f"### {title}: paired differences (percentage points)", "",
+    out = [f"### {title}: paired differences (post-hoc, added after test outputs existed; percentage points)", "",
            "| Difference | " + " | ".join(name for name, _ in metrics) + " |",
            "|------------|" + "|".join("-" * (len(name) + 2) for name, _ in metrics) + "|"]
     for x, y in PAIRS:

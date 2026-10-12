@@ -15,7 +15,7 @@ These are the final numbers for step 4 on FLEURS test.
 Fit and fit & complete in %, for (a) plain translation / (b) one step to the budget / (c) translate,
 then shorten (ours). Fit & complete comes from the judge, and is an upper bound (below):
 
-| Direction, budget | Fit ±10 % | Fit & complete | (c) − (b), paired, in points: fit; fit & complete |
+| Direction, budget | Fit ±10 % | Fit & complete | (c) − (b), paired (post-hoc, added after test outputs existed), in points: fit; fit & complete |
 |-------------------|-----------|----------------|---------------------------------------------------|
 | EN → DE, characters | 27.2 / 59.4 / **80.2** | 26.8 / 53.7 / **70.5** | +20.8 [15.8, 25.9]; +16.8 [11.4, 22.2] |
 | EN → DE, syllables | 19.6 / **71.6** / **70.3** | 19.5 / **61.5** / 56.9 | −1.2 [−6.0, +3.6]; −4.6 [−9.4, +0.2] |
@@ -24,13 +24,13 @@ then shorten (ours). Fit & complete comes from the judge, and is an upper bound 
 
 - **Translating first and then shortening fits most often in three of the four settings.** It beats one
   step to the budget by 17 to 25 points of fit.
-- **German with the syllable budget is a tie on fit** (−1.2 points [−6.0, +3.6]). There the two meaning
-  checks disagree:
+- **German with the syllable budget is a tie on fit** (−1.2 points [−6.0, +3.6], paired, post-hoc, added after test outputs existed).
+  There the two meaning checks disagree:
   - the judge gives one step 4.6 points more fit & complete (interval [−9.4, +0.2]);
   - the NLI against the reference finds that (c) keeps the meaning more often (+4.8 points [+1.1, +8.5]).
 - **Meaning, by the main check** (NLI against the human reference):
-  - (c) keeps it as often as plain translation: +1.0 to +2.0 points. Only French with syllables
-    excludes 0 (+1.8 [+0.3, +3.5]).
+  - (c) keeps it as often as plain translation: +1.0 to +2.0 points. In the paired intervals (post-hoc, added after test outputs existed),
+    only French with syllables excludes 0 (+1.8 [+0.3, +3.5]).
   - One step to the budget keeps it less often: (c) − (b) is +4.8 to +11.0 points in all four settings.
 - **Plain translation rarely meets the budget,** except French with syllables (55.6 %).
   - That budget is 1.16 × the English syllables, about the length of a French translation.

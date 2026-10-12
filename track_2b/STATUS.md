@@ -116,15 +116,15 @@ the report. No workflows; commit locally only.
 
   - (c) leads in three settings by 17–25 points of fit over (b). German with syllables is a tie on fit.
     There the judge prefers (b) on fit & complete (−4.6 [−9.4, +0.2]), and the NLI prefers (c) (+4.8
-    [+1.1, +8.5]).
+    [+1.1, +8.5]); both paired, post-hoc, added after test outputs existed.
   - Meaning by NLI against the reference: (c) as good as plain translation (+1.0 to +2.0 points).
   - The added-fact rate is 0.0–0.1 %. That is not a bug: step 2 also had about 0 %, and across languages
     the judge caught only 5 of 20 inserted facts.
   - Broken JSON (not fixed, counted as misses). (b) lost 83 and 23 of 996 French items: 69 to `\'`, 27
     to malformed `\u` escapes, 10 to other causes. (a) has no translation for two sentences in every seed
     (3 German and 6 French items); (c) then has none either.
-- **One addition after the test outputs existed: paired differences** (c) − (b) and (c) − (a), with step
-  2's paired bootstrap.
+- **One addition after the test outputs existed: paired differences (post-hoc, added after test outputs existed)**, (c) − (b) and
+  (c) − (a), with step 2's paired bootstrap. They carry that label everywhere they appear.
   - Reason: per-system intervals overlapped in German with syllables, so they could not say which
     system is ahead.
   - It is analysis only, recorded in protocol v2.18. Every setting and comparison is reported, whatever

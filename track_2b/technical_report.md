@@ -206,11 +206,12 @@ syllable budget is 1.16 × the English syllables, so plain French translation of
 | FR, chars | 23.9 / 59.8 / **77.3** | 23.5 / 53.0 / **68.6** |
 | FR, syllables | 55.6 / 44.7 / **69.9** | 54.9 / 41.9 / **68.1** |
 
-- **Ours fits most often in three of the four settings.** Paired over sentences, (c) − (b) is +20.8 [15.8, 25.9]
-  points of fit with German characters, +17.5 [12.2, 22.9] with French characters and +25.2 [20.0, 30.3]
-  with French syllables.
-- **German syllables: a tie on fit** (−1.2 [−6.0, +3.6]). The judge gives one step 4.6 points more fit &
-  complete ([−9.4, +0.2]), but the NLI finds that ours keeps the meaning more often (+4.8 [1.1, 8.5]).
+- **Ours fits most often in three of the four settings.** Paired over sentences (post-hoc, added after
+  test outputs existed), (c) − (b) is +20.8 [15.8, 25.9] points of fit with German characters, +17.5
+  [12.2, 22.9] with French characters and +25.2 [20.0, 30.3] with French syllables.
+- **German syllables: a tie on fit** (−1.2 [−6.0, +3.6]; post-hoc, added after test outputs existed). The
+  judge gives one step 4.6 points more fit & complete ([−9.4, +0.2]), but the NLI finds that ours keeps
+  the meaning more often (+4.8 [1.1, 8.5]).
 - **Meaning, by the NLI against the human reference:** ours keeps it as often as plain translation (+1.0
   to +2.0 points) and more often than one step (+4.8 to +11.0).
 - **Dev agreed** for (c) within 5 points of fit.

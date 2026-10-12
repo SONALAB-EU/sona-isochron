@@ -611,7 +611,7 @@ numbers are reported on test, as before. The work goes in this order.
      - Fit & complete (judge), (a) / (b) / (c): German 26.8 / 53.7 / 70.5 and
        19.5 / 61.5 / 56.9 %; French 23.5 / 53.0 / 68.6 and 54.9 / 41.9 /
        68.1 %.
-     - Paired (c) − (b), fit: +20.8 [15.8, 25.9] and −1.2 [−6.0, +3.6] points
+     - Paired (c) − (b) (post-hoc, added after test outputs existed), fit: +20.8 [15.8, 25.9] and −1.2 [−6.0, +3.6] points
        in German, +17.5 [12.2, 22.9] and +25.2 [20.0, 30.3] in French
        (characters, then syllables).
      - Kept against the reference (NLI): (c) − (a) is +1.0 to +2.0 points,
@@ -622,9 +622,9 @@ numbers are reported on test, as before. The work goes in this order.
        numbers are upper bounds.
      - Broken JSON is a miss: (b) lost 83 and 23 of 996 French items
        (characters, syllables), mostly to `\'`.
-     - Added after the test outputs existed, as analysis only: the paired
-       differences (c) − (b) and (c) − (a), with step 2's paired bootstrap
-       (v2.12). Systems, metrics and data are as frozen.
+     - Paired differences (post-hoc, added after test outputs existed): (c) − (b) and (c) − (a), with step
+       2's paired bootstrap (v2.12), as analysis only. Systems, metrics and
+       data are as frozen.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -750,6 +750,6 @@ used.
   joins the step 4 scoring, validated on cross-lingual versions of both
   suites. The method is unchanged.
 - 2026-10-12, v2.18: the step 4 test result is recorded (section "Phase 2",
-  item 6). The step 4 report adds paired differences between systems, as
-  analysis after the test outputs existed. The method, the systems and the
+  item 6). The step 4 report adds paired differences between systems
+  (post-hoc, added after test outputs existed), as analysis only. The method, the systems and the
   metrics are unchanged.

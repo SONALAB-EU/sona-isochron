@@ -119,7 +119,7 @@ def test_judge_and_report_score_against_the_english_source(tmp_path: Path, monke
     step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
     text = report.read_text(encoding="utf-8")
     assert "EN → FR, isosyllabic budget (syllables): final judge" in text and "Judge (evaluation only): stub" in text
-    assert "EN → DE, isometric budget (chars): paired differences (percentage points)" in text
+    assert "EN → DE, isometric budget (chars): paired differences (post-hoc, added after test outputs existed; percentage points)" in text
     # a second pass reuses every NLI score from the cache
     cached = (tmp_path / "nli.jsonl").read_text(encoding="utf-8")
     step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
