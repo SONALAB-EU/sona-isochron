@@ -1,5 +1,79 @@
 # Status
 
+## Figures (from 2026-10-12, 16:48 UTC; decision log)
+
+Your instruction: list every figure in the report (number, what it shows, source data, whether `make figures`
+rebuilds it), check each against the final numbers and fix any that are stale, then add a step 4 length
+distribution and a fit-against-meaning trade-off if they are missing, within 6 pages. Commit locally only.
+README.md, Makefile, docker-compose.yml and results/docker_check.md belong to the other session and were
+not touched.
+
+- **The figures now.** `make figures` rebuilds all eight from committed results files only (it stops if an
+  input is untracked or modified), and each CSV names its inputs' git blobs.
+
+  | In the report | `docs/figures/` | What it shows | Source data |
+  |---|---|---|---|
+  | Figure 1 | `fig1_pipeline` | The engine (the repair loop) inside the offline deployment | None: drawn from the method |
+  | Figure 2 | `fig2_step4` | Step 4 on test: fit ±10 % per system and budget; dev fit as open diamonds | `results/step4_test.md`, `results/hpc_8b_step4_dev.md` |
+  | Figure 3 (new) | `fig3_step4_lengths` | Step 4 on test: output length ÷ budget for (a), (b) and (c), per language and ruler, with the ±10 % band | `results/step4_test_lengths.csv` |
+  | Figure 4 (new) | `fig4_tradeoff` | Step 4 on test: fit gained against meaning lost (kept vs reference), both against plain translation, per setting, by the main and the second NLI, with paired 95 % intervals | `results/step4_test.md`, `results/step4_test_nli2.md` |
+  | Figure 5 | `fig5_compression` | Step 2 on test: fit & complete per level, without and with the loop | `results/step2_test.md` |
+  | Figure 6 | `fig6_rounds` | Step 2 on test: fit & complete after rounds 0, 1 and 2 | `results/step2_test_rounds.csv` and `.md` |
+  | Linked | `extra_step2_lengths` | Step 2, German: achieved ÷ target syllables, without and with the loop | `results/step2_test_lengths.csv` |
+  | Linked | `extra_judges` | Hard controls, German source: what the main NLI and the two judges pass and catch | `results/judge_validation_hard_v3_all.md`, `results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md` |
+
+- **Audit.** A workflow of six read-only agents checked each figure's numbers against the committed results,
+  and its caption and the text citing it against the image. No number in any figure was stale: every CSV
+  matched its results file. Fixed (commit a30e05e):
+  - **Wrong:** Figure 1 said Apertus "answers each prompt with 4 candidates". It is asked for 4 and often
+    returns fewer: 686 of 5,655 step 4 loop rounds gave another number, mostly 1.
+  - **Misleading:**
+    - The step 4 figure drew fit (axis 0–116) and fit & complete (0–100) at the same height, so fit &
+      complete bars looked 16 % taller per point, and it repeated the table. It now shows fit only; fit &
+      complete stays in the table. Its annotation arrow ended on a dev marker; it is gone.
+    - The histograms' bins had an edge at 1.0, so exact hits (16 % of German step 2 outputs with the loop)
+      looked like +0–5 %, and outputs at exactly 1.10 × target, which fit, were drawn outside the band.
+      Bins are now 0.04 wide, one centred on 1.0, with edges on 0.90 and 1.10.
+    - The rounds figure's fit & complete range bars (at most 0.7 points) were invisible. It now shows the
+      fit & complete row only, at the low end of the range, as its caption says.
+    - The judges figure now says what it covers (140 hard controls written by Claude, German source), keeps
+      the rows of correct passes apart from the rows of caught changes, and gives the NLI a colour of its
+      own (grey means plain translation).
+  - **In the report:** Figure 1 is cited in the text, and its caption covers retries and how step 4 uses
+    the loop. "All three meaning checks miss most qualifier changes" became "at least half" (Qwen3-14B
+    catches 7 of 14 from a German source).
+  - **In this file:** the rounds entry below said "figure 4 in the report"; it is figure 6. Figure numbers
+    in older entries are those of their day.
+- **Two new figures, post-hoc, added after test outputs existed.**
+  - Figure 3 reads `results/step4_test_lengths.csv`, a new committed input written by
+    `isochron.step4_report --lengths-csv`: 12,222 rows, one per output of (a), (b) and (c), numbers only.
+    The share of outputs inside its band equals the report's fit in all 12 cells.
+  - Figure 4 plots paired differences from `results/step4_test.md` and `results/step4_test_nli2.md`. For
+    it, both gained (b) − (a) rows (commits 42a860e, 618c460, 8a80569).
+- **A second check, of the changed text and captions.** Two read-only agents recomputed every number in
+  the report's diff and compared each caption with its image. Every number matched; the wording issues
+  they found are fixed (commit b42cd30):
+  - "ours loses no meaning by the main NLI" became "is level on meaning" (three of its four paired
+    intervals include a loss); one step and ours are level on fit with German syllables, within noise;
+  - "232 of its 293 misses" now says "with an output" (300 misses counting missing and wrong-language
+    outputs);
+  - step 2's long misses hold with the loop only, in both languages, and cite `results/step2_test.md`;
+  - Figures 3 and 4 give model, quantisation and n; Figure 3 says that 10 outputs beyond 0.42–1.78 sit in
+    its end bins; Figure 6 names its dotted all-levels line, and the text gives the gains it plots;
+  - Figure 1 is tied to `make run-offline` in the text, and its caption marks the retry path as not drawn;
+  - the long-misses limitation carries the post-hoc label (it now points to Section 5), and "Docker was
+    tested on arm64 only" became "amd64 ran only under emulation" (`results/docker_check.md`).
+- **6 pages.** With both new figures the report ran to 7 pages (A4, two columns). To get back to 6, the
+  step 2 histogram left the report (linked as `docs/figures/extra_step2_lengths.png`), Figure 2 shows fit
+  only, and the step 2 table and some passages are shorter. After the fixes above, shorter Limitations
+  bullets and one shorter reference kept it there. Measured with `uv run scripts/report_pdf.py`: 6 pages.
+- **Git.** My `git rm` of the old figure files (`fig6_ratio_histogram`, `fig7_rounds`, `fig8_judges`) left
+  the deletions staged in the index both sessions share, and the other session's commit 2ad7fa1 took them
+  along. The tree is right (their replacements are in 3655406) and no history was rewritten. Since then I
+  commit with explicit paths and leave nothing staged.
+- **Tests:** 149 pass. Commits: 42a860e, 618c460, 8a80569, a30e05e, 561df7e, 7bd53bd, 3655406, b42cd30
+  (the report), and the one with the protocol (v2.22) and this file.
+
 ## Step 4 follow-ups (from 2026-10-12, 14:01 UTC; decision log)
 
 Your instruction: keep v2.18 and label the paired differences "post-hoc, added after test outputs existed"
@@ -228,7 +302,8 @@ the report. No workflows; commit locally only.
 - **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and
   fit & complete after round 0, 1 and 2.
   - "After round k" is the loop's best candidate so far, the output if the loop stopped there.
-  - Results: `results/step2_test_rounds.md` and `.csv`; figure 4 in the report.
+  - Results: `results/step2_test_rounds.md` and `.csv`; figure 6 in the report (figure 4 when this was
+    written).
   - Round 2 and the round-0 baseline are checked against `results/step2_test.md`, and match exactly.
 - **What the logs cannot give exactly.** The judge scored only two texts per item: the closest round-0
   candidate and the final output.

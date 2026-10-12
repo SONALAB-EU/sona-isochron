@@ -795,3 +795,13 @@ used.
   (25 seeded English sources, (a) and (c), seed 0), marked for meaning against
   the English source, added information and natural German. Decided before any
   line was rated; the step 2 sheet is kept as a backup.
+- 2026-10-12, v2.22: two step 4 figures in the report, post-hoc, added after
+  test outputs existed, with no new generation or scoring. One shows output
+  length ÷ budget for (a), (b) and (c), per language and ruler, with the
+  ±10 % band, from `results/step4_test_lengths.csv` (one row per output,
+  written by `isochron.step4_report`). The other shows fit gained against
+  meaning lost, both against plain translation, per setting, under both NLI
+  models, with the paired 95 % intervals. The step 4 fit figure now shows fit
+  only; fit & complete stays in the report's table. The step 2 histogram and
+  the judges figure are linked from the report, not inserted. The method, the
+  systems and the metrics are unchanged.
