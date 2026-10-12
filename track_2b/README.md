@@ -113,6 +113,10 @@ Add `--mock` for a dry run without an LLM. `uv run pytest` runs the tests.
 - `docs/hpc.md`: Apertus 1.5 in BF16 on H100s (vLLM).
 - `results/`: every report. Each one records its date, git commit, model and quantisation, endpoint,
   TTS (none), seeds and n.
+- `make figures` redraws the report's figures (`docs/figures/`: PDF, PNG and the CSV behind each) with
+  matplotlib, from committed results files only.
+- `uv run scripts/report_pdf.py` renders `technical_report.md` to PDF (A4, two columns) with headless
+  Chrome and counts its pages. The limit is 6.
 
 ## Input and output
 

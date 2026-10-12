@@ -48,3 +48,11 @@ def test_every_figure_is_drawn_one_column_wide(tmp_path: Path) -> None:
     rows = [line for line in (tmp_path / "fig2_compression.csv").read_text(encoding="utf-8").splitlines()
             if not line.startswith("#")]
     assert len(rows) == 1 + 2 * 4 * 2  # header + languages × levels × conditions
+    # the committed figures show the committed results: same numbers in every CSV (run make figures if not)
+    committed = Path(__file__).resolve().parents[1] / "docs" / "figures"
+
+    def data(path: Path) -> list[str]:
+        return [line for line in path.read_text(encoding="utf-8").splitlines() if not line.startswith("#")]
+
+    for name in names:
+        assert data(committed / f"{name}.csv") == data(tmp_path / f"{name}.csv"), f"{name}: run make figures"

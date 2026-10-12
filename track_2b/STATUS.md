@@ -1,5 +1,25 @@
 # Status
 
+## Figures and report layout (2026-10-12)
+
+- **`make figures`** draws 5 figures with matplotlib from committed results files only.
+  - It stops if an input is untracked or modified.
+  - Output: `docs/figures/figN_*.pdf`, `*.png` and the CSV behind each.
+  - Two runs give byte-identical files: no timestamps, and every CSV names its inputs' git blobs.
+  - matplotlib 3.11.2 is in a `figures` dependency group, so the Docker image stays without it.
+- **One new committed input:** `results/step2_test_lengths.csv`, the length of every step 2 test output
+  (16,296 rows, numbers only), from `isochron.lengths_csv`. The histogram needs per-output values, and the
+  raw runs are not in git. Its fit shares match `results/step2_test.md` exactly.
+- **Style:** Okabe & Ito colours. Without the loop is orange and dashed, with the loop blue and solid, in
+  every figure. Each figure is 3.5 in wide with 6.2–8.5 pt text. Every axis has units.
+- **Report:** figures 1–4 are in `technical_report.md` with captions. The text is shorter, and the tables
+  the figures replace are gone; every number is unchanged.
+  - Measured with `uv run scripts/report_pdf.py` (A4, two columns, 9.5 pt; headless Chrome): **4 pages**.
+  - As one column with 8.9 cm figures: 5 pages.
+  - Figure 5 (judges per control type) is in `docs/figures/`, linked from the report but not inserted.
+- **A test** redraws the figures and checks that the committed CSVs hold the same numbers, so a stale
+  figure fails the test suite.
+
 ## Summary (2026-10-11, 14:55 UTC): every planned job is done
 
 **Done**
