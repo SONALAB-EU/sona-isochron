@@ -87,6 +87,8 @@ class ControlPair:
     license: str
     note: str | None = None
     """The edit, as "old → new" (judge_controls_de only)."""
+    source_lang: str | None = None
+    """The source's language when it differs from lang: "en" in the cross-lingual suites (*_xl.jsonl)."""
 
 
 @dataclass

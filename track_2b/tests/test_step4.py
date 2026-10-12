@@ -63,3 +63,46 @@ def test_dry_run_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     step4_report.main([str(out), "--out", str(report), "--device", "cpu"])
     text = report.read_text(encoding="utf-8")
     assert "EN → DE, isometric budget (chars)" in text and "(c) translate, then shorten" in text
+
+
+@pytest.mark.skipif(not nli_cached or not espeak_available(), reason="needs the cached NLI model and espeak-ng")
+def test_judge_and_report_score_against_the_english_source(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from isochron import judge, step4, step4_report
+
+    monkeypatch.chdir(ROOT)
+    out = tmp_path / "run"
+    step4.main(["--langs", "de", "fr", "--split", "dev", "--exclude-gonogo", "--limit", "1", "--seeds", "0", "--mock",
+                "--device", "cpu", "--out", str(out)])
+
+    class StubJudge:
+        seen_langs: set[str] = set()
+
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def facts(self, source: str, lang: str) -> list[str]:
+            StubJudge.seen_langs.add(lang)
+            return ["one fact", "another fact"]
+
+        def compare(self, facts: list[str], output: str, lang: str, original: str) -> dict:
+            StubJudge.seen_langs.add(lang)
+            return {"valid": True, "recall": 1.0, "n_facts": 2, "dropped": 0, "changed": 0, "added": 0, "added_any": False}
+
+        def describe(self) -> dict:
+            return {"model": "stub", "endpoint": "none", "backend": {"build_info": "stub"}, "quantisation": "n/a",
+                    "seed": 0, "mode": "perfact_v3", "prompts": {}}
+
+    monkeypatch.setattr(judge, "Judge", StubJudge)
+    judge.judge_step4([out])
+    rows = [json.loads(line) for line in (out / "judge.jsonl").read_text(encoding="utf-8").splitlines()]
+    assert {r["lang"] for r in rows} == {"de", "fr"} and StubJudge.seen_langs == {"en"}
+    assert all(set(r["budgets"]) == {"isometric", "isosyllabic"} and set(r["budgets"]["isometric"]) == {"b", "c"}
+               for r in rows)
+    report = tmp_path / "report.md"
+    step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
+    text = report.read_text(encoding="utf-8")
+    assert "EN → FR, isosyllabic budget (syllables): final judge" in text and "Judge (evaluation only): stub" in text
+    # a second pass reuses every NLI score from the cache
+    cached = (tmp_path / "nli.jsonl").read_text(encoding="utf-8")
+    step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--nli-cache", str(tmp_path / "nli.jsonl")])
+    assert (tmp_path / "nli.jsonl").read_text(encoding="utf-8") == cached

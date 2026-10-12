@@ -73,3 +73,19 @@ def test_judge_controls_are_minimal_edits() -> None:
     assert all("fact_inserted" not in c for c in by_sentence.values() if "same_meaning" in c)
     nli_de = {p.fleurs_id for p in read_jsonl(DATA / "nli_controls.jsonl", ControlPair) if p.lang == "de"}
     assert not nli_de & set(by_sentence)
+
+
+def test_cross_lingual_controls_are_the_builders_output() -> None:
+    from huggingface_hub import try_to_load_from_cache
+
+    from isochron.data.build_xl_controls import FILES, cross_lingual
+    from isochron.data.fleurs import REVISION, train_sentences
+
+    if not isinstance(try_to_load_from_cache("google/fleurs", "data/en_us/train.tsv", revision=REVISION,
+                                             repo_type="dataset"), str):
+        pytest.skip("FLEURS en_us train.tsv is not in the local cache")
+    english = train_sentences("en_us")
+    for src, dst in FILES.items():
+        built = cross_lingual(list(read_jsonl(DATA.parent / src, ControlPair)), english)
+        assert built == list(read_jsonl(DATA.parent / dst, ControlPair))
+        assert all(p.source_lang == "en" and p.id.startswith("xl-") for p in built)

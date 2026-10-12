@@ -17,10 +17,14 @@ Metrics per output: fact recall = kept ÷ facts; added = at least one added fact
 Validation suites: data/nli_controls.jsonl (whole clauses deleted or inserted,
 negations) and data/judge_controls_de.jsonl (one qualifier, number or modal
 changed, one fact inserted, and same-meaning edits; built by
-isochron.data.build_judge_controls). Any judge is validated on both.
+isochron.data.build_judge_controls). Any judge is validated on both. Step 4
+judges a German or French output against its English source, so it is also
+validated on nli_xl and hard_xl: the same pairs with the English original as
+the source (isochron.data.build_xl_controls).
 
     uv run python -m isochron.judge controls --suite hard --compare-prompt perfact_v3   (validation)
-    uv run python -m isochron.judge runs RUN_DIR [...] --compare-prompt perfact_v3      (judge run outputs)
+    uv run python -m isochron.judge runs RUN_DIR [...] --compare-prompt perfact_v3      (step 2 run outputs)
+    uv run python -m isochron.judge step4 RUN_DIR [...] --compare-prompt perfact_v3     (step 4 run outputs)
 
 Judging is resumable: every answer is cached in results/raw/judge_cache.jsonl
 (or the file ISOCHRON_JUDGE_CACHE names, one per cluster job), keyed by the
@@ -278,6 +282,13 @@ SUITES: dict[str, dict[str, Any]] = {
                     "fact added",
     },
 }
+SUITES["nli_xl"] = {**SUITES["nli"], "file": Path("data/nli_controls_xl.jsonl"),
+                    "about": "the nli suite with each source replaced by its English original (cross-lingual)"}
+SUITES["hard_xl"] = {**SUITES["hard"], "file": Path("data/judge_controls_xl.jsonl"),
+                     "about": "the hard suite with each source replaced by its English original (cross-lingual)"}
+TITLES = {"nli": "NLI control suite", "hard": "hard controls (German)",
+          "nli_xl": "NLI control suite, English sources (cross-lingual)",
+          "hard_xl": "hard controls (German), English sources (cross-lingual)"}
 CHANGED = ("modal_changed", "number_changed", "qualifier_changed")
 
 
@@ -290,7 +301,7 @@ def control_half(pairs: list[ControlPair], half: str, suite: str = "nli") -> lis
     """
     if half == "all":
         return pairs
-    if suite == "nli":
+    if suite.startswith("nli"):
         def group(p: ControlPair) -> str:
             return p.lang
     else:
@@ -317,8 +328,9 @@ def controls(out_path: Path, half: str = "all", compare_prompt: str = "judge_com
     started = datetime.now(timezone.utc)
 
     def one(p: ControlPair) -> tuple[ControlPair, list[str] | None, dict]:
-        facts = judge.facts(p.source, p.lang)
-        v = judge.compare(facts, p.output, p.lang, p.source) if facts else {"valid": False, "error": "no facts"}
+        source_lang = p.source_lang or p.lang  # the facts are listed, and the original named, in the source's language
+        facts = judge.facts(p.source, source_lang)
+        v = judge.compare(facts, p.output, source_lang, p.source) if facts else {"valid": False, "error": "no facts"}
         return p, facts, v
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -351,13 +363,13 @@ def controls(out_path: Path, half: str = "all", compare_prompt: str = "judge_com
     invalid = [(p, v) for p, _, v in rows if not v["valid"]]
     wrong = [(p, v) for p, _, v in rows if v["valid"] and not expected[p.control][1](v)]
     extra = []
-    if suite == "hard":
+    if suite.startswith("hard"):
         flagged = [v for p, _, v in rows if p.control in CHANGED and v["valid"] and not complete(v)]
         by_fact = sum(v["recall"] < 1 for v in flagged)
         extra = [f"Of the {len(flagged)} changed pairs the judge does not call complete, {by_fact} are caught through "
                  "a fact marked changed or dropped, the rest only through added information.", ""]
     lines = [
-        f"# Meaning judge validation: {'NLI control suite' if suite == 'nli' else 'hard controls (German)'}",
+        f"# Meaning judge validation: {TITLES[suite]}",
         "",
         f"- Date: {started:%Y-%m-%d %H:%M} UTC",
         f"- Git commit: {git_commit()}",
@@ -423,6 +435,46 @@ def judge_runs(runs: list[Path], compare_prompt: str = "judge_compare_v1", quant
         print(f"wrote {run / 'judge.jsonl'}")
 
 
+def judge_step4(runs: list[Path], compare_prompt: str = PERFACT, quantisation: str | None = None,
+                workers: int = 1) -> None:
+    """Judge every output of each step 4 run against the facts of its English source.
+
+    Per item: (a), and (b) and (c) under each budget. The facts are listed once per English sentence, in
+    English, and shared by German and French. A missing output keeps no fact. Writes judge.jsonl and
+    judge_config.json into the run.
+    """
+    judge = Judge(compare_prompt, quantisation)
+
+    def one(it: dict[str, Any]) -> dict[str, Any]:
+        facts = judge.facts(it["source"], "en")
+
+        def score(text: str | None) -> dict[str, Any]:
+            if not facts:
+                return {"valid": False, "error": "no facts for the source"}
+            if not text:
+                return {"valid": True, "no_output": True, "recall": 0.0, "added_any": None}
+            return judge.compare(facts, text, "en", it["source"])
+
+        return {"id": it["id"], "lang": it["lang"], "seed": it["seed"], "facts": facts, "a": score(it["a"]["text"]),
+                "budgets": {kind: {"b": score(e["b"]["text"]), "c": score(e["c"]["text"])}
+                            for kind, e in it["budgets"].items()}}
+
+    for run in runs:
+        items = [json.loads(line) for line in open(run / "items.jsonl", encoding="utf-8") if line.strip()]
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            out = []
+            for i, res in enumerate(pool.map(one, items), 1):
+                out.append(res)
+                print(f"  {run.name} {i}/{len(items)} {res['lang']} {res['id']} s{res['seed']}: "
+                      f"(a) {res['a'].get('recall', '-')}", flush=True)
+        (run / "judge.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out), encoding="utf-8")
+        (run / "judge_config.json").write_text(json.dumps({"date": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                                                            "git_commit": git_commit(), "facts_from": "the English source",
+                                                            **judge.describe()}, ensure_ascii=False, indent=2) + "\n",
+                                               encoding="utf-8")
+        print(f"wrote {run / 'judge.jsonl'}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Final meaning judge (evaluation only).")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -430,8 +482,9 @@ def main() -> None:
     c.add_argument("--suite", choices=sorted(SUITES), default="nli")
     c.add_argument("--out", type=Path, help="default: results/judge_validation_<suite>.md")
     c.add_argument("--half", choices=("A", "B", "all"), default="all")
-    for name, p in (("runs", sub.add_parser("runs", help="judge run directories")),
-                    ("pilot", sub.add_parser("pilot", help="the same as runs (kept for the phase 2 commands)"))):
+    for name, p in (("runs", sub.add_parser("runs", help="judge step 2 run directories")),
+                    ("pilot", sub.add_parser("pilot", help="the same as runs (kept for the phase 2 commands)")),
+                    ("step4", sub.add_parser("step4", help="judge step 4 run directories against the English source"))):
         p.add_argument("runs", type=Path, nargs="+")
     for p in sub.choices.values():
         p.add_argument("--compare-prompt", default="judge_compare_v1", help=f"judge_compare_v1, judge_compare_v2 or {PERFACT}")
@@ -441,6 +494,8 @@ def main() -> None:
     if args.cmd == "controls":
         controls(args.out or Path(f"results/judge_validation_{args.suite}.md"), args.half, args.compare_prompt,
                  args.suite, args.quantisation, args.workers)
+    elif args.cmd == "step4":
+        judge_step4(args.runs, args.compare_prompt, args.quantisation, args.workers)
     else:
         judge_runs(args.runs, args.compare_prompt, args.quantisation, args.workers)
 

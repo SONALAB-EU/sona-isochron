@@ -218,6 +218,68 @@ A target T is a whole number: the share or budget, rounded half up. An output
     of 5.
   - Five sentences per cell is too few to read any difference; this only
     shows that the pipeline works.
+- **Test run: frozen on 2026-10-12, before any test output was generated
+  (v2.17).**
+  - **Frozen as it ran on dev** (job 2636594, run commit `68492f2`). The
+    code that generates step 4 has not changed since `68492f2`: `step4.py`,
+    `repair.py`, `candidates.py`, `loop_run.py`, `run.py`, `llm.py`,
+    `language.py`, `metrics/length.py`, `metrics/meaning.py` and
+    `prompts/` (empty `git diff`).
+  - **Prompts (SHA-256), the same as the dev run recorded:**
+    - `translate_plain_v1` `5fe6dd58bf7e05da0bfaaf005877876cdb9cbbe1d99375105aa7a4f3772e7d2f`
+    - `translate_budget_chars_v1` `e81efebd7d4f6b6d9aab91f1170c32a9efa2dd07efb86f5d30e5a300b16d7a30`
+    - `translate_budget_syllables_v1` `a3ffa4ea51a78b1a943be2c4ae8ecb5811bea136b4a76dab67cdb06baef2a319`
+    - `shorten_chars_v1` `004890c41f2573c07be89204ac43f8fb7a6c8e999fca1ea38ff9b28124d0630e`
+    - `shorten_syllables_v1` `fe4fbfdd800d69b613fd49ba747507aa44a9a868556ceca15421d33edd661a5c`
+    - `revise_chars_v1` `62a308e266abffad9bb7bfa7a28d4d51356ccc319cf676a8f89ae9b8d0f47f2e`
+    - `revise_v1` `ab0593b9716e97e17444e36c243206f65a62f5d46d3421423cfdeda2f55c5c57`
+  - **Systems.**
+    - (a): plain translation.
+    - (b): one step to the budget, the closest of 4 candidates in the
+      budget's unit.
+    - (c): (a) kept unchanged if at most 1.10 × the budget; otherwise
+      shortened with prompt v1 and the repair loop in the budget's unit (at
+      most 2 revisions; the loop's NLI compares with (a)).
+  - **Budgets, ±10 %.**
+    - Isometric: the English characters without spaces.
+    - Isosyllabic: the English syllables × target rate ÷ English rate
+      (German 0.964, French 1.160), rounded half up.
+  - **Generation:** as on dev. Seeds 0, 1 and 2; (a) and (b) use the item
+    seed, and round r of (c) uses item seed + 1000 × r. Apertus 1.5 8B BF16
+    on vLLM, one H100, 16 items in flight.
+  - **Not fixed:** French answers that break JSON (apostrophes escaped as
+    `\'`). A broken answer counts as a miss and is reported.
+  - **Data:** FLEURS test, every sentence. EN → DE: 347 sentences, 1,041
+    items. EN → FR: 332 sentences, 996 items.
+  - **Scoring, fixed now, as in step 2.**
+    - Fit within ±10 % of the budget in its unit. The language check: a
+      missing or wrong-language output fails.
+    - NLI against the human reference (main) and against the English source
+      (secondary).
+    - The final judge, Qwen3-14B BF16 (`perfact_v3`). It lists the facts of
+      the English source once, in English. It marks each fact kept, changed
+      or dropped in the output, and lists added facts.
+    - Fit & complete: fits, every fact kept, nothing added.
+    - 95 % bootstrap intervals over sentences (10,000 resamples, seed 0).
+  - **Cross-lingual judge validation.** The judge is validated in the same
+    pipeline on the cross-lingual versions of both suites: `nli_xl` and
+    `hard_xl`, the same pairs with the English original as the source
+    (`isochron.data.build_xl_controls`).
+    - If it calls fewer than 90 % of the identity pairs complete, the judge's
+      numbers are reported but flagged as unreliable, and the NLI against
+      the reference stays the main meaning check.
+  - **Where scoring runs.** The cluster jobs generate, validate and judge.
+    The lengths, the language check and the NLI are computed on the Mac
+    from the logged outputs (`isochron.step4_report`), so no GPU idles on
+    CPU work.
+  - **Jobs, chained (`afterok`):**
+    1. A sanity check on dev: 5 sentences per language, seed 0. The test
+       jobs wait at a gate until it is checked.
+    2. EN → DE test.
+    3. EN → FR test.
+  - **Compute** (an estimate): about 1.6 H100-hours. The limits (1, 1.5 and
+    1.5 h) keep even the worst case at 8.5 of the 12 H100-hours, with 4.46
+    already used.
 
 ## Metrics for steps 2–4
 
@@ -655,3 +717,7 @@ used.
   round of the loop are computed from the logged test runs (`isochron.rounds`,
   `results/step2_test_rounds.md`). Where the judge never scored a round's best candidate, fit & complete
   is given as a low–high range. The method and the metrics are unchanged.
+- 2026-10-12, v2.17: step 4 frozen for the test run before generation:
+  prompts with hashes, systems, budgets, seeds and scoring. The final judge
+  joins the step 4 scoring, validated on cross-lingual versions of both
+  suites. The method is unchanged.

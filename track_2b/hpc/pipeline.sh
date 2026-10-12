@@ -3,8 +3,8 @@
 #   1. Apertus 1.5 in BF16 behind an OpenAI-compatible server on 127.0.0.1 (vLLM container, or the
 #      transformers fallback); step 2 with prompt v1 and the repair loop against it (or step 4 with
 #      STEP=4); server stopped.
-#   2. Step 2 only: the judge Qwen3-14B (BF16) behind its own server: validation on both control
-#      suites, then the same outputs, for evaluation only; server stopped.
+#   2. The judge Qwen3-14B (BF16) behind its own server: validation on both control suites (step 4: their
+#      cross-lingual versions, English sources), then the same outputs, for evaluation only; server stopped.
 #   3. Reports in results/.
 # A job that hits its time limit can be submitted again: generation resumes from items.jsonl and
 # the judge from its cache. The two servers never run at the same time.
@@ -16,7 +16,7 @@
 #   VLLM_EXTRA  more vLLM arguments for Apertus                     default none
 #   SERVER      vllm or transformers                                default vllm
 #   STEP        2 (shorten, isochron.loop_run) or 4 (translate to a budget, isochron.step4;
-#               no judge)                                           default 2
+#               judged against the English source)                default 2
 #   LANGS       target languages                                    default de
 #   SPLIT       dev or test                                         default test
 #   LEVELS      target levels in % (step 2)                         default 90 80 70 60
@@ -25,9 +25,9 @@
 #   NLI_DEVICE  device of the loop's NLI                            default cuda
 #   JUDGE_SEED_CACHE  a judge cache to start from, so two jobs share the same fact lists
 #   PHASES      which steps run: generate, validate (judge on the control suites), judge (judge the
-#               runs), report                                       default all four (step 4:
-#                                                                   generate report)
+#               runs), report                                       default all four
 #   IDS         FLEURS sentence ids to run (smoke tests)            default all sentences
+#   LIMIT       the first N sentences per language (sanity checks)  default all sentences
 #   EXCLUDE_GONOGO  if set, skip the 50 go/no-go sentences (step 4) default not set
 #   RUN_SUFFIX  appended to the run names                           default none
 #   GATE        a file: once Apertus is healthy, generation waits until it exists, and stops if
@@ -56,11 +56,13 @@ main() {
     NLI_DEVICE=${NLI_DEVICE:-cuda}
     JUDGE_SEED_CACHE=${JUDGE_SEED_CACHE:-}
     case $STEP in
-        2) PHASES=${PHASES:-generate validate judge report} ;;
-        4) PHASES=${PHASES:-generate report} ;;
+        2) SUITES="hard nli" ;;
+        4) SUITES="nli_xl hard_xl" ;;
         *) die "STEP must be 2 or 4" ;;
     esac
+    PHASES=${PHASES:-generate validate judge report}
     IDS=${IDS:-}
+    LIMIT=${LIMIT:-}
     EXCLUDE_GONOGO=${EXCLUDE_GONOGO:-}
     RUN_SUFFIX=${RUN_SUFFIX:-}
     GATE=${GATE:-}
@@ -80,7 +82,6 @@ main() {
         [ -f "$MODEL_DIR/config.json" ] || die "no model at $MODEL_DIR: run  bash hpc/download_models.sh"
     fi
     if has_phase validate || has_phase judge; then
-        [ "$STEP" = 2 ] || die "step $STEP has no judge phases (validate, judge)"
         [ -f "$MODELS/$JUDGE_REPO/config.json" ] || die "no judge model at $MODELS/$JUDGE_REPO: run  bash hpc/download_models.sh"
     fi
     export HF_HUB_OFFLINE=1
@@ -89,7 +90,7 @@ main() {
     STAMP=$(date -u +%Y%m%dT%H%M%SZ)
     trap stop_server EXIT
     trap 'exit 143' TERM
-    log "job ${SLURM_JOB_ID}: step $STEP, phases $PHASES; $MODEL_DIR with $SERVER, languages $LANGS, split $SPLIT${IDS:+ (ids $IDS)}${EXCLUDE_GONOGO:+ (without the go/no-go sentences)}, levels $LEVELS, seeds $SEEDS${GATE:+, gate $GATE}"
+    log "job ${SLURM_JOB_ID}: step $STEP, phases $PHASES; $MODEL_DIR with $SERVER, languages $LANGS, split $SPLIT${IDS:+ (ids $IDS)}${LIMIT:+ (first $LIMIT)}${EXCLUDE_GONOGO:+ (without the go/no-go sentences)}, levels $LEVELS, seeds $SEEDS${GATE:+, gate $GATE}"
     [ "$SERVER" = transformers ] && WORKERS=2
     runs=()
     if [ "$STEP" = 4 ]; then
@@ -123,7 +124,7 @@ main() {
             [ "$SPLIT" != test ] || test_flag=--allow-test
             # shellcheck disable=SC2086
             uv run --no-sync python -m isochron.step4 --langs $LANGS --split "$SPLIT" $test_flag ${IDS:+--ids $IDS} \
-                ${EXCLUDE_GONOGO:+--exclude-gonogo} --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
+                ${LIMIT:+--limit $LIMIT} ${EXCLUDE_GONOGO:+--exclude-gonogo} --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
                 --device "$NLI_DEVICE" --out "${runs[0]}" --resume
         else
             for run in "${runs[@]}"; do
@@ -131,7 +132,7 @@ main() {
                 lang=${lang%%_*}
                 # shellcheck disable=SC2086
                 uv run --no-sync python -m isochron.loop_run --variant v1 --lang "$lang" --split "$SPLIT" --allow-test \
-                    ${IDS:+--ids $IDS} --levels $LEVELS --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
+                    ${IDS:+--ids $IDS} ${LIMIT:+--limit $LIMIT} --levels $LEVELS --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
                     --device "$NLI_DEVICE" --out "$run" --resume
             done
         fi
@@ -159,13 +160,17 @@ main() {
         export JUDGE_NAME=qwen3-14b-bf16 JUDGE_BASE_URL=http://127.0.0.1:$judge_port/v1 JUDGE_API_KEY=$judge_key
         judge=(uv run --no-sync python -m isochron.judge)
         if has_phase validate; then
-            for suite in hard nli; do
+            for suite in $SUITES; do
                 "${judge[@]}" controls --suite "$suite" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS" \
                     --out "results/judge_validation_${suite}_v3_qwen3-14b_${TAG}.md"
             done
         fi
         if has_phase judge; then
-            "${judge[@]}" runs "${runs[@]}" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS"
+            if [ "$STEP" = 4 ]; then
+                "${judge[@]}" step4 "${runs[@]}" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS"
+            else
+                "${judge[@]}" runs "${runs[@]}" --compare-prompt perfact_v3 --quantisation BF16 --workers "$WORKERS"
+            fi
         fi
         stop_server
     fi
