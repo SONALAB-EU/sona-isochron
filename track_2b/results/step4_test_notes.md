@@ -51,6 +51,16 @@ German or French output against them.
   is far too low.
 - The NLI against the reference is monolingual, so this weakness does not affect it.
 
+**A second NLI (post-hoc, added after test outputs existed; `results/step4_test_nli2.md`).** The loop
+chooses (c)'s candidates with the same NLI that scores meaning here, so step 4 was re-scored with a second
+NLI model that the loop never sees (`MoritzLaurer/bge-m3-zeroshot-v2.0-c`).
+- Under it, (c) keeps the meaning 2.8–5.3 points less often than plain translation in three settings
+  (level in French with syllables), and still more often than one step to the budget in three.
+- (b), which no NLI chooses, shows almost the same gap between the two models as (c). So the gap mostly
+  reflects how the two models judge shortened lines, not the loop's selection.
+- The second NLI is lenient on small changes (1 of 14 qualifier changes caught in German), so neither
+  model settles the question. The native-speaker check compares (a) and (c) directly.
+
 **Broken JSON is not fixed (as frozen): an answer that is not valid JSON is a miss** (no output, no fit,
 no fact kept).
 - (b) asks once for 4 candidates in one JSON answer, so one broken answer loses the item.
