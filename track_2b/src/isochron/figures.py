@@ -7,12 +7,13 @@ Inputs (each must be tracked by git and unchanged; the run stops otherwise):
 - results/step4_test_lengths.csv   figure 3: step 4 output length ÷ budget of every output, per system
 - results/step4_test_nli2.md       figure 4: meaning lost under the second NLI (paired)
 - results/step2_test.md            figure 5: step 2, fit & complete per level, with the 95 % intervals
-- results/step2_test_lengths.csv   figure 6: achieved ÷ target syllables of every step 2 output
-- results/step2_test_rounds.csv    figure 7: fit & complete after each round of the loop (with
+- results/step2_test_rounds.csv    figure 6: fit & complete after each round of the loop (with
   results/step2_test_rounds.md     the report that names the runs behind it)
+- results/step2_test_lengths.csv   extra_step2_lengths: achieved ÷ target syllables of every step 2 output
 - results/judge_validation_hard_v3_all.md, results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md
-                                   figure 8: what the NLI and the two judges catch on the hard controls
-Figure 1, the pipeline, is drawn from the description in this file.
+                                   extra_judges: what the NLI and the two judges catch on the hard controls
+Figure 1, the pipeline, is drawn from the description in this file. Figures 1-6 are in technical_report.md;
+the two extra_ figures are linked from it, not inserted.
 
 Output, in --out (default docs/figures/): figN_<name>.pdf (vector), .png (300 dpi) and .csv (the numbers
 behind the figure; its # lines name each input, its git blob and the commit that last changed it).
@@ -246,7 +247,7 @@ def fig3_step4_lengths(out: Path) -> list[Path]:
     systems = (("a", "(a) plain translation", PLAIN, ":"), ("b", "(b) one step to the budget (no loop)", WITHOUT, "--"),
                ("c", "(c) ours: translate, then shorten with the loop", WITH, "-"))
     rulers = (("isometric", "characters"), ("isosyllabic", "syllables"))
-    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.25), sharex=True, sharey=True, layout="constrained")
+    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.05), sharex=True, sharey=True, layout="constrained")
     rows = []
     for i, lang in enumerate(LANGS):
         for j, (budget, ruler) in enumerate(rulers):
@@ -294,7 +295,7 @@ def fig4_tradeoff(out: Path) -> list[Path]:
                 ("FR", "isosyllabic budget (syllables)", "FR, syllables", "D"))
     systems = (("b", "one step", WITHOUT), ("c", "ours", WITH))
     panels = (("Main NLI\n(the loop's own)", "main"), ("Second NLI\n(never in the loop)", "second"))
-    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.75), sharex=True, sharey=True, layout="constrained")
+    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.6), sharex=True, sharey=True, layout="constrained")
     rows = []
     for lang, key, name, marker in settings:
         heading = f"EN → {lang}, {key}: paired differences (post-hoc, added after test outputs existed; percentage points)"
@@ -364,7 +365,7 @@ def fig5_compression(out: Path) -> list[Path]:
     return save(fig, out, "fig5_compression")
 
 
-def fig6_ratio_histogram(out: Path) -> list[Path]:
+def extra_step2_lengths(out: Path) -> list[Path]:
     """Achieved ÷ target syllables of every German test output, without and with the loop."""
     import matplotlib.pyplot as plt
 
@@ -389,11 +390,11 @@ def fig6_ratio_histogram(out: Path) -> list[Path]:
     rows = [{"bin_from": f"{a:.2f}", "bin_to": f"{b:.2f}", "outputs_without": int(cw), "outputs_with": int(cl),
              "pct_without": round(100 * cw / counts["without"][1], 3), "pct_with": round(100 * cl / counts["with"][1], 3)}
             for a, b, cw, cl in zip(edges[:-1], edges[1:], counts["without"][0], counts["with"][0])]
-    write_csv(out / "fig6_ratio_histogram.csv", (LENGTHS,), list(rows[0]), rows)
-    return save(fig, out, "fig6_ratio_histogram")
+    write_csv(out / "extra_step2_lengths.csv", (LENGTHS,), list(rows[0]), rows)
+    return save(fig, out, "extra_step2_lengths")
 
 
-def fig7_rounds(out: Path) -> list[Path]:
+def fig6_rounds(out: Path) -> list[Path]:
     """Fit & complete after round 0, 1 and 2 of the loop, per level, German and French test."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
@@ -425,8 +426,8 @@ def fig7_rounds(out: Path) -> list[Path]:
                for lv in LEVEL_COLOURS] + [Line2D([], [], color="#000000", lw=1.0, ls=":", label="all levels")]
     fig.legend(handles=handles, loc="outside lower center", ncol=5, handlelength=1.4, columnspacing=0.8,
                title="target length (% of the line's syllables)", title_fontsize=7)
-    write_csv(out / "fig7_rounds.csv", (ROUNDS_CSV, ROUNDS_MD), list(rows[0]), rows)
-    return save(fig, out, "fig7_rounds")
+    write_csv(out / "fig6_rounds.csv", (ROUNDS_CSV, ROUNDS_MD), list(rows[0]), rows)
+    return save(fig, out, "fig6_rounds")
 
 
 def fig2_step4(out: Path) -> list[Path]:
@@ -476,7 +477,7 @@ def fig2_step4(out: Path) -> list[Path]:
     return save(fig, out, "fig2_step4")
 
 
-def fig8_judges(out: Path) -> list[Path]:
+def extra_judges(out: Path) -> list[Path]:
     """The German hard controls with a German source: what the main NLI and the two judges get right."""
     import matplotlib.pyplot as plt
 
@@ -513,8 +514,8 @@ def fig8_judges(out: Path) -> list[Path]:
     ax.tick_params(axis="y", length=0)
     fig.legend(*ax.get_legend_handles_labels(), loc="outside lower center", ncol=2, handlelength=1.2,
                columnspacing=0.9)
-    write_csv(out / "fig8_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
-    return save(fig, out, "fig8_judges")
+    write_csv(out / "extra_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
+    return save(fig, out, "extra_judges")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -524,8 +525,8 @@ def main(argv: list[str] | None = None) -> None:
     provenance(INPUTS)  # stops before drawing anything if an input is not committed
     style()
     args.out.mkdir(parents=True, exist_ok=True)
-    for draw in (fig1_pipeline, fig2_step4, fig3_step4_lengths, fig4_tradeoff, fig5_compression, fig6_ratio_histogram,
-                 fig7_rounds, fig8_judges):
+    for draw in (fig1_pipeline, fig2_step4, fig3_step4_lengths, fig4_tradeoff, fig5_compression, fig6_rounds,
+                 extra_step2_lengths, extra_judges):
         for path in draw(args.out):
             print(f"wrote {path}")
 
