@@ -1,13 +1,17 @@
 """`make figures`: the report's figures, drawn from committed results files only.
 
 Inputs (each must be tracked by git and unchanged; the run stops otherwise):
-- results/step4_test.md            figure 2: step 4 on test, fit and fit & complete per system and budget
+- results/step4_test.md            figure 2: step 4 on test, fit per system and budget;
+                                   figure 4: fit gained and meaning lost against plain translation (paired)
 - results/hpc_8b_step4_dev.md      figure 2: step 4 on dev (exploratory), fit, as markers
-- results/step2_test.md            figure 3: step 2, fit & complete per level, with the 95 % intervals
-- results/step2_test_lengths.csv   figure 4: achieved ÷ target syllables of every step 2 output
-- results/step2_test_rounds.csv    figure 5: fit and fit & complete after each round of the loop
+- results/step4_test_lengths.csv   figure 3: step 4 output length ÷ budget of every output, per system
+- results/step4_test_nli2.md       figure 4: meaning lost under the second NLI (paired)
+- results/step2_test.md            figure 5: step 2, fit & complete per level, with the 95 % intervals
+- results/step2_test_lengths.csv   figure 6: achieved ÷ target syllables of every step 2 output
+- results/step2_test_rounds.csv    figure 7: fit & complete after each round of the loop (with
+  results/step2_test_rounds.md     the report that names the runs behind it)
 - results/judge_validation_hard_v3_all.md, results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md
-                                   figure 6: what the NLI and the two judges catch on the hard controls
+                                   figure 8: what the NLI and the two judges catch on the hard controls
 Figure 1, the pipeline, is drawn from the description in this file.
 
 Output, in --out (default docs/figures/): figN_<name>.pdf (vector), .png (300 dpi) and .csv (the numbers
@@ -16,7 +20,7 @@ The files carry no timestamps, so unchanged inputs give the same figures.
 
 Style: the Okabe & Ito colour-blind-safe palette, with one colour for "without the loop" and one for "with
 the loop" in every figure; lines and markers differ too. Every figure is 3.5 in wide (one column), with
-text of 7 to 8.5 pt.
+text of 6 to 8.5 pt.
 
     uv run --group figures python -m isochron.figures [--out docs/figures]
 """
@@ -36,22 +40,25 @@ ROOT = Path(__file__).resolve().parents[2]
 STEP2 = Path("results/step2_test.md")
 LENGTHS = Path("results/step2_test_lengths.csv")
 ROUNDS_CSV = Path("results/step2_test_rounds.csv")
+ROUNDS_MD = Path("results/step2_test_rounds.md")
 STEP4 = Path("results/hpc_8b_step4_dev.md")
 STEP4_TEST = Path("results/step4_test.md")
+STEP4_LENGTHS = Path("results/step4_test_lengths.csv")
+STEP4_NLI2 = Path("results/step4_test_nli2.md")
 JUDGE_8B = Path("results/judge_validation_hard_v3_all.md")
 JUDGE_14B = Path("results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md")
-INPUTS = (STEP2, LENGTHS, ROUNDS_CSV, STEP4_TEST, STEP4, JUDGE_8B, JUDGE_14B)
+INPUTS = (STEP4_TEST, STEP4, STEP4_LENGTHS, STEP4_NLI2, STEP2, LENGTHS, ROUNDS_CSV, ROUNDS_MD, JUDGE_8B, JUDGE_14B)
 
 WITHOUT = "#E69F00"  # Okabe & Ito orange: without the repair loop, in every figure
 WITH = "#0072B2"  # Okabe & Ito blue: with the repair loop (our method), in every figure
 PLAIN = "#999999"  # grey: plain translation, no length instruction
-NLI_COLOUR, J8_COLOUR, J14_COLOUR = "#999999", "#CC79A7", "#009E73"
+NLI_COLOUR, J8_COLOUR, J14_COLOUR = "#333333", "#CC79A7", "#009E73"  # grey is plain translation
 LEVEL_COLOURS = {90: "#9ECAE1", 80: "#6BAED6", 70: "#2171B5", 60: "#08306B"}  # ColorBrewer Blues: all with the loop
 LEVEL_MARKERS = {90: "o", 80: "s", 70: "^", 60: "D"}
 WIDTH = 3.5  # inches: one column
 LEVELS = (90, 80, 70, 60)
 LANGS = {"DE": "German", "FR": "French"}
-CI = re.compile(r"(-?\d+(?:\.\d+)?) \[(-?\d+(?:\.\d+)?), (-?\d+(?:\.\d+)?)\]")
+CI = re.compile(r"([+-]?\d+(?:\.\d+)?) \[([+-]?\d+(?:\.\d+)?), ([+-]?\d+(?:\.\d+)?)\]")
 SHARE = re.compile(r"(\d+) % \((\d+)/(\d+)\)")
 
 
@@ -145,8 +152,22 @@ def save(fig, out: Path, name: str) -> list[Path]:
     return paths
 
 
+def ratio_bins(low: float, high: float) -> np.ndarray:
+    """Bins 0.04 wide whose edges fall on 0.90 and 1.10, the ±10 % band, so that the middle bin of the band is
+    centred on 1.0 (outputs exactly on target sit there, not in a bin above the target)."""
+    return np.round(np.arange(low, high + 1e-9, 0.04), 2)
+
+
+def in_bins(ratios, edges: np.ndarray) -> np.ndarray:
+    """Ratios ready for np.histogram over edges: clipped to the range, and a ratio of exactly 1.10 (which fits)
+    moved just below the band's upper edge, since histogram bins are closed on the left."""
+    r = np.asarray(ratios, dtype=float)
+    r = np.where(r > 1.0, r - 1e-9, r)
+    return np.clip(r, edges[0], edges[-1] - 1e-9)
+
+
 def fig1_pipeline(out: Path) -> list[Path]:
-    """The method, inside the offline deployment of `make run-offline`."""
+    """The engine (the repair loop), inside the offline deployment of `make run-offline`."""
     import matplotlib.pyplot as plt
     from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
@@ -177,7 +198,7 @@ def fig1_pipeline(out: Path) -> list[Path]:
     note(30.5, 94.5, "app container (CPU)", color="#444444")
     box(62, 44, 35, 54, "", fc="#F4F4F4", ec="#BBBBBB", lw=0.6)
     note(79.5, 93, "llama-server\ncontainer", color="#444444")
-    box(65, 49, 29, 38, "Apertus 1.5\n(GGUF, mounted\nread-only)\n\nanswers each\nprompt with\n4 candidates",
+    box(65, 49, 29, 38, "Apertus 1.5\n(GGUF, mounted\nread-only)\n\nasked for\n4 candidates\nper prompt",
         size=6.6)
 
     # the method: prompt v1 to Apertus, checks on its candidates, revisions with feedback (blue: the loop)
@@ -193,7 +214,7 @@ def fig1_pipeline(out: Path) -> list[Path]:
     arrow((65, 60), (55, 55))
     arrow((30.5, 45), (30.5, 39))
     arrow((30.5, 27), (30.5, 20))
-    note(32, 23.5, "yes, or no rounds left", ha="left")
+    note(32, 23.5, "yes, or no\nrounds left", ha="left")
     arrow((55, 33), (72, 49), color=WITH, rad=0.25)
     note(77, 34, "revision\nprompt", color=WITH)
 
@@ -203,7 +224,7 @@ def fig1_pipeline(out: Path) -> list[Path]:
         {"kind": "box", "name": "llm", "label": "llama-server container: Apertus 1.5, GGUF mounted read-only", "to": ""},
         {"kind": "step", "name": "input", "label": "line + target level", "to": "target"},
         {"kind": "step", "name": "target", "label": "T = level × the line's syllables (eSpeak NG)", "to": "llm"},
-        {"kind": "step", "name": "llm", "label": "Apertus 1.5: 4 candidates per prompt", "to": "checks"},
+        {"kind": "step", "name": "llm", "label": "Apertus 1.5: asked for 4 candidates per prompt", "to": "checks"},
         {"kind": "step", "name": "checks", "label": "length within ±10 % of T; meaning both ways (NLI); "
                                                      "language (py3langid)", "to": "decision"},
         {"kind": "step", "name": "decision", "label": "best candidate passes? if not and rounds are left: "
@@ -214,7 +235,99 @@ def fig1_pipeline(out: Path) -> list[Path]:
     return save(fig, out, "fig1_pipeline")
 
 
-def fig3_compression(out: Path) -> list[Path]:
+def fig3_step4_lengths(out: Path) -> list[Path]:
+    """Step 4 on test: output length ÷ budget of (a), (b) and (c), per language and ruler, with the ±10 % band."""
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+
+    with open(ROOT / STEP4_LENGTHS, encoding="utf-8") as f:
+        data = [r for r in csv.DictReader(line for line in f if not line.startswith("#"))]
+    edges = ratio_bins(0.42, 1.78)
+    systems = (("a", "(a) plain translation", PLAIN, ":"), ("b", "(b) one step to the budget (no loop)", WITHOUT, "--"),
+               ("c", "(c) ours: translate, then shorten with the loop", WITH, "-"))
+    rulers = (("isometric", "characters"), ("isosyllabic", "syllables"))
+    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.25), sharex=True, sharey=True, layout="constrained")
+    rows = []
+    for i, lang in enumerate(LANGS):
+        for j, (budget, ruler) in enumerate(rulers):
+            ax = axes[i, j]
+            ax.axvspan(0.9, 1.1, color="#E5E5E5", lw=0)
+            fits = []
+            for system, label, colour, ls in systems:
+                rs = [r for r in data if r["lang"] == lang.lower() and r["budget"] == budget and r["system"] == system]
+                ratios = in_bins([float(r["ratio"]) for r in rs if r["ratio"]], edges)
+                counts = np.histogram(ratios, bins=edges)[0]
+                ax.hist(ratios, bins=edges, weights=np.full(len(ratios), 100 / len(rs)), histtype="step", color=colour,
+                        ls=ls, lw=1.3 if system == "c" else 1.1, label=label)
+                fits.append(100 * sum(r["fit"] == "1" for r in rs) / len(rs))
+                rows += [{"lang": lang.lower(), "ruler": ruler, "system": system, "bin_from": f"{a:.2f}",
+                          "bin_to": f"{b:.2f}", "outputs": int(n), "pct_of_all_outputs": round(100 * n / len(rs), 3)}
+                         for a, b, n in zip(edges[:-1], edges[1:], counts)]
+            ax.axvline(1.0, color="#555555", lw=0.6)
+            ax.set_title(f"{LANGS[lang]}, {ruler}")
+            ax.text(0.97, 0.96, "fit\n" + " / ".join(f"{v:.0f}" for v in fits) + " %", transform=ax.transAxes,
+                    ha="right", va="top", fontsize=6.2, linespacing=1.1)
+            ax.set_xlim(edges[0], edges[-1])
+            ax.grid(axis="y", lw=0.4, color="#DDDDDD")
+            ax.set_axisbelow(True)
+    for ax in axes[1]:
+        ax.set_xlabel("Output length ÷ budget")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Outputs (%)")
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    handles.append(Patch(color="#E5E5E5", lw=0))
+    labels.append("fits (±10 %); fit: (a) / (b) / (c)")
+    fig.legend(handles, labels, loc="outside lower center", ncol=1, handlelength=1.8)
+    write_csv(out / "fig3_step4_lengths.csv", (STEP4_LENGTHS,), list(rows[0]), rows)
+    return save(fig, out, "fig3_step4_lengths")
+
+
+def fig4_tradeoff(out: Path) -> list[Path]:
+    """Step 4 on test: fit gained against meaning lost, both over plain translation, per setting, under both NLIs."""
+    import matplotlib.pyplot as plt
+    from matplotlib.lines import Line2D
+
+    test, second = tables(STEP4_TEST), tables(STEP4_NLI2)
+    settings = (("DE", "isometric budget (chars)", "DE, characters", "o"),
+                ("DE", "isosyllabic budget (syllables)", "DE, syllables", "s"),
+                ("FR", "isometric budget (chars)", "FR, characters", "^"),
+                ("FR", "isosyllabic budget (syllables)", "FR, syllables", "D"))
+    systems = (("b", "one step", WITHOUT), ("c", "ours", WITH))
+    panels = (("Main NLI\n(the loop's own)", "main"), ("Second NLI\n(never in the loop)", "second"))
+    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.75), sharex=True, sharey=True, layout="constrained")
+    rows = []
+    for lang, key, name, marker in settings:
+        heading = f"EN → {lang}, {key}: paired differences (post-hoc, added after test outputs existed; percentage points)"
+        main = {r["Difference"]: r for r in test[heading]}
+        other = {r["Difference"]: r for r in second[heading]}
+        for system, _, colour in systems:
+            pair = f"({system}) − (a)"
+            fit = ci(main[pair]["Fit ±10 %"])
+            for ax, (_, model) in zip(axes, panels):
+                kept = ci(main[pair]["Kept vs reference"] if model == "main" else other[pair]["Kept vs reference: second NLI"])
+                lost = (-kept[0], -kept[2], -kept[1])
+                ax.errorbar(fit[0], lost[0], xerr=[[fit[0] - fit[1]], [fit[2] - fit[0]]],
+                            yerr=[[lost[0] - lost[1]], [lost[2] - lost[0]]], fmt=marker, ms=4.2, color=colour,
+                            mfc=colour, mec=colour, elinewidth=0.6, capsize=1.2, zorder=3)
+                rows.append({"setting": name, "system": system, "nli": model, "fit_gain": fit[0], "fit_gain_low": fit[1],
+                             "fit_gain_high": fit[2], "meaning_lost": lost[0], "meaning_lost_low": lost[1],
+                             "meaning_lost_high": lost[2]})
+    for ax, (title, _) in zip(axes, panels):
+        ax.axhline(0, color="#555555", lw=0.6, zorder=1)
+        ax.set_title(title)
+        ax.grid(lw=0.4, color="#DDDDDD")
+        ax.set_axisbelow(True)
+        ax.set_xlabel("Fit gained (points)")
+    axes[0].set_ylabel("Meaning lost (points)")
+    handles = [Line2D([], [], ls="", marker="s", ms=4.5, color=colour, label=label) for _, label, colour in systems]
+    handles += [Line2D([], [], ls="", marker=marker, ms=4, color="#333333", mfc="white", label=name)
+                for _, _, name, marker in settings]
+    fig.legend(handles=handles, loc="outside lower center", ncol=3, handlelength=1.0, columnspacing=0.9)
+    write_csv(out / "fig4_tradeoff.csv", (STEP4_TEST, STEP4_NLI2), list(rows[0]), rows)
+    return save(fig, out, "fig4_tradeoff")
+
+
+def fig5_compression(out: Path) -> list[Path]:
     """Fit & complete per target level, without and with the loop, German and French test."""
     import matplotlib.pyplot as plt
 
@@ -231,8 +344,8 @@ def fig3_compression(out: Path) -> list[Path]:
     fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.35), sharey=True, layout="constrained")
     x = np.arange(len(LEVELS))
     for ax, lang in zip(axes, LANGS):
-        for loop, colour, marker, ls, dx, label in (("without", WITHOUT, "o", "--", -0.06, "without the loop"),
-                                                     ("with", WITH, "s", "-", 0.06, "with the loop")):
+        for loop, colour, marker, ls, dx, label in (("without", WITHOUT, "o", "--", -0.1, "without the loop"),
+                                                     ("with", WITH, "s", "-", 0.1, "with the loop")):
             sel = [r for r in rows if r["lang"] == lang.lower() and r["loop"] == loop]
             y = np.array([r["fit_and_complete_pct"] for r in sel])
             err = np.array([[r["fit_and_complete_pct"] - r["ci_low"] for r in sel],
@@ -247,24 +360,25 @@ def fig3_compression(out: Path) -> list[Path]:
     axes[0].set_ylabel("Fit & complete (%)")
     axes[0].legend(loc="upper right", handlelength=2.2)
     fig.supxlabel("Target length (% of the line's syllables)", fontsize=8)
-    write_csv(out / "fig3_compression.csv", (STEP2,), list(rows[0]), rows)
-    return save(fig, out, "fig3_compression")
+    write_csv(out / "fig5_compression.csv", (STEP2,), list(rows[0]), rows)
+    return save(fig, out, "fig5_compression")
 
 
-def fig4_ratio_histogram(out: Path) -> list[Path]:
+def fig6_ratio_histogram(out: Path) -> list[Path]:
     """Achieved ÷ target syllables of every German test output, without and with the loop."""
     import matplotlib.pyplot as plt
 
     with open(ROOT / LENGTHS, encoding="utf-8") as f:
         data = [r for r in csv.DictReader(line for line in f if not line.startswith("#"))]
-    edges = np.round(np.arange(0.25, 1.75 + 1e-9, 0.05), 2)
+    edges = ratio_bins(0.26, 1.74)
     fig, ax = plt.subplots(figsize=(WIDTH, 2.3), layout="constrained")
     ax.axvspan(0.9, 1.1, color="#E5E5E5", lw=0, label="fits (±10 %)")
     counts = {}
     for loop, colour, ls, label in (("without", WITHOUT, "--", "without the loop"), ("with", WITH, "-", "with the loop")):
-        ratios = np.array([float(r["ratio"]) for r in data if r["lang"] == "de" and r["loop"] == loop and r["ratio"]])
-        counts[loop] = (np.histogram(np.clip(ratios, edges[0], edges[-1] - 1e-9), bins=edges)[0], len(ratios))
-        ax.hist(np.clip(ratios, edges[0], edges[-1] - 1e-9), bins=edges, weights=np.full(len(ratios), 100 / len(ratios)),
+        ratios = in_bins([float(r["ratio"]) for r in data if r["lang"] == "de" and r["loop"] == loop and r["ratio"]],
+                         edges)
+        counts[loop] = (np.histogram(ratios, bins=edges)[0], len(ratios))
+        ax.hist(ratios, bins=edges, weights=np.full(len(ratios), 100 / len(ratios)),
                 histtype="step", color=colour, ls=ls, lw=1.3, label=label)
     ax.axvline(1.0, color="#555555", lw=0.6)
     ax.set_xlabel("Achieved ÷ target (syllables)")
@@ -275,122 +389,103 @@ def fig4_ratio_histogram(out: Path) -> list[Path]:
     rows = [{"bin_from": f"{a:.2f}", "bin_to": f"{b:.2f}", "outputs_without": int(cw), "outputs_with": int(cl),
              "pct_without": round(100 * cw / counts["without"][1], 3), "pct_with": round(100 * cl / counts["with"][1], 3)}
             for a, b, cw, cl in zip(edges[:-1], edges[1:], counts["without"][0], counts["with"][0])]
-    write_csv(out / "fig4_ratio_histogram.csv", (LENGTHS,), list(rows[0]), rows)
-    return save(fig, out, "fig4_ratio_histogram")
+    write_csv(out / "fig6_ratio_histogram.csv", (LENGTHS,), list(rows[0]), rows)
+    return save(fig, out, "fig6_ratio_histogram")
 
 
-def fig5_rounds(out: Path) -> list[Path]:
-    """Fit and fit & complete after round 0, 1 and 2 of the loop, per level, German and French test."""
+def fig7_rounds(out: Path) -> list[Path]:
+    """Fit & complete after round 0, 1 and 2 of the loop, per level, German and French test."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
     with open(ROOT / ROUNDS_CSV, encoding="utf-8") as f:
         data = [r for r in csv.DictReader(line for line in f if not line.startswith("#"))]
-    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.2), sharex=True, sharey="row", layout="constrained")
+    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.3), sharey=True, layout="constrained")
     x = np.array([0, 1, 2])
     rows = []
-    for col, lang in enumerate(LANGS):
-        for level in (*LEVEL_COLOURS, "all"):
+    for ax, lang in zip(axes, LANGS):
+        for level in ("all", *LEVEL_COLOURS):  # "all levels" first, beneath the levels
             sel = sorted((r for r in data if r["lang"] == lang.lower() and r["level"] == str(level)),
                          key=lambda r: int(r["round"]))
-            fit = np.array([float(r["fit_pct"]) for r in sel])
             low = np.array([float(r["fit_complete_low_pct"]) for r in sel])
-            high = np.array([float(r["fit_complete_high_pct"]) for r in sel])
-            style = ({"color": "#000000", "lw": 1.8, "marker": None} if level == "all" else
-                     {"color": LEVEL_COLOURS[level], "lw": 1.1, "marker": LEVEL_MARKERS[level], "ms": 3})
-            axes[0, col].plot(x, fit, **style)
-            axes[1, col].errorbar(x, low, yerr=[np.zeros(3), high - low], capsize=1.5, elinewidth=0.7, **style)
-            rows += [{"lang": lang.lower(), "level": level, "round": k, "fit_pct": f, "fit_complete_low_pct": lo,
-                      "fit_complete_high_pct": hi} for k, f, lo, hi in zip(x, fit, low, high)]
-        axes[0, col].set_title(LANGS[lang])
-    for ax in axes.flat:
+            style = ({"color": "#000000", "lw": 1.0, "ls": ":", "marker": None, "zorder": 1} if level == "all" else
+                     {"color": LEVEL_COLOURS[level], "lw": 1.1, "marker": LEVEL_MARKERS[level], "ms": 3, "zorder": 2})
+            ax.plot(x, low, **style)
+            rows += [{"lang": lang.lower(), "level": level, "round": int(r["round"]), "items": int(r["items"]),
+                      "fit_complete_low_pct": float(r["fit_complete_low_pct"]),
+                      "fit_complete_high_pct": float(r["fit_complete_high_pct"])} for r in sel]
+        ax.set_title(LANGS[lang])
         ax.set_xticks(x, ["0", "1", "2"])
-        ax.set_ylim(0, 90)
+        ax.set_xlabel("after round")
+        ax.set_ylim(0, 80)
         ax.grid(axis="y", lw=0.4, color="#DDDDDD")
         ax.set_axisbelow(True)
-    axes[0, 0].set_ylabel("Fit (%)")
-    axes[1, 0].set_ylabel("Fit & complete (%)")
-    for ax in axes[1]:
-        ax.set_xlabel("after round")
+    axes[0].set_ylabel("Fit & complete (%)")
     handles = [Line2D([], [], color=LEVEL_COLOURS[lv], marker=LEVEL_MARKERS[lv], ms=3, lw=1.1, label=f"{lv} %")
-               for lv in LEVEL_COLOURS] + [Line2D([], [], color="#000000", lw=1.8, label="all levels")]
-    fig.legend(handles=handles, loc="outside lower center", ncol=3, handlelength=1.6, columnspacing=1.0,
+               for lv in LEVEL_COLOURS] + [Line2D([], [], color="#000000", lw=1.0, ls=":", label="all levels")]
+    fig.legend(handles=handles, loc="outside lower center", ncol=5, handlelength=1.4, columnspacing=0.8,
                title="target length (% of the line's syllables)", title_fontsize=7)
-    write_csv(out / "fig5_rounds.csv", (ROUNDS_CSV,), list(rows[0]), rows)
-    return save(fig, out, "fig5_rounds")
+    write_csv(out / "fig7_rounds.csv", (ROUNDS_CSV, ROUNDS_MD), list(rows[0]), rows)
+    return save(fig, out, "fig7_rounds")
 
 
 def fig2_step4(out: Path) -> list[Path]:
-    """Step 4 on test (final): fit and fit & complete per system and budget, German and French; dev as markers."""
+    """Step 4 on test (final): fit per system and budget, German and French; dev fit (exploratory) as markers."""
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
 
     test, dev = tables(STEP4_TEST), tables(STEP4)
-    systems = (("(a) plain translation", "plain translation", PLAIN),
-               ("(b) one step to the budget", "one step to the budget (no loop)", WITHOUT),
-               ("(c) translate, then shorten", "translate, then shorten with the loop (ours)", WITH))
+    systems = (("(a) plain translation", "(a) plain translation", PLAIN),
+               ("(b) one step to the budget", "(b) one step to the budget (no loop)", WITHOUT),
+               ("(c) translate, then shorten", "(c) ours: translate, then shorten with the loop", WITH))
     budgets = (("isometric budget (chars)", "characters"), ("isosyllabic budget (syllables)", "syllables"))
     rows = []
     for lang in LANGS:
         for key, budget in budgets:
-            judged = {r["System"]: r for r in test[f"EN → {lang}, {key}: final judge"]}
+            main = {r["System"]: r for r in test[f"EN → {lang}, {key}"]}
             dev_rows = {r["System"]: r for r in dev[f"EN → {lang}, {key}"]}
-            # the three systems of the judge table; the main table also has the sensitivity row
-            for r in (r for r in test[f"EN → {lang}, {key}"] if r["System"] in judged):
-                fit, lo, hi = ci(r["Fit ±10 %"])
-                fc, fc_lo, fc_hi = ci(judged[r["System"]]["Fit & complete"])
-                rows.append({"lang": lang.lower(), "budget": budget, "system": r["System"], "outputs": r["Outputs"],
-                             "fit_pct": fit, "ci_low": lo, "ci_high": hi, "fit_complete_pct": fc,
-                             "fit_complete_ci_low": fc_lo, "fit_complete_ci_high": fc_hi,
-                             "dev_fit_pct": ci(dev_rows[r["System"]]["Fit ±10 %"])[0]})
-    fig, axes = plt.subplots(2, 2, figsize=(WIDTH, 3.9), sharex=True, sharey="row", layout="constrained")
+            for name, _, _ in systems:
+                fit, lo, hi = ci(main[name]["Fit ±10 %"])
+                rows.append({"lang": lang.lower(), "budget": budget, "system": name, "outputs": main[name]["Outputs"],
+                             "fit_pct": fit, "ci_low": lo, "ci_high": hi,
+                             "dev_fit_pct": ci(dev_rows[name]["Fit ±10 %"])[0]})
+    fig, axes = plt.subplots(1, 2, figsize=(WIDTH, 2.55), sharey=True, layout="constrained")
     x = np.arange(len(budgets))
     w = 0.26
-    for col, lang in enumerate(LANGS):
+    for ax, lang in zip(axes, LANGS):
         for k, (name, label, colour) in enumerate(systems):
             sel = [next(r for r in rows if r["lang"] == lang.lower() and r["budget"] == b and r["system"] == name)
                    for _, b in budgets]
-            for row, (value, low, high) in enumerate((("fit_pct", "ci_low", "ci_high"),
-                                                      ("fit_complete_pct", "fit_complete_ci_low", "fit_complete_ci_high"))):
-                y = np.array([r[value] for r in sel])
-                err = np.array([[r[value] - r[low] for r in sel], [r[high] - r[value] for r in sel]])
-                axes[row, col].bar(x + (k - 1) * w, y, w, color=colour, label=label, yerr=err,
-                                   error_kw={"elinewidth": 0.7, "capsize": 1.5})
-            axes[0, col].scatter(x + (k - 1) * w, [r["dev_fit_pct"] for r in sel], marker="D", s=9, color="#000000",
-                                 zorder=3, linewidths=0)
-        axes[0, col].set_title(f"English → {LANGS[lang]}")
-    for row, ax in enumerate(axes.flat):
+            y = np.array([r["fit_pct"] for r in sel])
+            err = np.array([[r["fit_pct"] - r["ci_low"] for r in sel], [r["ci_high"] - r["fit_pct"] for r in sel]])
+            ax.bar(x + (k - 1) * w, y, w, color=colour, label=label, yerr=err,
+                   error_kw={"elinewidth": 0.7, "capsize": 1.5})
+            ax.scatter(x + (k - 1) * w + 0.07, [r["dev_fit_pct"] for r in sel], marker="D", s=11, facecolor="white",
+                       edgecolor="#000000", linewidths=0.7, zorder=3)
+        ax.set_title(f"English → {LANGS[lang]}")
         ax.set_xticks(x, [f"{b[:-1]}\nbudget" for _, b in budgets])
-        ax.set_ylim(0, 116 if row < 2 else 100)  # headroom in the top row for the annotation
-        ax.set_yticks(range(0, 101, 20))
+        ax.set_ylim(0, 100)
         ax.grid(axis="y", lw=0.4, color="#DDDDDD")
         ax.set_axisbelow(True)
-    plain = {b: next(r for r in rows if r["lang"] == "fr" and r["budget"] == b and r["system"].startswith("(a)"))
-             for _, b in budgets}
-    axes[0, 1].annotate(f"plain French: {plain['characters']['fit_pct']:.0f} %\nwith characters,\n"
-                        f"{plain['syllables']['fit_pct']:.0f} % with syllables",
-                        xy=(1 - w, plain["syllables"]["ci_high"] + 1.5), xytext=(0.62, 116), fontsize=6, ha="center",
-                        va="top", arrowprops={"arrowstyle": "-|>", "lw": 0.7, "color": "#333333", "mutation_scale": 6})
-    axes[0, 0].set_ylabel("Fit within ±10 % (%)")
-    axes[1, 0].set_ylabel("Fit & complete (%)")
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    handles.append(Line2D([], [], marker="D", ms=3.5, ls="", color="#000000"))
-    labels.append("dev (exploratory), fit")
+    axes[0].set_ylabel("Lines within ±10 % (%)")
+    handles, labels = axes[0].get_legend_handles_labels()
+    handles.append(Line2D([], [], marker="D", ms=3.5, ls="", mfc="white", mec="#000000", mew=0.7))
+    labels.append("dev (exploratory)")
     fig.legend(handles, labels, loc="outside lower center", ncol=1, handlelength=1.2)
     write_csv(out / "fig2_step4.csv", (STEP4_TEST, STEP4), list(rows[0]), rows)
     return save(fig, out, "fig2_step4")
 
 
-def fig6_judges(out: Path) -> list[Path]:
-    """What the NLI and the two judges get right on the hard controls (German)."""
+def fig8_judges(out: Path) -> list[Path]:
+    """The German hard controls with a German source: what the main NLI and the two judges get right."""
     import matplotlib.pyplot as plt
 
     def first(path: Path) -> list[dict[str, str]]:
         return next(rows for rows in tables(path).values() if rows and "Control" in rows[0])
 
-    names = {"identity": "identity", "same_meaning": "same\nmeaning", "modal_changed": "modal\nchanged",
-             "number_changed": "number\nchanged", "qualifier_changed": "qualifier\nchanged",
-             "fact_inserted": "fact\ninserted"}
+    names = {"identity": "identity", "same_meaning": "same meaning", "qualifier_changed": "qualifier changed",
+             "modal_changed": "modal changed", "number_changed": "number changed", "fact_inserted": "inserted fact"}
+    passes = ("identity", "same_meaning")  # judged correctly = passed as kept; the rest = the change is caught
     j8, j14 = {r["Control"]: r for r in first(JUDGE_8B)}, {r["Control"]: r for r in first(JUDGE_14B)}
     rows = []
     for control in names:
@@ -399,24 +494,27 @@ def fig6_judges(out: Path) -> list[Path]:
             m = SHARE.fullmatch(cell)
             rows.append({"control": control, "scorer": scorer, "correct": int(m.group(2)), "pairs": int(m.group(3)),
                          "pct": round(100 * int(m.group(2)) / int(m.group(3)), 1)})
-    fig, ax = plt.subplots(figsize=(WIDTH, 2.7), layout="constrained")
-    y = np.arange(len(names))[::-1]
+    fig, ax = plt.subplots(figsize=(WIDTH, 2.9), layout="constrained")
+    y = np.arange(len(names))[::-1].astype(float)
+    y[len(passes):] -= 0.5  # a gap between the rows that should pass and the rows that should be caught
     h = 0.26
-    for k, (scorer, label, colour) in enumerate((("NLI", "NLI (mDeBERTa)", NLI_COLOUR),
-                                                 ("Qwen3-8B Q4_K_M", "Qwen3-8B Q4", J8_COLOUR),
-                                                 ("Qwen3-14B BF16", "Qwen3-14B BF16", J14_COLOUR))):
+    for k, (scorer, label, colour) in enumerate((("NLI", "main NLI (the loop's)", NLI_COLOUR),
+                                                 ("Qwen3-8B Q4_K_M", "Qwen3-8B Q4 (pilot, dev)", J8_COLOUR),
+                                                 ("Qwen3-14B BF16", "Qwen3-14B BF16 (main judge)", J14_COLOUR))):
         ax.barh(y - (k - 1) * h, [r["pct"] for r in rows if r["scorer"] == scorer], h, color=colour, label=label)
-    labels = {c: names[c].replace("\n", " ") for c in names}
-    ax.set_yticks(y, [f"{labels[c]} (n = {next(r['pairs'] for r in rows if r['control'] == c)})" for c in names])
+    ax.set_yticks(y, [f"{'passed' if c in passes else 'caught'}: {names[c]} "
+                      f"(n = {next(r['pairs'] for r in rows if r['control'] == c)})" for c in names])
+    ax.axhline((y[len(passes) - 1] + y[len(passes)]) / 2, color="#999999", lw=0.6)
     ax.set_xlabel("Judged correctly (% of pairs)")
     ax.set_xlim(0, 100)
+    fig.suptitle("Hard controls, German source (140 pairs written by Claude)", fontsize=8.5)
     ax.grid(axis="x", lw=0.4, color="#DDDDDD")
     ax.set_axisbelow(True)
     ax.tick_params(axis="y", length=0)
-    fig.legend(*ax.get_legend_handles_labels(), loc="outside lower center", ncol=3, handlelength=1.2,
+    fig.legend(*ax.get_legend_handles_labels(), loc="outside lower center", ncol=2, handlelength=1.2,
                columnspacing=0.9)
-    write_csv(out / "fig6_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
-    return save(fig, out, "fig6_judges")
+    write_csv(out / "fig8_judges.csv", (JUDGE_8B, JUDGE_14B), list(rows[0]), rows)
+    return save(fig, out, "fig8_judges")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -426,7 +524,8 @@ def main(argv: list[str] | None = None) -> None:
     provenance(INPUTS)  # stops before drawing anything if an input is not committed
     style()
     args.out.mkdir(parents=True, exist_ok=True)
-    for draw in (fig1_pipeline, fig2_step4, fig3_compression, fig4_ratio_histogram, fig5_rounds, fig6_judges):
+    for draw in (fig1_pipeline, fig2_step4, fig3_step4_lengths, fig4_tradeoff, fig5_compression, fig6_ratio_histogram,
+                 fig7_rounds, fig8_judges):
         for path in draw(args.out):
             print(f"wrote {path}")
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import struct
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from isochron import figures
 def test_ci_reads_a_value_and_its_interval() -> None:
     assert figures.ci("34.9 [32.5, 37.3]") == (34.9, 32.5, 37.3)
     assert figures.ci("-1.5 [-5.6, 2.5]") == (-1.5, -5.6, 2.5)
+    assert figures.ci("+32.2 [+25.6, +38.7]") == (32.2, 25.6, 38.7)  # the paired differences carry a sign
     with pytest.raises(ValueError):
         figures.ci("34.9")
 
@@ -43,17 +45,24 @@ def test_inputs_must_be_committed() -> None:
 def test_every_figure_is_drawn_one_column_wide(tmp_path: Path) -> None:
     pytest.importorskip("matplotlib")
     figures.main(["--out", str(tmp_path)])
-    names = ("fig1_pipeline", "fig2_step4", "fig3_compression", "fig4_ratio_histogram", "fig5_rounds",
-             "fig6_judges")
+    names = ("fig1_pipeline", "fig2_step4", "fig3_step4_lengths", "fig4_tradeoff", "fig5_compression",
+             "fig6_ratio_histogram", "fig7_rounds", "fig8_judges")
     assert sorted(p.name for p in tmp_path.iterdir()) == sorted(f"{n}.{ext}" for n in names for ext in ("csv", "pdf", "png"))
     for name in names:
         png = (tmp_path / f"{name}.png").read_bytes()
         width = struct.unpack(">I", png[16:20])[0]
         assert width == round(figures.WIDTH * 300), f"{name}: {width} px"
         assert (tmp_path / f"{name}.csv").read_text(encoding="utf-8").startswith("# drawn by isochron.figures")
-    rows = [line for line in (tmp_path / "fig3_compression.csv").read_text(encoding="utf-8").splitlines()
+    rows = [line for line in (tmp_path / "fig5_compression.csv").read_text(encoding="utf-8").splitlines()
             if not line.startswith("#")]
     assert len(rows) == 1 + 2 * 4 * 2  # header + languages × levels × conditions
+    trade = list(csv.DictReader(line for line in (tmp_path / "fig4_tradeoff.csv").read_text(encoding="utf-8").splitlines()
+                                if not line.startswith("#")))
+    ours = {(r["setting"], r["nli"]): r for r in trade if r["system"] == "c"}
+    # (c) − (a) in German with characters: +53.0 points of fit; kept vs reference +1.1 (main) and −3.6 (second)
+    assert float(ours["DE, characters", "main"]["fit_gain"]) == 53.0
+    assert float(ours["DE, characters", "main"]["meaning_lost"]) == -1.1
+    assert float(ours["DE, characters", "second"]["meaning_lost"]) == 3.6
     # the committed figures show the committed results: same numbers in every CSV (run make figures if not)
     committed = Path(__file__).resolve().parents[1] / "docs" / "figures"
 
