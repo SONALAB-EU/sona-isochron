@@ -625,6 +625,11 @@ numbers are reported on test, as before. The work goes in this order.
      - Paired differences (post-hoc, added after test outputs existed): (c) − (b) and (c) − (a), with step
        2's paired bootstrap (v2.12), as analysis only. Systems, metrics and
        data are as frozen.
+     - JSON sensitivity (post-hoc, added after test outputs existed; v2.19):
+       re-reading only the (b) answers strict JSON rejected, with `\'` read
+       as `'`, recovers 70 of 114. (b)'s fit rises from 59.8 to 63.2 % in
+       French with characters, and by at most 0.6 points elsewhere. The
+       pre-registered numbers stay the strict ones.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
@@ -753,3 +758,8 @@ used.
   item 6). The step 4 report adds paired differences between systems
   (post-hoc, added after test outputs existed), as analysis only. The method, the systems and the
   metrics are unchanged.
+- 2026-10-12, v2.19: a JSON sensitivity row for step 4's (b), post-hoc,
+  added after test outputs existed, with no new generation: answers strict
+  JSON rejected are read again with `\'` as `'`. The report also counts
+  parse failures per system, including how (c)'s loop went on after them.
+  The pre-registered numbers are unchanged.

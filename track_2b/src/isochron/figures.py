@@ -335,7 +335,8 @@ def fig5_step4(out: Path) -> list[Path]:
         for key, budget in budgets:
             judged = {r["System"]: r for r in test[f"EN → {lang}, {key}: final judge"]}
             dev_rows = {r["System"]: r for r in dev[f"EN → {lang}, {key}"]}
-            for r in test[f"EN → {lang}, {key}"]:
+            # the three systems of the judge table; the main table also has the sensitivity row
+            for r in (r for r in test[f"EN → {lang}, {key}"] if r["System"] in judged):
                 fit, lo, hi = ci(r["Fit ±10 %"])
                 fc, fc_lo, fc_hi = ci(judged[r["System"]]["Fit & complete"])
                 rows.append({"lang": lang.lower(), "budget": budget, "system": r["System"], "outputs": r["Outputs"],

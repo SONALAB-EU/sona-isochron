@@ -24,6 +24,12 @@ markdown report.
   complete and kept vs reference. All systems translate the same sentences, so the bootstrap resamples
   sentences once per resample and scores both systems on it (step 2's paired interval,
   isochron.step2_report.paired_diff).
+- JSON sensitivity (post-hoc, added after test outputs existed): a row under (b) that re-reads only the
+  (b) answers strict JSON rejected, with one tolerant rule (every \\' becomes '), and chooses among the
+  recovered candidates as (b) does. No new generation; the judge never saw the recovered outputs, so
+  the row is not in the judge tables. The pre-registered (b) row is unchanged.
+- Parse failures, per language and budget: (a)'s tries, (b)'s rejected answers and how many the rule
+  recovers, and (c)'s loop rounds that gave no candidate (see isochron.repair for how the loop goes on).
 
     uv run python -m isochron.step4_report RUN_DIR [RUN_DIR ...] [--validation FILE ...] [--out FILE]
 """
@@ -41,6 +47,7 @@ from typing import Any
 
 import numpy as np
 
+from isochron.candidates import parse_candidates, select
 from isochron.language import check as check_language
 from isochron.language import describe as describe_language
 from isochron.metrics.length import hit, length
@@ -49,6 +56,9 @@ from isochron.provenance import git_commit
 from isochron.step2_report import first_table, paired_diff
 
 SYSTEMS = {"a": "(a) plain translation", "b": "(b) one step to the budget", "c": "(c) translate, then shorten"}
+TOLERANT = "b_tolerant"  # the sensitivity row, in the main tables only, under (b)
+TOLERANT_NAME = "(b), `\\'` read as `'`: sensitivity (post-hoc, added after test outputs existed)"
+TABLE_ORDER = (("a", SYSTEMS["a"]), ("b", SYSTEMS["b"]), (TOLERANT, TOLERANT_NAME), ("c", SYSTEMS["c"]))
 PAIRS = (("c", "b"), ("c", "a"))
 DIFFS = (  # name, value per output, judge needed
     ("Fit ±10 %", lambda r: r["fit"], False),
@@ -57,13 +67,26 @@ DIFFS = (  # name, value per output, judge needed
 )
 
 
-def outputs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """One row per (item, budget, system), before scoring."""
+def tolerant(entry: dict[str, Any], lang: str, counter: str) -> str | None:
+    """(b) for the sensitivity row: an answer strict JSON rejected is read again with \\' as ', and the
+    candidate closest to the budget is chosen as in (b). Answers that parsed are left as they are."""
+    b = entry["b"]
+    if b["text"] is not None or not b.get("raw"):
+        return b["text"]
+    cands, _ = parse_candidates(b["raw"].replace("\\'", "'"))
+    idx = select(cands, "closest", lambda t: length(t, entry["unit"], lang, counter), entry["target"])
+    return cands[idx] if idx is not None else None
+
+
+def outputs(items: list[dict[str, Any]], counter: str | None = None) -> list[dict[str, Any]]:
+    """One row per (item, budget, system), before scoring; with a counter, also the sensitivity row."""
     rows = []
     for it in items:
         plain = it["a"]["text"]
         for kind, entry in it["budgets"].items():
             texts = {"a": plain, "b": entry["b"]["text"], "c": entry["c"]["text"]}
+            if counter:
+                texts[TOLERANT] = tolerant(entry, it["lang"], counter)
             for system, text in texts.items():
                 loop = entry["c"].get("loop") if system == "c" else None
                 rows.append({"id": it["id"], "lang": it["lang"], "seed": it["seed"], "budget": kind,
@@ -77,6 +100,9 @@ def outputs(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def attach_judge(rows: list[dict[str, Any]], judged: dict[tuple, dict[str, Any]]) -> None:
     """Adds the judge's verdict to every row, in place (step 2's rules: wrong language keeps nothing)."""
     for r in rows:
+        if r["system"] not in SYSTEMS:  # the sensitivity row: the judge never saw the recovered outputs
+            r.update(judge_valid=False, recall=None, added_fact=None, complete=None)
+            continue
         j = judged[(r["id"], r["lang"], r["seed"])]
         v = j["a"] if r["system"] == "a" else j["budgets"][r["budget"]][r["system"]]
         r["judge_valid"] = bool(v.get("valid")) and v.get("recall") is not None
@@ -146,7 +172,7 @@ def table(rows: list[dict[str, Any]], title: str) -> list[str]:
            "|--------|--------:|-----------|-------------------|--------------:|----------------:|----------------"
            "|------------------:|-------------------:|--------------------------|---------:|------------:"
            "|---------------:|----------:|"]
-    for system, name in SYSTEMS.items():
+    for system, name in TABLE_ORDER:
         rs = [r for r in rows if r["system"] == system]
         if not rs:
             continue
@@ -207,6 +233,40 @@ def diff_table(rows: list[dict[str, Any]], title: str, judged: bool) -> list[str
     return out
 
 
+def parse_table(items: list[dict[str, Any]], rows: list[dict[str, Any]]) -> list[str]:
+    """Strict JSON failures per language and budget, and what (a), (b) and (c) did about them."""
+    recovered = {(r["id"], r["lang"], r["seed"], r["budget"]) for r in rows if r["system"] == TOLERANT and r["text"]}
+    out = ["### Parse failures (strict JSON, as frozen)", "",
+           "| Language, budget | (b) rejected | (b) recovered by the rule | (c) loop runs | (c) rounds "
+           "| (c) rounds without a candidate | (c) retry rounds | (c) runs with such a round | of those, with an output "
+           "| (c) runs without an output |",
+           "|------------------|-------------:|--------------------------:|--------------:|-----------:"
+           "|-------------------------------:|-----------------:|---------------------------:|-------------------------:"
+           "|---------------------------:|"]
+    langs = sorted({it["lang"] for it in items})
+    for lang in langs:
+        its = [it for it in items if it["lang"] == lang]
+        for kind in sorted({k for it in its for k in it["budgets"]}):
+            entries = [(it, it["budgets"][kind]) for it in its if kind in it["budgets"]]
+            rejected = [(it, e) for it, e in entries if e["b"]["text"] is None]
+            fixed = sum((it["id"], lang, it["seed"], kind) in recovered for it, _ in rejected)
+            loops = [e["c"]["loop"] for _, e in entries if e["c"].get("loop")]
+            empty = [[not r["candidates"] for r in lp["rounds"]] for lp in loops]
+            hit_runs = [lp for lp, e in zip(loops, empty) if any(e)]
+            out.append(f"| {lang.upper()}, {kind} | {len(rejected)} | {fixed} | {len(loops)} "
+                       f"| {sum(len(lp['rounds']) for lp in loops)} | {sum(map(sum, empty))} "
+                       f"| {sum(r['retry'] for lp in loops for r in lp['rounds'])} | {len(hit_runs)} "
+                       f"| {sum(lp['final'] is not None for lp in hit_runs)} "
+                       f"| {sum(lp['final'] is None for lp in loops)} |")
+    notes = []
+    for lang in langs:
+        its = [it for it in items if it["lang"] == lang]
+        notes.append(f"{lang.upper()}: {sum(len(it['a']['tries']) > 1 for it in its)} of {len(its)} items needed "
+                     f"another try, and {sum(not it['a']['text'] for it in its)} ended without a translation")
+    return out + ["", "(a) asks again with the next seed after an unparsable answer, at most 3 times. "
+                  + "; ".join(notes) + ". Without (a), (c) has no output either."]
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="Step 4 tables.")
     ap.add_argument("runs", type=Path, nargs="+")
@@ -233,7 +293,7 @@ def main(argv: list[str] | None = None) -> None:
     from isochron.metrics.meaning import NLI
 
     nli = NLI(device=args.device)
-    rows = outputs(items)
+    rows = outputs(items, cfg["length_counter"]["counter"])
     score(rows, cfg["length_counter"]["counter"], nli, args.nli_cache)
     if judged:
         attach_judge(rows, judged)
@@ -280,6 +340,7 @@ def main(argv: list[str] | None = None) -> None:
         if judged:
             lines += judge_table(rs, title) + [""]
         lines += diff_table(rs, title, bool(judged)) + [""]
+    lines += parse_table(items, rows) + [""]
     if args.validation:
         lines += ["## Judge validation", ""]
         for path in args.validation:

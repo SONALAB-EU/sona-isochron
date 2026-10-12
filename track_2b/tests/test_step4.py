@@ -59,6 +59,35 @@ def test_paired_differences_compare_systems_on_the_same_sentences() -> None:
     assert "Fit & complete" not in diff_table(rows, "without a judge", judged=False)[2]
 
 
+def test_tolerant_rereads_only_answers_strict_json_rejected() -> None:
+    from isochron.step4_report import tolerant
+
+    raw = r'{"candidates": ["l\'eau est chaude", "c\'est", "oui!", "non!"]}'
+    entry = {"unit": "chars", "target": 5, "b": {"text": None, "raw": raw}}
+    assert tolerant(entry, "fr", "espeak") == "c'est"  # closest to 5 characters, as (b) chooses
+    assert tolerant({**entry, "b": {"text": "déjà lu", "raw": raw}}, "fr", "espeak") == "déjà lu"
+    broken = '{"candidates": ["il dit "oui"", "non", "si", "peut-être"]}'  # unescaped quotes: not this rule
+    assert tolerant({**entry, "b": {"text": None, "raw": broken}}, "fr", "espeak") is None
+
+
+def test_parse_table_counts_failures_and_recoveries() -> None:
+    from isochron.step4_report import outputs, parse_table
+
+    def cand(text: str) -> dict:
+        return {"text": text}
+
+    loop = {"rounds": [{"retry": False, "candidates": []}, {"retry": True, "candidates": [cand("court")]}],
+            "final": cand("court"), "revisions": 1}
+    item = {"id": "1", "lang": "fr", "seed": 0, "source": "s", "reference": "r",
+            "a": {"text": "un texte assez long", "tries": [{"raw": "x"}, {"raw": "y"}]},
+            "budgets": {"isometric": {"unit": "chars", "target": 5,
+                                      "b": {"text": None, "raw": r'{"candidates": ["c\'est", "a", "b", "c"]}'},
+                                      "c": {"text": "court", "kept_plain": False, "loop": loop}}}}
+    table = parse_table([item], outputs([item], "espeak"))
+    assert table[4] == "| FR, isometric | 1 | 1 | 1 | 2 | 1 | 1 | 1 | 1 | 0 |"
+    assert "FR: 1 of 1 items needed another try, and 0 ended without a translation" in table[-1]
+
+
 def test_dry_run_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from isochron import step4, step4_report
 

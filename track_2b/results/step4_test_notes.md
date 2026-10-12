@@ -64,7 +64,30 @@ no fact kept).
     French).
   - The other (1873, French only) ends in a parenthesis, and the answer closes it after the JSON string.
 - (c)'s loop gave no output for 9 more French items (characters) and 1 more German item (syllables).
-- Counts per system are in the "No output" column.
+- Counts per system are in the "No output" column, and per language and budget in "Parse failures".
+
+**JSON sensitivity (post-hoc, added after test outputs existed; no new generation).** The row under (b)
+re-reads only the answers strict JSON rejected, with one tolerant rule (`\'` becomes `'`), and chooses
+as (b) does.
+- It recovers 70 of the 114 rejected (b) answers: 51 of 83 French with characters, 18 of 23 French with
+  syllables, 1 of 6 German with characters, 0 of 2 German with syllables. These are exactly the answers
+  whose first parse error was `\'`.
+- Fit of (b), strict → tolerant: French 59.8 → 63.2 % with characters and 44.7 → 45.3 % with syllables;
+  German 59.4 → 59.5 % and 71.6 % unchanged.
+- Kept against the reference (NLI), French: 69.7 → 73.8 % with characters, 74.9 → 76.6 % with
+  syllables.
+- So the order of the systems does not change: with characters, (c) still fits 14.1 points more often
+  than (b) in French (77.3 against 63.2 %).
+- The judge never saw the recovered outputs, so this row has no fit & complete.
+
+**How (c)'s loop met parse failures** (table "Parse failures"; `isochron.repair`).
+- A round whose answer is not valid JSON gives no candidate. If no earlier round gave one, the next
+  round sends the first prompt again with a new seed (a retry). Otherwise the best candidate so far
+  stays, and the next round revises it. There are at most 3 rounds; if none parsed, (c) has no output.
+- French with characters: 89 of 1,691 rounds (5.3 %) gave no candidate, in 60 of 739 loop runs. 51 of
+  those runs still ended with an output, and 9 did not.
+- Elsewhere it was rare: 15 of 1,662 rounds (German, characters), 13 of 1,841 (German, syllables) and 7
+  of 461 (French, syllables). 1 German run ended without an output.
 
 **Otherwise clean.** 2 of 10,185 outputs are in the wrong language, and none of the 10,185 judge
 verdicts is invalid.
