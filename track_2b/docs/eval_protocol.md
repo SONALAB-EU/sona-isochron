@@ -638,6 +638,15 @@ numbers are reported on test, as before. The work goes in this order.
        as `'`, recovers 70 of 114. (b)'s fit rises from 59.8 to 63.2 % in
        French with characters, and by at most 0.6 points elsewhere. The
        pre-registered numbers stay the strict ones.
+     - Second NLI (post-hoc, added after test outputs existed; v2.20;
+       `results/step4_test_nli2.md`): under a model the loop never sees,
+       (c) − (a) on kept vs reference is −3.6, −5.3, −2.8 and −0.5 points
+       (the last within noise), against +1.0 to +2.0 under the evaluation
+       NLI; (c) − (b) stays positive in three settings. (b), which no NLI
+       chooses, shows almost the same gap between the two models as (c):
+       (c) − (b) on that gap is +0.1 to +2.2, every interval including 0.
+       So the gap mostly reflects how the two models judge shortened lines,
+       not the loop's selection. The pre-registered numbers are unchanged.
    - **Insurance, if the HPC setup fails** (`scripts/local_step2_de_test.sh`).
      - The local setup: llama.cpp with Q4_K_M, and the judge Qwen3-8B.
      - Task: step 2 on German test, levels 90 and 80, seed 0.
