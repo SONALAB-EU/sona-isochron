@@ -2,8 +2,11 @@
 
 Model: MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (MIT licence),
 pinned to REVISION, run locally in float32 on an NVIDIA GPU (cuda), Apple's mps
-or the CPU, in batches.
-The predicted label is the argmax over entailment / neutral / contradiction.
+or the CPU, in batches. The repair loop and the step 2-4 evaluation both use it.
+Another model can be given (model_id, revision): isochron.meaning_check uses one
+that the loop never sees.
+The predicted label is the argmax over the model's labels (entailment / neutral /
+contradiction); only "entailment" counts.
 
 For a source s and an output o:
 - added content:   s ⇒ o fails (premise s, hypothesis o is not "entailment"),
@@ -54,7 +57,8 @@ def judge(predict: Predict, sources: Sequence[str], outputs: Sequence[str]) -> l
 
 
 class NLI:
-    def __init__(self, device: str | None = None, batch_size: int = 32) -> None:
+    def __init__(self, device: str | None = None, batch_size: int = 32, model_id: str = MODEL_ID,
+                 revision: str = REVISION) -> None:
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
@@ -62,15 +66,16 @@ class NLI:
         self.device = device or ("cuda" if torch.cuda.is_available()
                                  else "mps" if torch.backends.mps.is_available() else "cpu")
         self.batch_size = batch_size
-        self.tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=REVISION)
-        # The checkpoint is stored in float16, and transformers 5 loads the stored
-        # dtype by default; ask for float32 explicitly.
-        model = AutoModelForSequenceClassification.from_pretrained(MODEL_ID, revision=REVISION, dtype=torch.float32)
+        self.model_id, self.revision = model_id, revision
+        self.tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
+        # The default checkpoint is stored in float16, and transformers 5 loads the
+        # stored dtype by default; ask for float32 explicitly.
+        model = AutoModelForSequenceClassification.from_pretrained(model_id, revision=revision, dtype=torch.float32)
         self.model = model.to(self.device).eval()
         config = self.model.config
         self.labels = [config.id2label[i].lower() for i in range(config.num_labels)]
         if ENTAILMENT not in self.labels:
-            raise ValueError(f"{MODEL_ID} has no entailment label: {self.labels}")
+            raise ValueError(f"{model_id} has no entailment label: {self.labels}")
 
     def predict(self, premises: Sequence[str], hypotheses: Sequence[str]) -> list[str]:
         out: list[str] = []
@@ -93,4 +98,4 @@ class NLI:
 
     def describe(self) -> str:
         dtype = str(next(self.model.parameters()).dtype).removeprefix("torch.")
-        return f"{MODEL_ID} @ {REVISION[:7]}, {self.device}, {dtype}, argmax label"
+        return f"{self.model_id} @ {self.revision[:7]}, {self.device}, {dtype}, argmax label"

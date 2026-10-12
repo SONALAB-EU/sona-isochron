@@ -269,6 +269,36 @@ uv run python -m isochron.step2_report results/raw/hpc_8b_step2_de_test results/
 - The last writes `results/step2_test.md`: both languages, 95 % intervals, and every run's
   configuration.
 
+### 10. A second NLI model for step 4 (post-hoc, added after test outputs existed)
+
+`isochron.meaning_check` re-scores step 4's meaning with an NLI model that the repair loop never
+sees (`MoritzLaurer/bge-m3-zeroshot-v2.0-c`, pinned in the module). It also runs both NLI models on
+the planted controls. Only the inference runs on the H100; the model comes from the Mac, so the job
+needs no internet.
+
+On the Mac, from `track_2b/`:
+
+```
+uv run python -m isochron.meaning_check pairs results/raw/hpc_8b_step4_test results/raw/hpc_8b_step4_test_fr --out results/raw/meaning_check/pairs.jsonl
+uv run python -c "from huggingface_hub import snapshot_download; from isochron.meaning_check import SECOND; print(snapshot_download(SECOND['model_id'], revision=SECOND['revision'], allow_patterns=['*.json', '*.safetensors', '*.model']))"
+ssh hpi-login mkdir -p isochron/track_2b/results/raw/meaning_check isochron_work/hf/hub
+rsync -av results/raw/meaning_check/pairs.jsonl hpi-login:isochron/track_2b/results/raw/meaning_check/
+rsync -av ~/.cache/huggingface/hub/models--MoritzLaurer--bge-m3-zeroshot-v2.0-c hpi-login:isochron_work/hf/hub/
+bash hpc/sync.sh hpi-login
+```
+
+On the cluster: `sbatch hpc/meaning_check.sbatch` (30 min limit; it needs a few minutes). Then, on
+the Mac:
+
+```
+rsync -av hpi-login:isochron/track_2b/results/raw/meaning_check/ results/raw/meaning_check/
+uv run python -m isochron.meaning_check report results/raw/hpc_8b_step4_test results/raw/hpc_8b_step4_test_fr --scores results/raw/meaning_check --cache results/raw/step4_test_nli_cache.jsonl --out results/step4_test_nli2.md
+```
+
+- The model path in the second command is the Hugging Face cache's default; if `HF_HOME` is set,
+  copy from `$HF_HOME/hub` instead.
+- The report needs the evaluation NLI's cache, which `isochron.step4_report --nli-cache` wrote.
+
 ## GPU-hours per run
 
 Measured on 2026-10-10 (sacct, elapsed time × H100s):
