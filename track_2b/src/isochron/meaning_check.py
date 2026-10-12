@@ -57,8 +57,9 @@ SECOND = {
     "base": "BAAI/bge-m3-retromae (XLM-RoBERTa-large architecture; MIT)",
     "data": "English only: MNLI and FEVER-NLI, plus synthetic zero-shot data written by Mixtral-8x7B-Instruct; "
             "no XNLI, ANLI, WANLI or LingNLI and no machine translations",
-    "overlap": "MNLI and FEVER-NLI, which the loop's model saw as machine translations plus an English sample; the "
-               "same author; XLM-R and mDeBERTa-v3 were both pretrained on CC100",
+    "overlap": "MNLI and FEVER-NLI: many of the loop model's German and French training pairs are machine "
+               "translations of English pairs in this model's data; the same author; XLM-R and mDeBERTa-v3 were both "
+               "pretrained on CC100. It was chosen before any of its scores on step 4's outputs or the controls existed",
 }
 SUITE_NAMES = ("nli", "hard", "nli_xl", "hard_xl")
 VALIDATION = "results/judge_validation_{suite}_v3_qwen3-14b_hpc_8b.md"
