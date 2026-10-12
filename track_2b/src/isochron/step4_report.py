@@ -226,10 +226,14 @@ def diff_table(rows: list[dict[str, Any]], title: str, judged: bool) -> list[str
     out = [f"### {title}: paired differences (post-hoc, added after test outputs existed; percentage points)", "",
            "| Difference | " + " | ".join(name for name, _ in metrics) + " |",
            "|------------|" + "|".join("-" * (len(name) + 2) for name, _ in metrics) + "|"]
-    for x, y in PAIRS:
+    for x, y in (*PAIRS, ("c", TOLERANT)):
+        if not any(r["system"] == y for r in rows):
+            continue
         pair = [{**r, "cond": "with" if r["system"] == x else "without"} for r in rows if r["system"] in (x, y)]
-        out.append(f"| ({x}) − ({y}) | "
-                   + " | ".join(paired_diff(pair, value, lambda r: True) for _, value in metrics) + " |")
+        label = "(c) − (b) with `\\'` read as `'` (sensitivity)" if y == TOLERANT else f"({x}) − ({y})"
+        out.append(f"| {label} | " + " | ".join(
+            "–" if y == TOLERANT and name == "Fit & complete" else paired_diff(pair, value, lambda r: True)
+            for name, value in metrics) + " |")
     return out
 
 
@@ -263,8 +267,36 @@ def parse_table(items: list[dict[str, Any]], rows: list[dict[str, Any]]) -> list
         its = [it for it in items if it["lang"] == lang]
         notes.append(f"{lang.upper()}: {sum(len(it['a']['tries']) > 1 for it in its)} of {len(its)} items needed "
                      f"another try, and {sum(not it['a']['text'] for it in its)} ended without a translation")
-    return out + ["", "(a) asks again with the next seed after an unparsable answer, at most 3 times. "
-                  + "; ".join(notes) + ". Without (a), (c) has no output either."]
+    loops = [e["c"]["loop"] for it in items for e in it["budgets"].values() if e["c"].get("loop")]
+    after = {"the first prompt again (a retry)": 0, "the revision of the best candidate again": 0, "none: it was the last round": 0}
+    for lp in loops:
+        for i, r in enumerate(lp["rounds"]):
+            if not r["candidates"]:
+                nxt = lp["rounds"][i + 1] if i + 1 < len(lp["rounds"]) else None
+                after["none: it was the last round" if nxt is None else
+                      "the first prompt again (a retry)" if nxt["retry"] else "the revision of the best candidate again"] += 1
+    failed = [r for lp in loops for r in lp["rounds"] if not r["candidates"]]
+    rescuable = sum(bool(parse_candidates((r["raw"] or "").replace("\\'", "'"))[0]) for r in failed)
+    wrong_b = sum(" candidates instead of " in (e["b"].get("parse_error") or "") for it in items for e in it["budgets"].values())
+    wrong_c = sum(" candidates instead of " in (r.get("parse_error") or "") for lp in loops for r in lp["rounds"])
+    slashes = {s: sum(1 for r in rows if r["system"] == s and r["text"] and "\\" in r["text"]
+                      and (s != "a" or r["budget"] == min(it_budgets(items)))) for s in SYSTEMS}
+    return out + ["",
+                  "(a) asks again with the next seed after an unparsable answer, at most 3 times. "
+                  + "; ".join(notes) + ". Without (a), (c) has no output either.",
+                  "",
+                  "After a (c) round without a candidate, the next round sent: "
+                  + "; ".join(f"{k} {v}" for k, v in after.items()) + f". The sensitivity rule (`\\'` read as `'`) "
+                  f"would have given candidates in {rescuable} of these {len(failed)} rounds; (c) is left as it ran, "
+                  "because its later rounds depended on each failure.",
+                  "",
+                  f"Answers with fewer or more candidates than the 4 asked for (kept, and scored): (b) {wrong_b}, (c)'s "
+                  f"rounds {wrong_c}. Outputs that contain a literal backslash (counted as they are): "
+                  + ", ".join(f"({s}) {n}" for s, n in slashes.items()) + "."]
+
+
+def it_budgets(items: list[dict[str, Any]]) -> list[str]:
+    return sorted({k for it in items for k in it["budgets"]})
 
 
 def main(argv: list[str] | None = None) -> None:

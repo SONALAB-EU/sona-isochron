@@ -76,7 +76,8 @@ def test_parse_table_counts_failures_and_recoveries() -> None:
     def cand(text: str) -> dict:
         return {"text": text}
 
-    loop = {"rounds": [{"retry": False, "candidates": []}, {"retry": True, "candidates": [cand("court")]}],
+    loop = {"rounds": [{"retry": False, "candidates": [], "raw": "kein JSON"},
+                       {"retry": True, "candidates": [cand("court")], "raw": "{}"}],
             "final": cand("court"), "revisions": 1}
     item = {"id": "1", "lang": "fr", "seed": 0, "source": "s", "reference": "r",
             "a": {"text": "un texte assez long", "tries": [{"raw": "x"}, {"raw": "y"}]},
@@ -85,7 +86,10 @@ def test_parse_table_counts_failures_and_recoveries() -> None:
                                       "c": {"text": "court", "kept_plain": False, "loop": loop}}}}
     table = parse_table([item], outputs([item], "espeak"))
     assert table[4] == "| FR, isometric | 1 | 1 | 1 | 2 | 1 | 1 | 1 | 1 | 0 |"
-    assert "FR: 1 of 1 items needed another try, and 0 ended without a translation" in table[-1]
+    text = "\n".join(table)
+    assert "FR: 1 of 1 items needed another try, and 0 ended without a translation" in text
+    assert "the first prompt again (a retry) 1; the revision of the best candidate again 0" in text
+    assert "would have given candidates in 0 of these 1 rounds" in text  # its raw answer is not JSON at all
 
 
 def test_dry_run_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

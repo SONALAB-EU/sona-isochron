@@ -76,14 +76,21 @@ as (b) does.
   German 59.4 → 59.5 % and 71.6 % unchanged.
 - Kept against the reference (NLI), French: 69.7 → 73.8 % with characters, 74.9 → 76.6 % with
   syllables.
-- So the order of the systems does not change: with characters, (c) still fits 14.1 points more often
-  than (b) in French (77.3 against 63.2 %).
+- So the order of the systems does not change. Paired (post-hoc, added after test outputs existed),
+  (c) − (b) with (b) read this way is +14.2 [+9.0, +19.5] points of fit in French with characters
+  (strict: +17.5), +24.6 [+19.4, +29.7] with syllables, and +20.7 [+15.7, +25.8] in German with
+  characters; German with syllables stays a tie.
+- The rule is applied to (b) only. It would also have given candidates in 62 of the 124 (c) rounds that
+  gave none, but (c)'s later rounds depended on each failure, so (c) cannot be re-run without new
+  generation. If anything, the comparison favours (b).
 - The judge never saw the recovered outputs, so this row has no fit & complete.
 
 **How (c)'s loop met parse failures** (table "Parse failures"; `isochron.repair`).
 - A round whose answer is not valid JSON gives no candidate. If no earlier round gave one, the next
   round sends the first prompt again with a new seed (a retry). Otherwise the best candidate so far
   stays, and the next round revises it. There are at most 3 rounds; if none parsed, (c) has no output.
+- Of the 124 rounds without a candidate, 79 were followed by a retry, 16 by the revision of the best
+  candidate again, and 29 were already the last round.
 - French with characters: 89 of 1,691 rounds (5.3 %) gave no candidate, in 60 of 739 loop runs. 51 of
   those runs still ended with an output, and 9 did not.
 - Elsewhere it was rare: 15 of 1,662 rounds (German, characters), 13 of 1,841 (German, syllables) and 7
@@ -91,3 +98,7 @@ as (b) does.
 
 **Otherwise clean.** 2 of 10,185 outputs are in the wrong language, and none of the 10,185 judge
 verdicts is invalid.
+- Apertus often returned fewer candidates than the 4 asked for, mostly 1: 91 (b) answers and 686 of
+  (c)'s 5,655 rounds. They are kept and scored, as frozen.
+- 21 outputs contain a literal backslash from an over-escaped apostrophe (`L\'Islande`): 11 of (b) and 10
+  of (c). They count as they are.
