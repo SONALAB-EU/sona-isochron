@@ -1,5 +1,5 @@
 # drawn by isochron.figures (code last changed in commit ef9e0e5)
-# input results/step4_test.md: blob bebdf250d8bc, last changed in commit 7797daf (2026-10-12T16:16:29+02:00)
+# input results/step4_test.md: blob 55f0fc77572b, last changed in commit a41bcc0 (2026-10-12T17:31:14+02:00)
 # input results/hpc_8b_step4_dev.md: blob c6873cb9b036, last changed in commit 5ac84d9 (2026-10-11T16:50:07+02:00)
 # date, model, quantisation, endpoint, seeds and n of each run: see the input's header
 lang,budget,system,outputs,fit_pct,ci_low,ci_high,fit_complete_pct,fit_complete_ci_low,fit_complete_ci_high,dev_fit_pct
