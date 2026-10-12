@@ -30,9 +30,9 @@ def fake_run(tmp_path: Path) -> Path:
 def test_sheet_is_blind_balanced_and_scored(tmp_path: Path) -> None:
     out = tmp_path / "check"
     native_check.build(fake_run(tmp_path), out)
-    with open(out / "sheet_de.csv", encoding="utf-8-sig") as f:
+    with open(out / "step2_sheet_de.csv", encoding="utf-8-sig") as f:
         sheet = list(csv.DictReader(f))
-    with open(out / "key_de.csv", encoding="utf-8") as f:
+    with open(out / "step2_key_de.csv", encoding="utf-8") as f:
         key = list(csv.DictReader(line for line in f if not line.startswith("#")))
     assert len(sheet) == len(key) == 50 and list(sheet[0]) == list(native_check.SHEET_FIELDS)
     assert not {"system", "level", "seed", "id"} & set(sheet[0])  # nothing on the sheet tells the system
@@ -47,7 +47,7 @@ def test_sheet_is_blind_balanced_and_scored(tmp_path: Path) -> None:
         w.writeheader()
         w.writerows(sheet)
     report = tmp_path / "agreement.md"
-    native_check.score(filled, out / "key_de.csv", report)
+    native_check.score(filled, out / "step2_key_de.csv", report)
     text = report.read_text(encoding="utf-8")
     assert "| NLI | added | 50 | 100 % | 1.00 |" in text and "| NLI | dropped | 50 | 100 % | 1.00 |" in text
 
@@ -56,3 +56,67 @@ def test_kappa() -> None:
     assert native_check.kappa([True, False, True, False], [True, False, True, False]) == 1.0
     assert native_check.kappa([True, True], [True, True]) is None
     assert round(native_check.kappa([True, True, False, False], [True, False, True, False]), 2) == 0.0
+
+
+def fake_step4_run(tmp_path: Path) -> tuple[Path, Path]:
+    from isochron.meaning_check import key
+
+    run = tmp_path / "hpc_8b_step4_test"
+    run.mkdir()
+    (run / "config.json").write_text(json.dumps({"langs": ["de"], "split": "test", "model": "m", "quantisation": "BF16",
+                                                 "length_counter": {"counter": "espeak"}}), encoding="utf-8")
+    items, judged, cache = [], [], [json.dumps({"nli": "stub"})]
+    for i in range(30):
+        source = f"The old town number {i} has many beautiful houses and a large church."
+        reference = f"Die alte Stadt Nummer {i} hat viele schöne Häuser und eine große Kirche."
+        plain = f"Die alte Stadt Nummer {i} hat viele schöne Häuser und eine große Kirche."
+        short = plain if i % 5 == 0 else f"Die Stadt Nummer {i} hat schöne Häuser und eine Kirche."
+        items.append({"id": str(i), "lang": "de", "seed": 0, "source": source, "reference": reference,
+                      "a": {"text": plain}, "budgets": {"isosyllabic": {"unit": "syllables", "target": 15,
+                                                                       "c": {"text": short, "kept_plain": i % 5 == 0}}}})
+        v = {"valid": True, "recall": 1.0 if i % 2 else 0.5, "dropped": i % 2 == 0, "changed": 0, "added_any": False}
+        judged.append({"id": str(i), "lang": "de", "seed": 0, "a": v, "budgets": {"isosyllabic": {"c": v}}})
+        for text in {plain, short}:
+            kept = text == plain or i % 3 != 0
+            for premise in (reference, source):
+                cache.append(json.dumps({"key": key(premise, text), "m": {"kept": kept, "added": False, "dropped": not kept}}))
+    (run / "items.jsonl").write_text("".join(json.dumps(x) + "\n" for x in items), encoding="utf-8")
+    (run / "judge.jsonl").write_text("".join(json.dumps(x) + "\n" for x in judged), encoding="utf-8")
+    (tmp_path / "nli.jsonl").write_text("\n".join(cache) + "\n", encoding="utf-8")
+    return run, tmp_path / "nli.jsonl"
+
+
+def test_step4_sheet_is_blind_paired_and_scored(tmp_path: Path) -> None:
+    run, cache = fake_step4_run(tmp_path)
+    out = tmp_path / "check"
+    native_check.build_step4(run, out, cache)
+    with open(out / "step4_sheet_de.csv", encoding="utf-8-sig") as f:
+        sheet = list(csv.DictReader(f))
+    with open(out / "step4_key_de.csv", encoding="utf-8") as f:
+        key = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    assert len(sheet) == len(key) == 50 and list(sheet[0]) == list(native_check.STEP4_FIELDS)
+    assert not {"system", "id", "seed", "budget"} & set(sheet[0])  # nothing on the sheet tells the system
+    assert sorted(r["system"] for r in key).count("c") == 25 and len({r["id"] for r in key}) == 25
+    assert all(sum(r["id"] == i for r in key) == 2 for i in {r["id"] for r in key})  # (a) and (c) of each source
+    # the checker marks what the evaluation NLI says: full agreement with it on "kept, nothing added"
+    for row, k in zip(sheet, key):
+        row["meaning"] = "kept" if k["nli_kept_ref"] == "True" else "kleiner Verlust"
+        row["added_info"] = "nein"
+        row["natural_german"] = "ja"
+    filled = tmp_path / "filled.csv"
+    with open(filled, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=native_check.STEP4_FIELDS)
+        w.writeheader()
+        w.writerows(sheet)
+    report = tmp_path / "agreement.md"
+    native_check.score(filled, out / "step4_key_de.csv", report)
+    text = report.read_text(encoding="utf-8")
+    assert "| Evaluation NLI (the loop's model), vs the reference | kept, nothing added | 50 | 100 % | 1.00 |" in text
+    assert "| (a) plain translation | 25 | 100 % [87, 100] (25/25) |" in text  # every plain line is kept here
+
+
+def test_wilson() -> None:
+    lo, hi = native_check.wilson(25, 25)
+    assert round(100 * lo) == 87 and hi == 1.0
+    lo, hi = native_check.wilson(0, 25)
+    assert lo == 0.0 and round(100 * hi) == 13

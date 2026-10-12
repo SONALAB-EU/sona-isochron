@@ -301,6 +301,14 @@ A target T is a whole number: the share or budget, rounded half up. An output
 - **Native-speaker check** of 50 German lines, without being told which system
   produced each one. For each line the checker marks added content (yes/no) and
   dropped content (yes/no). We report how often they agree with the NLI model.
+  - Since v2.21 (2026-10-12, before any line was rated) the lines are step 4
+    test outputs: 25 English sources drawn with a fixed seed, each with its
+    plain translation (a) and ours (c, syllable budget), generation seed 0.
+    The checker marks the meaning against the English source (kept, minor
+    loss, wrong), added information (yes/no) and natural German (yes/no).
+    We report per-system rates with 95 % Wilson intervals, and agreement
+    (share, Cohen's kappa) with both NLI models and the judge. The step 2
+    sheet stays as a backup (`docs/native_check.md`).
 
 ## NLI sanity suite
 
@@ -653,9 +661,9 @@ used.
   is not clearly better than Qwen3-8B (p = 0.34), and it misses half the lost
   qualifiers. So the native-speaker check still carries the meaning results
   for qualifiers.
-- Who checks the 50 native-speaker lines. Which lines they are was decided on 2026-10-12: German step 2
-  test outputs, 25 without and 25 with the loop, from 50 different sentences, seeded
-  (`docs/native_check.md`, `results/native_check/sheet_de.csv`).
+- Who checks the 50 native-speaker lines. Which lines they are was decided on 2026-10-12 (v2.21): step 4
+  English → German test outputs, (a) and (c) for 25 seeded sources (`docs/native_check.md`,
+  `results/native_check/step4_sheet_de.csv`); the step 2 sheet is the backup.
 - A native-speaker review of the NLI control pairs.
 - A near-tie test on paired differences, instead of overlapping intervals
   (suggested by the pilot). For step 2 on test, the report now gives the
@@ -763,3 +771,15 @@ used.
   JSON rejected are read again with `\'` as `'`. The report also counts
   parse failures per system, including how (c)'s loop went on after them.
   The pre-registered numbers are unchanged.
+- 2026-10-12, v2.20: a second meaning check for step 4, post-hoc, added after
+  test outputs existed. The repair loop and the evaluation use the same NLI
+  model, so step 4's outputs are re-scored with a second NLI model that the
+  loop never sees (MoritzLaurer/bge-m3-zeroshot-v2.0-c @ 705510d, MIT: another
+  base model, XLM-R large, and other training data, English MNLI, FEVER-NLI
+  and synthetic data), in one short GPU job (`isochron.meaning_check`). Both
+  NLI models also run on the planted controls. The pre-registered numbers stay
+  those of the evaluation NLI.
+- 2026-10-12, v2.21: the native-speaker sheet now holds step 4 test outputs
+  (25 seeded English sources, (a) and (c), seed 0), marked for meaning against
+  the English source, added information and natural German. Decided before any
+  line was rated; the step 2 sheet is kept as a backup.
