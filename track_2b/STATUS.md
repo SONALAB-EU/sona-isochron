@@ -76,6 +76,30 @@ the report. No workflows; commit locally only.
   - Fix (commit eaa0bbb): longer retries, and a fallback that fetches the same commit with git and checks
     its id. The rebuild then got the tarball, its SHA-256 matched, and it built eSpeak NG 1.52.0.
 
+- **12:40. The German test job is done** (2647419, 11:58:41–12:39:55 UTC, 41 min: 0.69 H100-hours).
+  - 1,041 items and 1,041 judge lines, no traceback. Pulled to `results/raw/hpc_8b_step4_test`.
+  - Its cross-lingual validation reports are identical to the sanity check's.
+  - The French job 2647517 started at 12:40:12 UTC on gx07.
+- **12:41. `make run` in Docker works.** From a fresh clone at eaa0bbb: the image built in 40 min (4.89 GB),
+  and `make run` against llama-server on the Mac (Q4_K_M, `host.docker.internal`) finished in 236 s.
+  - 10 lines: fit 6/10 (round 0: 4/10), NLI kept 9/10, wrong language 0/10. The summary records commit
+    eaa0bbb, the model, the quantisation and the endpoint.
+  - The image is 4.89 GB, 1.3 GB of it uv's download cache. Now `UV_NO_CACHE=1` in the Dockerfile.
+- **12:58. `make run-offline`: the llama.cpp image came from the Mac.** Docker pulled it from ghcr.io at
+  about 50 KB/s per layer (255 MB layer: about 90 min).
+  - So I fetched the pinned index and its arm64 blobs on the Mac with parallel range requests (330 s),
+    checked every SHA-256, and loaded them with `docker load`.
+  - The compose file's reference (`server-b11429@sha256:2f8ebc…`) resolves to the loaded image, so it is
+    the same image Docker would have pulled.
+- **13:25. `make run-offline` in Docker works.** Same clone (eaa0bbb) and GGUF, everything on the VM's CPU:
+  exit 0 after 1,538 s.
+  - llama-server took 4 min to load the GGUF, and the first line 697 s. The other 9 took 35–83 s each.
+  - 10 lines: fit 6/10 (round 0: 4/10), NLI kept 10/10, wrong language 0/10, no output 0/10.
+  - The outputs differ from the `make run` run, because llama.cpp on the CPU computes differently from
+    Metal, so sampling diverges.
+  - Isolation: in the compose config, `llm` has `network_mode: none` and `app` `service:llm`. A
+    `--network none` container has only `lo`, and an outbound HTTPS request fails at name resolution.
+
 ## The loop round by round (2026-10-12; from the logged runs, no new generation)
 
 - **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and

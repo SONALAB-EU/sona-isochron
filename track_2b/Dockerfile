@@ -60,7 +60,8 @@ ENV PATH=/app/.venv/bin:/opt/espeak-ng/bin:$PATH \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/opt/hf \
     UV_PYTHON_DOWNLOADS=never \
-    UV_LINK_MODE=copy
+    UV_LINK_MODE=copy \
+    UV_NO_CACHE=1
 WORKDIR /app
 
 # Every package of uv.lock, hash-checked, except torch and the CUDA packages only its CUDA build needs; then

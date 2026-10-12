@@ -27,6 +27,8 @@ How the 50 lines are chosen (`build`):
 - Levels 90, 80, 70 and 60 % come in turn, with seed 0. A line with no German output would take the
   next seed; none did.
 - The rows are shuffled, and the sheet shows nothing that tells the system.
+- Two shortened lines are identical to their originals: the model returned the input unchanged. They stay
+  in, because the rule chose them.
 
 The files are CSV in UTF-8, with a byte-order mark so that Excel, Numbers and LibreOffice show umlauts
 correctly.
@@ -45,6 +47,7 @@ Each row has an **original** German sentence and a **shortened** version. Read b
 - Different wording, word order, or one sentence split into two, is fine as long as the meaning is the
   same. That is neither "adds" nor "drops".
 - Judge each row on its own. Rows can be similar; there is no right number of yes answers.
+- A shortened version can be the same as the original. Mark it like any other row.
 - Please do not use a dictionary, a translator or a chatbot. About 25–40 minutes in total.
 - Return the filled file under any name.
 
