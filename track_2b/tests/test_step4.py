@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 
@@ -110,9 +111,14 @@ def test_dry_run_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(SystemExit, match="--resume"):
         step4.main(args)
     report = tmp_path / "report.md"
-    step4_report.main([str(out), "--out", str(report), "--device", "cpu"])
+    lengths = tmp_path / "lengths.csv"
+    step4_report.main([str(out), "--out", str(report), "--device", "cpu", "--lengths-csv", str(lengths)])
     text = report.read_text(encoding="utf-8")
     assert "EN → DE, isometric budget (chars)" in text and "(c) translate, then shorten" in text
+    rows = list(csv.DictReader(line for line in lengths.read_text(encoding="utf-8").splitlines() if not line.startswith("#")))
+    assert len(rows) == 3 * 2 and {r["system"] for r in rows} == {"a", "b", "c"}  # 3 systems × 2 budgets, 1 item
+    assert all(r["no_output"] == "0" and float(r["ratio"]) > 0 for r in rows)
+    assert {r["unit"] for r in rows if r["budget"] == "isosyllabic"} == {"syllables"}
 
 
 @pytest.mark.skipif(not nli_cached or not espeak_available(), reason="needs the cached NLI model and espeak-ng")

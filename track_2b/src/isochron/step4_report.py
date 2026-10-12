@@ -20,16 +20,18 @@ markdown report.
 - (c) keeps (a) unchanged when (a) is at most 1.10 × the budget; "(a) kept" is how often.
 - A wrong-language output (isochron.language) counts as a failure, like a missing one.
 - 95 % intervals: bootstrap over sentences (each carries its seeds), 10,000 resamples, seed 0.
-- Paired differences (post-hoc, added after test outputs existed): (c) − (b) and (c) − (a), in percentage points, for fit, fit &
-  complete and kept vs reference. All systems translate the same sentences, so the bootstrap resamples
-  sentences once per resample and scores both systems on it (step 2's paired interval,
-  isochron.step2_report.paired_diff).
+- Paired differences (post-hoc, added after test outputs existed): (c) − (b), (c) − (a) and (b) − (a), in
+  percentage points, for fit, fit & complete and kept vs reference. All systems translate the same
+  sentences, so the bootstrap resamples sentences once per resample and scores both systems on it (step
+  2's paired interval, isochron.step2_report.paired_diff).
 - JSON sensitivity (post-hoc, added after test outputs existed): a row under (b) that re-reads only the
   (b) answers strict JSON rejected, with one tolerant rule (every \\' becomes '), and chooses among the
   recovered candidates as (b) does. No new generation; the judge never saw the recovered outputs, so
   the row is not in the judge tables. The pre-registered (b) row is unchanged.
 - Parse failures, per language and budget: (a)'s tries, (b)'s rejected answers and how many the rule
   recovers, and (c)'s loop rounds that gave no candidate (see isochron.repair for how the loop goes on).
+- With --lengths-csv, the length of every output of (a), (b) and (c) in its budget's unit, for the figures
+  (results/step4_test_lengths.csv: numbers only, no text).
 
     uv run python -m isochron.step4_report RUN_DIR [RUN_DIR ...] [--validation FILE ...] [--out FILE]
 """
@@ -37,6 +39,7 @@ markdown report.
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 from collections import defaultdict
@@ -59,7 +62,7 @@ SYSTEMS = {"a": "(a) plain translation", "b": "(b) one step to the budget", "c":
 TOLERANT = "b_tolerant"  # the sensitivity row, in the main tables only, under (b)
 TOLERANT_NAME = "(b), `\\'` read as `'`: sensitivity (post-hoc, added after test outputs existed)"
 TABLE_ORDER = (("a", SYSTEMS["a"]), ("b", SYSTEMS["b"]), (TOLERANT, TOLERANT_NAME), ("c", SYSTEMS["c"]))
-PAIRS = (("c", "b"), ("c", "a"))
+PAIRS = (("c", "b"), ("c", "a"), ("b", "a"))
 DIFFS = (  # name, value per output, judge needed
     ("Fit ±10 %", lambda r: r["fit"], False),
     ("Fit & complete", lambda r: r["complete"], True),
@@ -308,7 +311,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--notes", type=Path, help="hand-written summary placed before the tables")
     ap.add_argument("--nli-cache", type=Path, help="JSONL file: NLI scores reused across passes")
     ap.add_argument("--device", default=None, help="NLI device (default: cuda, then mps, then cpu)")
+    ap.add_argument("--lengths-csv", type=Path, help="also write every output's length (for make figures)")
     args = ap.parse_args(argv)
+    commit = git_commit()  # before any output is rewritten: a rewritten tracked file would mark the tree dirty
     cfgs = [json.loads((run / "config.json").read_text(encoding="utf-8")) for run in args.runs]
     items = [json.loads(line) for run in args.runs
              for line in (run / "items.jsonl").read_text(encoding="utf-8").splitlines() if line]
@@ -339,7 +344,7 @@ def main(argv: list[str] | None = None) -> None:
         f"# {args.title or f'Step 4 ({name}): translation to a length budget'}",
         "",
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC",
-        f"- Git commit (report): {git_commit()}; runs: "
+        f"- Git commit (report): {commit}; runs: "
         + ", ".join(f"`{run.name}` ({short(c['git_commit'])})" for run, c in zip(args.runs, cfgs)),
         f"- Model: {cfg['model']}, quantisation {cfg['quantisation']}, backend "
         f"{cfg['backend'].get('build_info', cfg['backend'].get('type'))}; endpoint "
@@ -382,6 +387,37 @@ def main(argv: list[str] | None = None) -> None:
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
     print(f"wrote {out.resolve()}")
+    if args.lengths_csv:
+        write_lengths(rows, list(zip(args.runs, cfgs)), commit, args.lengths_csv)
+
+
+LENGTH_FIELDS = ("lang", "budget", "unit", "system", "id", "seed", "target", "output_length", "ratio", "fit",
+                 "wrong_language", "no_output")
+
+
+def write_lengths(rows: list[dict[str, Any]], runs: list[tuple[Path, dict[str, Any]]], commit: str, path: Path) -> None:
+    """One row per output of (a), (b) and (c) and budget, scored as above; (a) appears under both budgets."""
+    head = [f"# Step 4 output lengths, written by isochron.step4_report on {datetime.now(timezone.utc):%Y-%m-%d %H:%M} "
+            f"UTC, git commit {commit}",
+            "# ratio = output length / budget, in the budget's unit (characters without spaces, or syllables), only "
+            "for an answer in the right language; fit = within ±10 % of the budget; TTS: none"]
+    head += [f"# run {run.name} ({short(c['git_commit'])}): {'/'.join(c['langs'])} {c['split']}, model {c['model']}, "
+             f"quantisation {c['quantisation']}, endpoint {c['endpoint']}, seeds {c['seeds']}" for run, c in runs]
+    body = []
+    for r in sorted((r for r in rows if r["system"] in SYSTEMS),
+                    key=lambda r: (r["lang"], r["budget"], r["system"], int(r["id"]), r["seed"])):
+        usable = r["usable"]
+        body.append({"lang": r["lang"], "budget": r["budget"], "unit": r["unit"], "system": r["system"], "id": r["id"],
+                     "seed": r["seed"], "target": r["target"],
+                     "output_length": r["len"][r["unit"]] if usable else "",
+                     "ratio": f"{r['ratio']:.4f}" if usable else "", "fit": int(bool(r["fit"])),
+                     "wrong_language": int(bool(r["wrong_language"])), "no_output": int(not r["text"])})
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write("\n".join(head) + "\n")
+        w = csv.DictWriter(f, fieldnames=LENGTH_FIELDS, lineterminator="\n")
+        w.writeheader()
+        w.writerows(body)
+    print(f"wrote {path.resolve()} ({len(body)} rows)")
 
 
 if __name__ == "__main__":

@@ -15,8 +15,8 @@ Only the inference runs on the GPU:
   step4_report's NLI cache; then both models on the four control suites of isochron.judge.SUITES.
 - report (Mac): results/step4_test_nli2.md. Catch rates on the controls for the evaluation NLI, the second NLI
   and the judge (from the committed validation reports); step 4's kept vs reference and vs source under both
-  models, with 95 % bootstrap intervals over sentences; how often the two agree; (c) − (a) and (c) − (b)
-  under both models; and how much more each system gains from the evaluation NLI than from the second.
+  models, with 95 % bootstrap intervals over sentences; how often the two agree; (c) − (a), (c) − (b) and
+  (b) − (a) under both models; and how much more each system gains from the evaluation NLI than from the second.
   No NLI chooses (b)'s output, so (c)'s gain beyond (b)'s is the part that selection by the evaluation NLI
   inside the loop could add; it is also given on the lines the loop shortened, because elsewhere (c) is the
   plain translation itself.
@@ -227,7 +227,7 @@ def diff_table(rows: list[dict[str, Any]], title: str) -> list[str]:
     out = [f"### {title}: paired differences ({POSTHOC}; percentage points)", "",
            "| Difference | Kept vs reference: evaluation NLI | Kept vs reference: second NLI |",
            "|------------|-----------------------------------|-------------------------------|"]
-    for x, y in (("c", "a"), ("c", "b")):
+    for x, y in (("c", "a"), ("c", "b"), ("b", "a")):
         out.append(f"| ({x}) − ({y}) | {paired_diff(pair(x, y), kept('1'), lambda r: True)} "
                    f"| {paired_diff(pair(x, y), kept('2'), lambda r: True)} |")
     def gap(r: dict[str, Any]) -> float:
