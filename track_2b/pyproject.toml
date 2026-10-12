@@ -28,3 +28,6 @@ packages = ["src/isochron"]
 dev = [
     "pytest>=9.1.1",
 ]
+figures = [
+    "matplotlib>=3.10",
+]

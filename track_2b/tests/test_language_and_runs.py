@@ -105,6 +105,32 @@ def test_paired_difference_of_the_loop() -> None:
     assert paired_diff([], fit, every) == "–"
 
 
+def test_lengths_csv_has_one_row_per_output(tmp_path: Path) -> None:
+    from isochron.lengths_csv import main as lengths_csv
+
+    def cand(text: str, syllables: int, hit: bool) -> dict:
+        return {"text": text, "hit": hit, "kept": True, "syllables": syllables}
+
+    cfg = {"variant": "v1", "lang": "de", "split": "test", "model": "m", "quantisation": "BF16", "endpoint": "e",
+           "levels": [80], "seeds": [0], "items": {"n": 1}, "git_commit": "0123456789abcdef"}
+    item = {"id": "7", "level": 80, "seed": 0, "target": 20, "revisions": 1, "retries": 0,
+            "time_round0_s": 1.0, "time_total_s": 2.0, "closest_round0": None,
+            "final": cand("Die Polizei schätzte die Zahl auf sechstausend.", 21, True)}
+    judged = {"id": "7", "level": 80, "seed": 0, "without": {"valid": True, "recall": 0.0, "added_any": None},
+              "with": {"valid": True, "recall": 1.0, "added_any": False}}
+    (tmp_path / "config.json").write_text(json.dumps(cfg), encoding="utf-8")
+    (tmp_path / "items.jsonl").write_text(json.dumps(item) + "\n", encoding="utf-8")
+    (tmp_path / "judge.jsonl").write_text(json.dumps(judged) + "\n", encoding="utf-8")
+    out = tmp_path / "lengths.csv"
+    lengths_csv([str(tmp_path), "--out", str(out)])
+    lines = out.read_text(encoding="utf-8").splitlines()
+    assert lines[0].startswith("# Step 2 output lengths") and any("quantisation BF16" in line for line in lines)
+    rows = [line for line in lines if not line.startswith("#")]
+    assert rows == ["lang,id,level,seed,loop,target_syllables,output_syllables,ratio,fit,wrong_language,no_output",
+                    "de,7,80,0,without,20,,,0,0,1",
+                    "de,7,80,0,with,20,21,1.0500,1,0,0"]
+
+
 def test_first_table_stops_at_the_end_of_the_first_table() -> None:
     from isochron.step2_report import first_table
 

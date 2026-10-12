@@ -86,6 +86,7 @@ def rows_for(run: Path) -> tuple[dict, list[dict]]:
             wrong = bool(cand) and check_language(cand["text"], cfg["lang"]).wrong
             usable = bool(cand) and not wrong
             rows.append({"variant": cfg["variant"], "cond": cond, "id": it["id"], "level": it["level"],
+                         "seed": it["seed"], "target": it["target"], "syllables": cand["syllables"] if cand else None,
                          "fit": bool(usable and cand["hit"]), "nli_kept": bool(usable and cand["kept"]),
                          "no_output": not cand, "wrong_language": wrong,
                          "ratio": cand["syllables"] / it["target"] if usable else None,
