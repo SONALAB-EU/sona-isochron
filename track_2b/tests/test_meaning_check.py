@@ -67,4 +67,4 @@ def test_pairs_scores_and_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     assert "Second NLI: second stub" in text and "Evaluation NLI (the loop's own model): stub NLI" in text
     assert "| identity | 60 | 100 % (60/60) | 100 % (60/60) | 100 % (60/60) | no: 87 % (52/60) |" in text  # hard_xl
     assert "paired differences (post-hoc, added after test outputs existed; percentage points)" in text
-    assert "Does (c) gain more from the evaluation NLI than (a) does?" in text
+    assert "How much more a system gains from the evaluation NLI than from the second" in text and "(b) − (a)" in text

@@ -16,8 +16,9 @@ Only the inference runs on the GPU:
 - report (Mac): results/step4_test_nli2.md. Catch rates on the controls for the evaluation NLI, the second NLI
   and the judge (from the committed validation reports); step 4's kept vs reference and vs source under both
   models, with 95 % bootstrap intervals over sentences; how often the two agree; (c) − (a) and (c) − (b)
-  under the second model; and whether (c) gains more from the evaluation NLI than (a) does, which is what
-  selection by that model would do.
+  under both models; and how much more each system gains from the evaluation NLI than from the second.
+  No NLI chooses (b)'s output, so (c)'s gain beyond (b)'s is the part that selection by the evaluation NLI
+  inside the loop could add.
 
 The second model is 2-way (entailment, not entailment). Kept, added and dropped only ask whether a direction is
 entailment, so they mean the same for both models.
@@ -231,9 +232,11 @@ def diff_table(rows: list[dict[str, Any]], title: str) -> list[str]:
     def gap(r: dict[str, Any]) -> float:
         return float(kept("1")(r)) - float(kept("2")(r))
 
-    out += ["", "Does (c) gain more from the evaluation NLI than (a) does? Evaluation minus second NLI on kept vs "
-            f"reference, (c) minus (a), paired: {paired_diff(pair('c', 'a'), gap, lambda r: True)} points. A "
-            "positive difference is what selection by the evaluation NLI inside the loop would cause."]
+    gaps = "; ".join(f"({x}) − ({y}) {paired_diff(pair(x, y), gap, lambda r: True)}"
+                     for x, y in (("c", "a"), ("b", "a"), ("c", "b")))
+    out += ["", "How much more a system gains from the evaluation NLI than from the second, on kept vs reference "
+            f"(evaluation minus second NLI, paired, points): {gaps}. No NLI chooses (b)'s output, so the part that "
+            "selection by the evaluation NLI inside the loop could add is (c) − (b)."]
     return out
 
 
