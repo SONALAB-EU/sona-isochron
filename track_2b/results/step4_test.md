@@ -1,7 +1,7 @@
 # Step 4 on test: translation to a length budget
 
-- Date: 2026-10-12 15:31 UTC
-- Git commit (report): a45aeb7ae16c617f649d2a9e9fe626a05c36cc80; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 16:01 UTC
+- Git commit (report): b755fad08b6a84756fd96e36f1a4cf7871e75262; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; seeds [0, 1, 2] ((a), (b): item seed; (c): item seed + 1000 × round)
 - Prompts: `translate_plain_v1` (5fe6dd58bf7e), `translate_budget_chars_v1` (e81efebd7d4f), `translate_budget_syllables_v1` (a3ffa4ea51a7), `shorten_chars_v1` (004890c41f25), `shorten_syllables_v1` (fe4fbfdd800d), `revise_chars_v1` (62a308e266ab), `revise_v1` (ab0593b9716e)
@@ -70,8 +70,10 @@ chooses (c)'s candidates with the same NLI that scores meaning here, so step 4 w
 NLI model that the loop never sees (`MoritzLaurer/bge-m3-zeroshot-v2.0-c`).
 - Under it, (c) keeps the meaning 2.8–5.3 points less often than plain translation in three settings
   (level in French with syllables), and still more often than one step to the budget in three.
-- (b), which no NLI chooses, shows almost the same gap between the two models as (c). So the gap mostly
-  reflects how the two models judge shortened lines, not the loop's selection.
+- (b), which no NLI chooses, shows a similar gap between the two models over all lines, so part of it is
+  how the two models judge shortened lines. On the lines the loop shortened, (c) gains 1.4–6.0 points more
+  from the evaluation NLI than (b) does; in German with syllables, +6.0 [+1.3, +10.7]. So the loop's
+  selection probably inflates (c)'s score there, and elsewhere it can be neither shown nor ruled out.
 - The second NLI is lenient on small changes (1 of 14 qualifier changes caught in German), so neither
   model settles the question. The native-speaker check compares (a) and (c) directly.
 
