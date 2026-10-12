@@ -1,0 +1,21 @@
+# drawn by isochron.figures (code last changed in commit a30e05e)
+# input results/step4_test.md: blob ed5ddcc81660, last changed in commit 618c460 (2026-10-12T18:55:01+02:00)
+# input results/step4_test_nli2.md: blob 7202fbca79f2, last changed in commit 8a80569 (2026-10-12T18:55:05+02:00)
+# date, model, quantisation, endpoint, seeds and n of each run: see the input's header
+setting,system,nli,fit_gain,fit_gain_low,fit_gain_high,meaning_lost,meaning_lost_low,meaning_lost_high
+"DE, characters",b,main,32.2,25.6,38.7,5.5,1.3,9.6
+"DE, characters",b,second,32.2,25.6,38.7,10.0,6.5,13.4
+"DE, characters",c,main,53.0,49.0,57.3,-1.1,-3.6,1.4
+"DE, characters",c,second,53.0,49.0,57.3,3.6,1.8,5.3
+"DE, syllables",b,main,52.0,46.6,57.2,2.8,-1.2,6.5
+"DE, syllables",b,second,52.0,46.6,57.2,7.9,4.7,11.0
+"DE, syllables",c,main,50.7,46.8,54.8,-2.0,-4.8,0.7
+"DE, syllables",c,second,50.7,46.8,54.8,5.3,3.0,7.7
+"FR, characters",b,main,35.9,29.2,42.3,10.0,5.5,14.6
+"FR, characters",b,second,35.9,29.2,42.3,12.8,9.1,16.5
+"FR, characters",c,main,53.4,49.0,57.6,-1.0,-4.1,2.0
+"FR, characters",c,second,53.4,49.0,57.6,2.8,0.8,4.9
+"FR, syllables",b,main,-10.9,-17.2,-4.5,4.8,0.8,8.9
+"FR, syllables",b,second,-10.9,-17.2,-4.5,6.5,3.4,9.7
+"FR, syllables",c,main,14.3,11.2,17.5,-1.8,-3.5,-0.3
+"FR, syllables",c,second,14.3,11.2,17.5,0.5,-0.6,1.5

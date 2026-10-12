@@ -1,11 +1,11 @@
-# drawn by isochron.figures (code last changed in commit 518edb7)
+# drawn by isochron.figures (code last changed in commit a30e05e)
 kind,name,label,to
 box,deployment,make run-offline: no network (network_mode: none),
 box,app,app container (CPU),
 box,llm,"llama-server container: Apertus 1.5, GGUF mounted read-only",
 step,input,line + target level,target
 step,target,T = level × the line's syllables (eSpeak NG),llm
-step,llm,Apertus 1.5: 4 candidates per prompt,checks
+step,llm,Apertus 1.5: asked for 4 candidates per prompt,checks
 step,checks,length within ±10 % of T; meaning both ways (NLI); language (py3langid),decision
 step,decision,best candidate passes? if not and rounds are left: revision prompt with the feedback (at most 2),llm|output
 step,output,the best candidate over all rounds,
