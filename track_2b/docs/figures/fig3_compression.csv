@@ -1,0 +1,20 @@
+# drawn by isochron.figures (code last changed in commit 518edb7)
+# input results/step2_test.md: blob 691b32ab5eb1, last changed in commit 5b47ebd (2026-10-11T16:01:16+02:00)
+# date, model, quantisation, endpoint, seeds and n of each run: see the input's header
+lang,level,loop,outputs,fit_and_complete_pct,ci_low,ci_high
+de,90,without,1041,8.5,6.3,10.8
+de,90,with,1041,65.1,61.4,68.8
+de,80,without,1041,13.0,10.5,15.7
+de,80,with,1041,41.5,37.7,45.3
+de,70,without,1041,16.1,13.4,19.2
+de,70,with,1041,26.3,22.9,30.0
+de,60,without,1041,19.1,15.9,22.4
+de,60,with,1041,20.7,17.4,24.1
+fr,90,without,996,6.5,4.7,8.5
+fr,90,with,996,68.3,64.7,71.8
+fr,80,without,996,14.6,11.8,17.4
+fr,80,with,996,47.5,43.5,51.5
+fr,70,without,996,21.7,18.4,25.0
+fr,70,with,996,36.1,32.2,40.2
+fr,60,without,996,19.3,16.2,22.5
+fr,60,with,996,24.7,21.2,28.3
