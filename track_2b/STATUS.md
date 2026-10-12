@@ -1,5 +1,32 @@
 # Status
 
+## The loop round by round (2026-10-12; from the logged runs, no new generation)
+
+- **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and
+  fit & complete after round 0, 1 and 2.
+  - "After round k" is the loop's best candidate so far, the output if the loop stopped there.
+  - Results: `results/step2_test_rounds.md` and `.csv`; figure 4 in the report.
+  - Round 2 and the round-0 baseline are checked against `results/step2_test.md`, and match exactly.
+- **What the logs cannot give exactly.** The judge scored only two texts per item: the closest round-0
+  candidate and the final output.
+  - After rounds 0 and 1, 357–566 of the loop's best candidates (German) were never scored.
+  - Fit & complete there is a range: unscored counts as incomplete, or as complete if it fits. The range is
+    at most 0.7 points wide.
+  - Fit is exact, because every candidate's length and language are logged.
+- **Numbers, all levels pooled:**
+
+  | | Fit after rounds 0 / 1 / 2 | Fit & complete after rounds 0 / 1 / 2 |
+  |---|---|---|
+  | German | 31.6 / 56.3 / 64.7 % | 13.7 / 34.3–35.0 / 38.4 % |
+  | French | 31.6 / 58.1 / 67.6 % | 15.2 / 38.6–39.0 / 44.2 % |
+
+- **Acceptance.** The loop accepted 39 % (German) and 42 % (French) of the open items in round 1, but only
+  20 % and 23 % in round 2. At level 60 the rate did not fall (German 12 % → 17 %).
+- **Third round, an estimate, not a measurement:** at round 2's rate it would add about +2.8 to +3.3 points
+  of fit & complete in German and +4.0 to +4.2 in French. The report's one sentence: likely little help.
+- **Figures renumbered** to follow the report: 4 is the rounds, 5 step 4, 6 the judges (not inserted).
+  The report is 5 pages (A4, two columns).
+
 ## Figures and report layout (2026-10-12)
 
 - **`make figures`** draws 5 figures with matplotlib from committed results files only.
@@ -16,7 +43,7 @@
   the figures replace are gone; every number is unchanged.
   - Measured with `uv run scripts/report_pdf.py` (A4, two columns, 9.5 pt; headless Chrome): **4 pages**.
   - As one column with 8.9 cm figures: 5 pages.
-  - Figure 5 (judges per control type) is in `docs/figures/`, linked from the report but not inserted.
+  - The judges per control type (now figure 6) are in `docs/figures/`, linked from the report but not inserted.
 - **A test** redraws the figures and checks that the committed CSVs hold the same numbers, so a stale
   figure fails the test suite.
 

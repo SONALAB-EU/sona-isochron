@@ -651,3 +651,7 @@ used.
   method and the metrics are unchanged.
 - 2026-10-11, v2.15: step 4 on dev (exploratory) is recorded. No step 4
   test run is planned yet.
+- 2026-10-12, v2.16: analysis only, with no new generation or judging. Fit and fit & complete after each
+  round of the loop are computed from the logged test runs (`isochron.rounds`,
+  `results/step2_test_rounds.md`). Where the judge never scored a round's best candidate, fit & complete
+  is given as a low–high range. The method and the metrics are unchanged.

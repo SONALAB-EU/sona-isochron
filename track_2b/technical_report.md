@@ -27,7 +27,7 @@ Results on FLEURS test, with Apertus 1.5 8B in BF16 and a separate evaluation ju
   French. The paired gains are +24.3 and +28.6 points.
 - The gain is largest for small cuts and shrinks as the cut deepens (Figure 2).
 - When translating from English to a length budget (dev, exploratory), translating first and then
-  shortening with the loop fits most often (Figure 4).
+  shortening with the loop fits most often (Figure 5).
 
 ## 2. Architecture
 
@@ -157,6 +157,17 @@ sentences.*
 *Figure 3. Achieved ÷ target syllables of every German test output, without the loop (4,136 with an
 answer) and with it (4,164). Grey: the ±10 % band that fits.*
 
+![Figure 4](docs/figures/fig4_rounds.png)
+
+*Figure 4. Fit and fit & complete after each round of the loop, by target level, computed from the logged
+test runs (`results/step2_test_rounds.md`). Round 0 is the loop's own pick before any revision, which
+prefers meaning over length. A round's best candidate that the judge never scored counts as incomplete;
+counting it as complete adds at most 0.7 points.*
+
+A third round would likely help little: round 2 added only about 4 points of fit & complete in German and
+5 in French, after about 21 and 24 in round 1, and accepted 20–23 % of the items still open against 39–42 %
+in round 1, so even at round 2's rate a third round would add about 3 and 4 points (an estimate; Figure 4).
+
 **Checking the measures.**
 - **Syllables.** eSpeak NG matched hand counts on 46 of 50 items. The cluster's build counts all 963 German
   and French references exactly as the Mac does.
@@ -167,19 +178,19 @@ answer) and with it (4,164). Grey: the ±10 % band that fits.*
   - Qwen3-8B Q4: 78 % mean (5 of 14 and 8 of 13).
   - A rule fixed before the result made Qwen3-14B the main judge. The difference is within noise (paired
     McNemar, p = 0.34).
-  - Per control type: `docs/figures/fig5_judges.png`.
+  - Per control type: `docs/figures/fig6_judges.png`.
 - **HPC smoke test** (10 dev items): fit with the loop was 7 of 10, against 6 of 10 on Q4.
 
-![Figure 4](docs/figures/fig4_step4.png)
+![Figure 5](docs/figures/fig5_step4.png)
 
-*Figure 4. Step 4 on dev (exploratory): fit within ±10 % of a character or syllable budget. The three
+*Figure 5. Step 4 on dev (exploratory): fit within ±10 % of a character or syllable budget. The three
 systems are plain translation, one step to the budget (no loop), and translation shortened with our
 loop. 97 German and 90 French sentences × 3 seeds; 95 % intervals. The French syllable budget is
 1.16 × the English syllables, so plain French translation often meets it already.*
 
 **Step 4: translate to a length budget** (`results/hpc_8b_step4_dev.md`).
 - Translating first and then shortening with the loop fits most often in all four settings: 69–80 %
-  (Figure 4).
+  (Figure 5).
 - Its meaning, checked by the NLI against the human reference, is about level with plain translation:
   79–82 % against 79 % in German, and 75–79 % against 73 % in French.
 - In German with the syllable budget, one step and ours are within noise.
