@@ -1,7 +1,7 @@
 # Step 4 on test: a second meaning check (post-hoc, added after test outputs existed)
 
-- Date: 2026-10-12 15:25 UTC
-- Git commit (report): bec2a8cb81548e3f40b0b8a773e1044278c2e003; scores: f0e566c3136cb51f87b906ccaccf228d85dd1d36 (synced copy, recorded by hpc/sync.sh) (job 2647862, NVIDIA H100 80GB HBM3, torch 2.14.1+cu130, transformers 5.18.0); runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 15:56 UTC
+- Git commit (report): 5e86ee39f9b8463f590e48f8792d9a5857d19eaa; scores: f0e566c3136cb51f87b906ccaccf228d85dd1d36 (synced copy, recorded by hpc/sync.sh) (job 2647862, NVIDIA H100 80GB HBM3, torch 2.14.1+cu130, transformers 5.18.0); runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Outputs scored: apertus-v1.5-8b-bf16, quantisation BF16; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1; seeds [0, 1, 2]; TTS: none
 - Evaluation NLI (the loop's own model): MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, mps, float32, argmax label
 - Second NLI: MoritzLaurer/bge-m3-zeroshot-v2.0-c @ 705510d, cuda, float32, argmax label. Licence: MIT (model card metadata). Base: BAAI/bge-m3-retromae (XLM-RoBERTa-large architecture; MIT). Training data: English only: MNLI and FEVER-NLI, plus synthetic zero-shot data written by Mixtral-8x7B-Instruct; no XNLI, ANLI, WANLI or LingNLI and no machine translations. Shared with the evaluation NLI: MNLI and FEVER-NLI: many of the loop model's German and French training pairs are machine translations of English pairs in this model's data; the same author; XLM-R and mDeBERTa-v3 were both pretrained on CC100. It was chosen before any of its scores on step 4's outputs or the controls existed.
@@ -41,24 +41,27 @@ least as often (deletions in German and French: 39 of 40, against 33). But in Ge
 - Ours still keeps the meaning more often than one step to the budget in three settings under both
   models. German with syllables is within noise under the second.
 
-**Is the difference the loop choosing with the evaluation NLI? Mostly not.** How much more each system
-gains from the evaluation NLI than from the second (paired, points):
+**Is the difference the loop choosing with the evaluation NLI? In part, at least in one setting.** How
+much more each system gains from the evaluation NLI than from the second (paired, points):
 
-| EN →, budget | (c) − (a) | (b) − (a): no NLI chooses (b) | (c) − (b): what selection could add |
-|--------------|-----------|-------------------------------|-------------------------------------|
-| DE, characters | +4.6 [+1.8, +7.5] | +4.5 [+0.2, +8.9] | +0.1 [−4.0, +4.1] |
-| DE, syllables | +7.3 [+3.8, +11.0] | +5.1 [+0.9, +9.3] | +2.2 [−1.9, +6.4] |
-| FR, characters | +3.8 [+0.8, +6.8] | +2.7 [−1.6, +7.1] | +1.1 [−2.4, +4.6] |
-| FR, syllables | +2.3 [+0.6, +4.2] | +1.7 [−2.4, +6.0] | +0.6 [−3.5, +4.7] |
+| EN →, budget | All lines: (c) − (a) | (b) − (a): no NLI chooses (b) | (c) − (b) | Lines the loop shortened: (c) − (b) |
+|--------------|----------------------|-------------------------------|-----------|-------------------------------------|
+| DE, characters | +4.6 [+1.8, +7.5] | +4.5 [+0.2, +8.9] | +0.1 [−4.0, +4.1] | +2.0 [−2.6, +6.6] (743 lines) |
+| DE, syllables | +7.3 [+3.8, +11.0] | +5.1 [+0.9, +9.3] | +2.2 [−1.9, +6.4] | +6.0 [+1.3, +10.7] (823) |
+| FR, characters | +3.8 [+0.8, +6.8] | +2.7 [−1.6, +7.1] | +1.1 [−2.4, +4.6] | +1.4 [−2.5, +5.2] (739) |
+| FR, syllables | +2.3 [+0.6, +4.2] | +1.7 [−2.4, +6.0] | +0.6 [−3.5, +4.7] | +5.9 [−2.5, +14.2] (204) |
 
-- (b) shortens without any NLI, yet it shows almost the same gap as (c). What (c) adds beyond (b) is +0.1
-  to +2.2 points, and every interval includes 0.
-- So the two models mainly disagree about shortened lines in general. The second is more sensitive to
-  omissions, and it rates shortened lines further below plain translations than the evaluation NLI does.
-  These data cannot show a selection effect of the loop, nor rule out a small one.
-- What holds: the claim that ours keeps the meaning as well as plain translation rests on the pre-registered
-  NLI. An independent NLI finds that shortening costs 2.8–5.3 points of meaning in three settings. The
-  native-speaker check (`docs/native_check.md`) compares (a) and (c) directly.
+- (b) shortens without any NLI, yet it shows a similar gap over all lines. So part of the difference is
+  how the two models judge shortened lines: the second is more sensitive to omissions.
+- Over all lines, what (c) adds beyond (b) is +0.1 to +2.2 points, every interval including 0. But (c)
+  is the plain translation itself on 21–79 % of lines, which dilutes this. On the lines the loop
+  shortened, it is +1.4 to +6.0 points, and in German with syllables +6.0 [+1.3, +10.7] excludes 0.
+- So the loop's selection with the evaluation NLI probably inflates (c)'s meaning score in German with
+  syllables. Elsewhere it can be neither shown nor ruled out.
+- What holds: ours keeps the meaning as well as plain translation only by the pre-registered NLI, which is
+  the loop's own. By an independent NLI, shortening costs 2.8–5.3 points of meaning in three settings.
+  The native-speaker sheet (`docs/native_check.md`) compares (a) and (c) directly, but with 25 sources
+  per system it can show only large differences.
 
 **Agreement between the two models** on kept vs reference, over usable outputs: 78–84 %, Cohen's kappa
 0.31–0.43.
@@ -66,8 +69,11 @@ gains from the evaluation NLI than from the second (paired, points):
 **The evaluation NLI's catch rates** on the planted controls, run again in this job, are identical to the
 NLI column of every validation report (22 of 22 cells).
 
-**Checked independently.** A separate script, written from scratch, reproduced every number above within
-0.05 point. The placebo comparison with (b) came from that check.
+**Checked independently.** A separate script, written from scratch, reproduced every all-lines number
+above within 0.05 point. The placebo comparison with (b), and its restriction to the lines the loop
+shortened, came from that check and from a review of the report; the report tool now prints both. The
+reviewers' versions of the shortened-lines comparison, with slightly different filters, gave similar
+values (German with syllables: +5.9 and +6.1, both excluding 0).
 
 Kept: the NLI finds entailment in both directions. A missing or wrong-language output counts as not kept.
 
@@ -143,6 +149,8 @@ The judge's column is copied from `results/judge_validation_hard_xl_v3_qwen3-14b
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +4.6 [+1.8, +7.5]; (b) − (a) +4.5 [+0.2, +8.9]; (c) − (b) +0.1 [-4.0, +4.1]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
+The same on the 743 lines that the loop shortened (elsewhere (c) is the plain translation itself): (c) − (a) +6.5 [+2.6, +10.6]; (b) − (a) +4.4 [-0.5, +9.4]; (c) − (b) +2.0 [-2.6, +6.6].
+
 ### EN → DE, isosyllabic budget (syllables)
 
 | System | Outputs | Kept vs reference: evaluation NLI | Kept vs reference: second NLI | Agreement (κ) | Kept vs source: evaluation NLI | Kept vs source: second NLI |
@@ -160,6 +168,8 @@ How much more a system gains from the evaluation NLI than from the second, on ke
 | (c) − (b) | +4.8 [+1.1, +8.5] | +2.6 [-0.7, +5.8] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +7.3 [+3.8, +11.0]; (b) − (a) +5.1 [+0.9, +9.3]; (c) − (b) +2.2 [-1.9, +6.4]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
+
+The same on the 823 lines that the loop shortened (elsewhere (c) is the plain translation itself): (c) − (a) +9.2 [+4.9, +13.8]; (b) − (a) +3.3 [-1.3, +8.0]; (c) − (b) +6.0 [+1.3, +10.7].
 
 ### EN → FR, isometric budget (chars)
 
@@ -179,6 +189,8 @@ How much more a system gains from the evaluation NLI than from the second, on ke
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +3.8 [+0.8, +6.8]; (b) − (a) +2.7 [-1.6, +7.1]; (c) − (b) +1.1 [-2.4, +4.6]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
+The same on the 739 lines that the loop shortened (elsewhere (c) is the plain translation itself): (c) − (a) +5.1 [+1.1, +9.2]; (b) − (a) +3.8 [-1.2, +8.7]; (c) − (b) +1.4 [-2.5, +5.2].
+
 ### EN → FR, isosyllabic budget (syllables)
 
 | System | Outputs | Kept vs reference: evaluation NLI | Kept vs reference: second NLI | Agreement (κ) | Kept vs source: evaluation NLI | Kept vs source: second NLI |
@@ -196,4 +208,6 @@ How much more a system gains from the evaluation NLI than from the second, on ke
 | (c) − (b) | +6.6 [+2.7, +10.6] | +6.0 [+2.8, +9.3] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +2.3 [+0.6, +4.2]; (b) − (a) +1.7 [-2.4, +6.0]; (c) − (b) +0.6 [-3.5, +4.7]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
+
+The same on the 204 lines that the loop shortened (elsewhere (c) is the plain translation itself): (c) − (a) +11.3 [+3.0, +20.0]; (b) − (a) +5.4 [-3.9, +15.0]; (c) − (b) +5.9 [-2.5, +14.2].
 
