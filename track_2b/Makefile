@@ -1,11 +1,13 @@
-.PHONY: run run-offline docker-check
+.PHONY: run run-offline figures docker-check
 
 # make run          Our method (prompt v1 with the repair loop) on data/sample_input.jsonl, in Docker, against
 #                   the LLM named by LLM_NAME, LLM_BASE_URL and LLM_API_KEY (from the environment, or from .env:
 #                   see .env.example). Writes output/results.jsonl and output/summary.md.
 # make run-offline  The same with no network at all: llama-server runs a local GGUF next to the app.
 #                   make run-offline GGUF=/path/to/model.gguf [LLM_QUANTISATION=Q4_K_M] [OFFLINE_NAME=name]
-# README.md explains both, and how to run the method without Docker.
+# make figures      The report's figures (docs/figures/*.pdf, *.png and the CSV behind each), drawn with
+#                   matplotlib from committed results files only. Needs uv, not Docker.
+# README.md explains all three, and how to run the method without Docker.
 
 SHELL := /bin/bash
 COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
@@ -26,6 +28,9 @@ run-offline: docker-check
 	@export GGUF="$(abspath $(GGUF))" LLM_NAME="$(OFFLINE_NAME)" LLM_API_KEY="$$(od -An -tx1 -N16 /dev/urandom | tr -d ' \n')"; \
 	docker compose -f docker-compose.offline.yml up --build --abort-on-container-exit --exit-code-from app; status=$$?; \
 	docker compose -f docker-compose.offline.yml down; exit $$status
+
+figures:
+	uv run --group figures python -m isochron.figures --out docs/figures
 
 docker-check:
 	@command -v docker > /dev/null || { echo "make run needs Docker with Compose v2 (docker compose). README.md also shows how to run without Docker."; exit 1; }
