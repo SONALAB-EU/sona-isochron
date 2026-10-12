@@ -1,7 +1,7 @@
 # Step 4 on test: translation to a length budget
 
-- Date: 2026-10-12 13:44 UTC
-- Git commit (report): 4ddd5dac4998ce60135884725c5354ad5cd786a8; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 14:07 UTC
+- Git commit (report): 25c2d705d8fa2f918018271047032b27a8cc379c; runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Model: apertus-v1.5-8b-bf16, quantisation BF16, backend vLLM 0.23.1rc1.dev1029+ga601a9d99; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1
 - Generation: {"temperature": 0.7, "top_p": 0.95, "top_k": 0, "min_p": 0.0, "max_tokens": 1024, "chat_template_kwargs": {"enable_thinking": false}}; seeds [0, 1, 2] ((a), (b): item seed; (c): item seed + 1000 × round)
 - Prompts: `translate_plain_v1` (5fe6dd58bf7e), `translate_budget_chars_v1` (e81efebd7d4f), `translate_budget_syllables_v1` (a3ffa4ea51a7), `shorten_chars_v1` (004890c41f25), `shorten_syllables_v1` (fe4fbfdd800d), `revise_chars_v1` (62a308e266ab), `revise_v1` (ab0593b9716e)
@@ -29,7 +29,7 @@ These are the final numbers for step 4 on FLEURS test.
 Fit and fit & complete in %, for (a) plain translation / (b) one step to the budget / (c) translate,
 then shorten (ours). Fit & complete comes from the judge, and is an upper bound (below):
 
-| Direction, budget | Fit ±10 % | Fit & complete | (c) − (b), paired, in points: fit; fit & complete |
+| Direction, budget | Fit ±10 % | Fit & complete | (c) − (b), paired (post-hoc, added after test outputs existed), in points: fit; fit & complete |
 |-------------------|-----------|----------------|---------------------------------------------------|
 | EN → DE, characters | 27.2 / 59.4 / **80.2** | 26.8 / 53.7 / **70.5** | +20.8 [15.8, 25.9]; +16.8 [11.4, 22.2] |
 | EN → DE, syllables | 19.6 / **71.6** / **70.3** | 19.5 / **61.5** / 56.9 | −1.2 [−6.0, +3.6]; −4.6 [−9.4, +0.2] |
@@ -38,13 +38,13 @@ then shorten (ours). Fit & complete comes from the judge, and is an upper bound 
 
 - **Translating first and then shortening fits most often in three of the four settings.** It beats one
   step to the budget by 17 to 25 points of fit.
-- **German with the syllable budget is a tie on fit** (−1.2 points [−6.0, +3.6]). There the two meaning
-  checks disagree:
+- **German with the syllable budget is a tie on fit** (−1.2 points [−6.0, +3.6], paired, post-hoc, added after test outputs existed).
+  There the two meaning checks disagree:
   - the judge gives one step 4.6 points more fit & complete (interval [−9.4, +0.2]);
   - the NLI against the reference finds that (c) keeps the meaning more often (+4.8 points [+1.1, +8.5]).
 - **Meaning, by the main check** (NLI against the human reference):
-  - (c) keeps it as often as plain translation: +1.0 to +2.0 points. Only French with syllables
-    excludes 0 (+1.8 [+0.3, +3.5]).
+  - (c) keeps it as often as plain translation: +1.0 to +2.0 points. In the paired intervals (post-hoc, added after test outputs existed),
+    only French with syllables excludes 0 (+1.8 [+0.3, +3.5]).
   - One step to the budget keeps it less often: (c) − (b) is +4.8 to +11.0 points in all four settings.
 - **Plain translation rarely meets the budget,** except French with syllables (55.6 %).
   - That budget is 1.16 × the English syllables, about the length of a French translation.
@@ -102,7 +102,7 @@ often plain translation already meets the budget.
 | (b) one step to the budget | 1041 | 59.4 [55.1, 63.5] | 53.7 [49.6, 57.8] | 91.6 [89.7, 93.3] | 0.0 % | 0 |
 | (c) translate, then shorten | 1041 | 80.2 [77.1, 83.2] | 70.5 [66.8, 74.2] | 93.8 [92.1, 95.4] | 0.0 % | 0 |
 
-### EN → DE, isometric budget (chars): paired differences (percentage points)
+### EN → DE, isometric budget (chars): paired differences (post-hoc, added after test outputs existed; percentage points)
 
 | Difference | Fit ±10 % | Fit & complete | Kept vs reference |
 |------------|-----------|----------------|-------------------|
@@ -125,7 +125,7 @@ often plain translation already meets the budget.
 | (b) one step to the budget | 1041 | 71.6 [67.7, 75.2] | 61.5 [57.4, 65.4] | 92.5 [90.9, 93.9] | 0.0 % | 0 |
 | (c) translate, then shorten | 1041 | 70.3 [66.9, 73.8] | 56.9 [52.9, 60.7] | 90.4 [88.5, 92.1] | 0.0 % | 0 |
 
-### EN → DE, isosyllabic budget (syllables): paired differences (percentage points)
+### EN → DE, isosyllabic budget (syllables): paired differences (post-hoc, added after test outputs existed; percentage points)
 
 | Difference | Fit ±10 % | Fit & complete | Kept vs reference |
 |------------|-----------|----------------|-------------------|
@@ -148,7 +148,7 @@ often plain translation already meets the budget.
 | (b) one step to the budget | 996 | 59.8 [55.5, 64.1] | 53.0 [48.7, 57.3] | 85.0 [82.4, 87.6] | 0.0 % | 0 |
 | (c) translate, then shorten | 996 | 77.3 [74.0, 80.6] | 68.6 [64.9, 72.2] | 92.0 [90.0, 93.8] | 0.0 % | 0 |
 
-### EN → FR, isometric budget (chars): paired differences (percentage points)
+### EN → FR, isometric budget (chars): paired differences (post-hoc, added after test outputs existed; percentage points)
 
 | Difference | Fit ±10 % | Fit & complete | Kept vs reference |
 |------------|-----------|----------------|-------------------|
@@ -171,7 +171,7 @@ often plain translation already meets the budget.
 | (b) one step to the budget | 996 | 44.7 [40.1, 49.3] | 41.9 [37.4, 46.4] | 94.2 [92.6, 95.7] | 0.1 % | 0 |
 | (c) translate, then shorten | 996 | 69.9 [65.7, 74.1] | 68.1 [63.7, 72.4] | 97.7 [96.3, 98.9] | 0.0 % | 0 |
 
-### EN → FR, isosyllabic budget (syllables): paired differences (percentage points)
+### EN → FR, isosyllabic budget (syllables): paired differences (post-hoc, added after test outputs existed; percentage points)
 
 | Difference | Fit ±10 % | Fit & complete | Kept vs reference |
 |------------|-----------|----------------|-------------------|
