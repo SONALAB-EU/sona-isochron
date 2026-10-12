@@ -1,4 +1,4 @@
-# drawn by isochron.figures (code last changed in commit a30e05e)
+# drawn by isochron.figures (code last changed in commit 7bd53bd)
 # input results/step4_test_lengths.csv: blob 809a25cf45c5, last changed in commit 618c460 (2026-10-12T18:55:01+02:00)
 # date, model, quantisation, endpoint, seeds and n of each run: see the input's header
 lang,ruler,system,bin_from,bin_to,outputs,pct_of_all_outputs

@@ -1,0 +1,23 @@
+# drawn by isochron.figures (code last changed in commit 7bd53bd)
+# input results/judge_validation_hard_v3_all.md: blob 21f8fbe000cf, last changed in commit 8cb53a8 (2026-10-10T16:14:34+02:00)
+# input results/judge_validation_hard_v3_qwen3-14b_hpc_8b.md: blob faef069cb740, last changed in commit 934a808 (2026-10-10T20:35:58+02:00)
+# date, model, quantisation, endpoint, seeds and n of each run: see the input's header
+control,scorer,correct,pairs,pct
+identity,NLI,55,60,91.7
+identity,Qwen3-8B Q4_K_M,60,60,100.0
+identity,Qwen3-14B BF16,60,60,100.0
+same_meaning,NLI,18,20,90.0
+same_meaning,Qwen3-8B Q4_K_M,17,20,85.0
+same_meaning,Qwen3-14B BF16,20,20,100.0
+qualifier_changed,NLI,3,14,21.4
+qualifier_changed,Qwen3-8B Q4_K_M,5,14,35.7
+qualifier_changed,Qwen3-14B BF16,7,14,50.0
+modal_changed,NLI,10,13,76.9
+modal_changed,Qwen3-8B Q4_K_M,8,13,61.5
+modal_changed,Qwen3-14B BF16,10,13,76.9
+number_changed,NLI,12,13,92.3
+number_changed,Qwen3-8B Q4_K_M,13,13,100.0
+number_changed,Qwen3-14B BF16,13,13,100.0
+fact_inserted,NLI,20,20,100.0
+fact_inserted,Qwen3-8B Q4_K_M,17,20,85.0
+fact_inserted,Qwen3-14B BF16,16,20,80.0
