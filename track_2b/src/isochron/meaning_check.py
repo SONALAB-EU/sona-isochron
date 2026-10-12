@@ -236,7 +236,7 @@ def diff_table(rows: list[dict[str, Any]], title: str) -> list[str]:
     return out
 
 
-def report(runs: list[Path], scores: Path, cache: Path, out: Path) -> None:
+def report(runs: list[Path], scores: Path, cache: Path, out: Path, notes: Path | None = None) -> None:
     cfgs, rows = step4_rows(runs)
     describe1, first = read_cache(cache)
     describe2, second = read_cache(scores / "step4_cache.jsonl")
@@ -265,9 +265,13 @@ def report(runs: list[Path], scores: Path, cache: Path, out: Path) -> None:
         f"- Evaluation NLI (the loop's own model): {describe1}",
         f"- Second NLI: {describe2}. Licence: {SECOND['licence']}. Base: {SECOND['base']}. Training data: "
         f"{SECOND['data']}. Shared with the evaluation NLI: {SECOND['overlap']}.",
-        "- Both run locally (no endpoint). Sentences: " + json.dumps({k: len(v) for k, v in sorted(sentences.items())})
+        f"- Where each score comes from: the controls, both models on the job's GPU; step 4, the evaluation NLI from "
+        f"isochron.step4_report's cache (`{cache.name}`) and the second NLI from the job. Both run locally (no "
+        "endpoint).",
+        "- Sentences: " + json.dumps({k: len(v) for k, v in sorted(sentences.items())})
         + f"; split {cfg['split']}. 95 % intervals: bootstrap over sentences, {N_BOOT} resamples, seed {BOOT_SEED}.",
         "",
+        *([notes.read_text(encoding="utf-8").rstrip(), ""] if notes else []),
         "Kept: the NLI finds entailment in both directions. A missing or wrong-language output counts as not kept.",
         "",
         "## Planted controls",
@@ -302,13 +306,14 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--scores", type=Path, required=True)
     r.add_argument("--cache", type=Path, required=True, help="the evaluation NLI's cache (isochron.step4_report)")
     r.add_argument("--out", type=Path, default=Path("results/step4_test_nli2.md"))
+    r.add_argument("--notes", type=Path, help="hand-written summary placed before the tables")
     args = ap.parse_args(argv)
     if args.cmd == "pairs":
         write_pairs(args.runs, args.out)
     elif args.cmd == "score":
         score(args.pairs, args.out, args.device)
     else:
-        report(args.runs, args.scores, args.cache, args.out)
+        report(args.runs, args.scores, args.cache, args.out, args.notes)
 
 
 if __name__ == "__main__":
