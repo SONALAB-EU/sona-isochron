@@ -1,7 +1,7 @@
 # Step 4 on test: a second meaning check (post-hoc, added after test outputs existed)
 
-- Date: 2026-10-12 15:56 UTC
-- Git commit (report): 5e86ee39f9b8463f590e48f8792d9a5857d19eaa; scores: f0e566c3136cb51f87b906ccaccf228d85dd1d36 (synced copy, recorded by hpc/sync.sh) (job 2647862, NVIDIA H100 80GB HBM3, torch 2.14.1+cu130, transformers 5.18.0); runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
+- Date: 2026-10-12 16:55 UTC
+- Git commit (report): 618c4600615e88e41ceb61fdf8e88b9cc097f612; scores: f0e566c3136cb51f87b906ccaccf228d85dd1d36 (synced copy, recorded by hpc/sync.sh) (job 2647862, NVIDIA H100 80GB HBM3, torch 2.14.1+cu130, transformers 5.18.0); runs: `hpc_8b_step4_test` (7b22d93 (synced copy, recorded by hpc/sync.sh)), `hpc_8b_step4_test_fr` (7b22d93 (synced copy, recorded by hpc/sync.sh))
 - Outputs scored: apertus-v1.5-8b-bf16, quantisation BF16; endpoint de http://127.0.0.1:46167/v1, fr http://127.0.0.1:41569/v1; seeds [0, 1, 2]; TTS: none
 - Evaluation NLI (the loop's own model): MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 @ b5113eb, mps, float32, argmax label
 - Second NLI: MoritzLaurer/bge-m3-zeroshot-v2.0-c @ 705510d, cuda, float32, argmax label. Licence: MIT (model card metadata). Base: BAAI/bge-m3-retromae (XLM-RoBERTa-large architecture; MIT). Training data: English only: MNLI and FEVER-NLI, plus synthetic zero-shot data written by Mixtral-8x7B-Instruct; no XNLI, ANLI, WANLI or LingNLI and no machine translations. Shared with the evaluation NLI: MNLI and FEVER-NLI: many of the loop model's German and French training pairs are machine translations of English pairs in this model's data; the same author; XLM-R and mDeBERTa-v3 were both pretrained on CC100. It was chosen before any of its scores on step 4's outputs or the controls existed.
@@ -146,6 +146,7 @@ The judge's column is copied from `results/judge_validation_hard_xl_v3_qwen3-14b
 |------------|-----------------------------------|-------------------------------|
 | (c) − (a) | +1.1 [-1.4, +3.6] | -3.6 [-5.3, -1.8] |
 | (c) − (b) | +6.5 [+2.8, +10.4] | +6.4 [+2.9, +9.9] |
+| (b) − (a) | -5.5 [-9.6, -1.3] | -10.0 [-13.4, -6.5] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +4.6 [+1.8, +7.5]; (b) − (a) +4.5 [+0.2, +8.9]; (c) − (b) +0.1 [-4.0, +4.1]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
@@ -166,6 +167,7 @@ The same on the 743 lines that the loop shortened (elsewhere (c) is the plain tr
 |------------|-----------------------------------|-------------------------------|
 | (c) − (a) | +2.0 [-0.7, +4.8] | -5.3 [-7.7, -3.0] |
 | (c) − (b) | +4.8 [+1.1, +8.5] | +2.6 [-0.7, +5.8] |
+| (b) − (a) | -2.8 [-6.5, +1.2] | -7.9 [-11.0, -4.7] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +7.3 [+3.8, +11.0]; (b) − (a) +5.1 [+0.9, +9.3]; (c) − (b) +2.2 [-1.9, +6.4]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
@@ -186,6 +188,7 @@ The same on the 823 lines that the loop shortened (elsewhere (c) is the plain tr
 |------------|-----------------------------------|-------------------------------|
 | (c) − (a) | +1.0 [-2.0, +4.1] | -2.8 [-4.9, -0.8] |
 | (c) − (b) | +11.0 [+7.3, +14.9] | +9.9 [+6.4, +13.5] |
+| (b) − (a) | -10.0 [-14.6, -5.5] | -12.8 [-16.5, -9.1] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +3.8 [+0.8, +6.8]; (b) − (a) +2.7 [-1.6, +7.1]; (c) − (b) +1.1 [-2.4, +4.6]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
@@ -206,6 +209,7 @@ The same on the 739 lines that the loop shortened (elsewhere (c) is the plain tr
 |------------|-----------------------------------|-------------------------------|
 | (c) − (a) | +1.8 [+0.3, +3.5] | -0.5 [-1.5, +0.6] |
 | (c) − (b) | +6.6 [+2.7, +10.6] | +6.0 [+2.8, +9.3] |
+| (b) − (a) | -4.8 [-8.9, -0.8] | -6.5 [-9.7, -3.4] |
 
 How much more a system gains from the evaluation NLI than from the second, on kept vs reference (evaluation minus second NLI, paired, points): (c) − (a) +2.3 [+0.6, +4.2]; (b) − (a) +1.7 [-2.4, +6.0]; (c) − (b) +0.6 [-3.5, +4.7]. No NLI chooses (b)'s output, so the part that selection by the evaluation NLI inside the loop could add is (c) − (b).
 
