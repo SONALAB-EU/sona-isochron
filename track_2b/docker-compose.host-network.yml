@@ -1,0 +1,7 @@
+# Added by `make run` on a Linux host, and only when LLM_BASE_URL points at this host's loopback interface
+# (localhost, 127.x.x.x, [::1] or 0.0.0.0): the app then shares the host's network, so that address reaches the
+# server on the host unchanged. Docker Desktop and Colima run the engine in a VM, where the host's network is
+# the VM's; there `make run` uses host.docker.internal instead (Makefile).
+services:
+  app:
+    network_mode: host

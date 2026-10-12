@@ -4,7 +4,6 @@
 !pyproject.toml
 !uv.lock
 !.python-version
-!README.md
 !src/
 !data/sample_input.jsonl
 **/__pycache__

@@ -67,7 +67,9 @@ WORKDIR /app
 # Every package of uv.lock, hash-checked, except torch and the CUDA packages only its CUDA build needs; then
 # torch itself at the locked version as the CPU build: one hash for the amd64 wheel, one for the arm64 wheel.
 # The command substitution is unquoted on purpose: it gives one --no-emit-package option per package.
-COPY pyproject.toml uv.lock .python-version README.md ./
+# README.md stays out of the image: uv export --frozen does not need it, and an edit to it would otherwise
+# download every package again
+COPY pyproject.toml uv.lock .python-version ./
 # hadolint ignore=SC2046
 RUN uv venv --python /usr/local/bin/python3 .venv \
     && uv export --frozen --no-dev --no-emit-project \
