@@ -32,6 +32,34 @@ the report. No workflows; commit locally only.
   - If any fails, I stop at the gate (`hpc/gates/step4_test.go.stop`), fix the cause and retry, at most
     twice.
 
+- **11:39. The sanity check is clean, so I opened the gate at 11:39:56** (job 2647418, 11:25–11:38, about 0.22
+  H100-hours).
+  1. Pass: generate, validate and judge, with no traceback.
+  2. Pass: 10 items, 50 outputs, 0 missing or in the wrong language.
+  3. Pass: 0 of 50 judge verdicts invalid.
+  4. Pass: both cross-lingual validation reports are written.
+  5. Pass: `isochron.step4_report` scores the run on the Mac, with judge tables.
+  6. Pass: the outputs are German and French translations of their sources.
+     - One French output has tabs between its words, and some are ungrammatical. That is model quality,
+       not the setup.
+- **The cross-lingual judge validation** (`results/judge_validation_{nli,hard}_xl_v3_qwen3-14b_hpc_8b.md`)
+  is the main new finding.
+  - Its identity pairs are 100 % (60/60 hard, 40/40 NLI suite), so the rule fixed beforehand does not flag
+    the judge. NLI suite mean: 94 %.
+  - But across languages it misses subtle changes far more often than within German:
+
+    | Hard control | Cross-lingual | Same language |
+    |--------------|--------------:|--------------:|
+    | Qualifier changes caught | 0 of 14 | 7 of 14 |
+    | Modal changes caught | 4 of 13 | 10 of 13 |
+    | Inserted facts caught | 5 of 20 | 16 of 20 |
+    | Number changes caught | 12 of 13 | 13 of 13 |
+
+  - So step 4's fact recall and fit & complete are upper bounds, and its added-fact rate is heavily
+    undercounted. The report must say so next to the numbers.
+  - The main step 4 meaning check, NLI against the human reference, is monolingual and unaffected.
+- **GPU:** 4.46 + 0.22 = 4.68 H100-hours (sacct). The worst case with the German and French limits is 7.68.
+
 ## The loop round by round (2026-10-12; from the logged runs, no new generation)
 
 - **`isochron.rounds`** reads the logged step 2 test runs and computes, per language and level, fit and
