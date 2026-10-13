@@ -1,5 +1,41 @@
 # Status
 
+## TTS time check and demo audio (2026-10-13; decision log)
+
+Your instruction: (0) the XLSX sheet; (1) an open TTS that speaks German, default voice, fixed settings and
+seeds, one short cluster job under 0.5 H100-hours; (2) 3 demo lines where plain misses and ours fits with
+meaning kept by both NLIs, plus 1 the loop couldn't fit, with timeline figures; (3) a time check on the 25
+sheet sources, 3 takes, median, same trimming for TTS and English, skip noisy English recordings; (4) audio
+git-ignored, scripts, manifest and results/time_check.md committed. No sub-agents were launched.
+
+- **(0) Done** (commit 0130000): `results/native_check/rater/german_lines.xlsx`; key
+  `results/native_check/step4_key_de.csv`. See the entry below.
+- **TTS.** Chatterbox multilingual, chatterbox-tts 0.1.7 (MIT), weights ResembleAI/chatterbox @ 5bb1f6e
+  (MIT), default voice (conds.pt, no reference audio), its own defaults fixed (exaggeration 0.5, cfg 0.5,
+  temperature 0.8, repetition penalty 2.0, min_p 0.05, top_p 1.0), seeds 0, 1, 2. Its own venv on the
+  cluster (`hpc/tts_requirements.txt`, hashed; torch 2.6.0+cu124 from download.pytorch.org because the
+  cluster's PyPI is throttled); pyproject.toml and uv.lock unchanged.
+- **GPU.** Job 2662027 failed after 43 s (`resemble-perth` needs setuptools<81); job 2662058 ran 141 takes in
+  10 min 10 s. 0.18 H100-hours in all (sacct).
+- **Selection** (`results/time_check/selection.json`, seed 0): 22 of the 25 sheet sources timed (1710, 1936,
+  1972 skipped as noisy). Demo, from the 211 test sources not on the sheet: fit 1891, 1903, 1679 (of 77
+  eligible), loop missed 2002 (of 59).
+- **Trimming.** Speech and English both at 16 kHz with build_fleurs.TRIM; re-measuring the 26 English
+  recordings reproduces their stored `slot_s` exactly.
+- **The check failed; no result.** Whisper small shows Chatterbox often keeps speaking after the text
+  (invented German or English words). Median take says more than its text: (a) 2/22, (c) 5/22, demo 2/8;
+  takes: (a) 10/66, (c) 17/66. That biases seconds against (c). Also 4 texts outside 0.10–0.40 s per
+  syllable (up to 0.59), and 56 of 141 takes peaked above full scale (max 1.072) and are clipped (at most
+  0.005 % of samples). As measured (not valid): fit (a) 6/22, (c) 6/22, McNemar p = 1.0; syllables vs
+  seconds r = 0.67 (0.197 s/syllable); English speakers r = 0.90 (0.260 s/syllable).
+- **What I did not do.** No demo timeline figures (their seconds are not valid), no regeneration and no
+  take-rejection rule: both would be decisions made after hearing the outputs. Report: only the
+  limitation sentence that said no speech was synthesised was corrected; still 6 pages.
+- **Options (your call):** a fix decided before rerunning, e.g. reject takes whose transcript runs past the
+  text and synthesise until 3 clean takes exist (Whisper as the gate), write float WAVs to avoid clipping,
+  or try another open German TTS; one rerun costs about 0.17 H100-hours.
+- Every number above was recomputed from the saved files by a separate script; 164 tests pass.
+
 ## Native-speaker sheet as XLSX (from 2026-10-12, 17:21 UTC; decision log)
 
 - **Files.** For the rater: `results/native_check/rater/german_lines.xlsx` (alone in its folder). Key:

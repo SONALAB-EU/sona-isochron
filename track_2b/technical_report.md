@@ -302,7 +302,8 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 ## 6. Limitations
 
-- **Syllables are a proxy for time.** No speech was synthesised or timed.
+- **Syllables are a proxy for time.** A TTS time check failed its own checks (the voice adds words after the
+  text), so it gives no seconds (`results/time_check.md`; post-hoc, added after test outputs existed).
 - **The meaning checks miss small changes.** Caught, of the planted German changes (the source in German,
   or in English as for step 4; `results/judge_validation_*` and `results/step4_test_nli2.md`; the second
   NLI's columns are post-hoc, added after test outputs existed):
