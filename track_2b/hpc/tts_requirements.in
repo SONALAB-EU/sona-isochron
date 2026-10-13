@@ -19,3 +19,4 @@ einops
 scipy
 soundfile
 huggingface-hub
+setuptools<81  # resemble-perth imports pkg_resources; without it, chatterbox has no watermarker and fails
