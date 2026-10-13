@@ -52,6 +52,8 @@ def main() -> None:
     ap.add_argument("--whisper", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--budget-min", type=float, default=13.0)
+    ap.add_argument("--device", default="cuda", help="cpu only for a smoke test")
+    ap.add_argument("--limit", type=int, help="only the first N texts and 1 round (a smoke test)")
     args = ap.parse_args()
     started = time.time()
     import librosa
@@ -61,17 +63,19 @@ def main() -> None:
     import whisper
     from qwen_tts import Qwen3TTSModel
 
-    texts = [json.loads(line) for line in args.plan.read_text(encoding="utf-8").splitlines() if line.strip()]
+    texts = [json.loads(line) for line in args.plan.read_text(encoding="utf-8").splitlines() if line.strip()][:args.limit]
+    rounds = 1 if args.limit else ROUNDS
+    cuda = args.device == "cuda"
     spoken = {t["text_id"]: full_stop(t["text"]) for t in texts}
-    model = Qwen3TTSModel.from_pretrained(str(args.model), device_map="cuda:0", dtype=torch.bfloat16,
+    model = Qwen3TTSModel.from_pretrained(str(args.model), device_map="cuda:0" if cuda else "cpu", dtype=torch.bfloat16,
                                           attn_implementation="sdpa")
-    asr = whisper.load_model(WHISPER["model"], device="cuda", download_root=str(args.whisper))
+    asr = whisper.load_model(WHISPER["model"], device=args.device, download_root=str(args.whisper))
     loaded = time.time() - started
     args.out.mkdir(parents=True, exist_ok=True)
     clean: dict[str, list[str]] = {t["text_id"]: [] for t in texts}
     stopped = None
     with open(args.out / "log.jsonl", "w", encoding="utf-8") as log:
-        for r in range(ROUNDS):
+        for r in range(rounds):
             todo = [tid for tid in spoken if len(clean[tid]) < TAKES]
             if not todo:
                 break
@@ -81,7 +85,8 @@ def main() -> None:
             random.seed(r)
             np.random.seed(r)
             torch.manual_seed(r)
-            torch.cuda.manual_seed_all(r)
+            if cuda:
+                torch.cuda.manual_seed_all(r)
             t0 = time.time()
             wavs, sr = model.generate_custom_voice(text=[spoken[t] for t in todo], language=[LANGUAGE] * len(todo),
                                                    speaker=[VOICE] * len(todo), **SETTINGS)
@@ -108,7 +113,7 @@ def main() -> None:
     settings = {"model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "voice": VOICE, "language": LANGUAGE, **SETTINGS,
                 "dtype": "bfloat16", "attn_implementation": "sdpa", "sample_rate": sr if texts else None,
                 "takes": TAKES, "rounds": ROUNDS, "max_extra_words": MAX_EXTRA, "whisper": WHISPER,
-                "gpu": torch.cuda.get_device_name(0), "load_s": round(loaded, 1), "wall_s": round(time.time() - started, 1),
+                "gpu": torch.cuda.get_device_name(0) if cuda else "none (cpu)", "load_s": round(loaded, 1), "wall_s": round(time.time() - started, 1),
                 "stopped": stopped, "python": platform.python_version(),
                 "versions": {p: version(p) for p in ("qwen-tts", "torch", "torchaudio", "transformers", "accelerate",
                                                      "openai-whisper", "numpy")},
