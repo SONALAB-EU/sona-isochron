@@ -909,3 +909,36 @@ used.
   out, as the rule says. Plain fits the slot in 8 of 21 sources, ours in 6
   (exact McNemar p = 0.73). The report's syllables limitation now gives
   these results.
+- 2026-10-13, v2.30: diagnosis of the Qwen3-TTS fit (analysis only): over
+  the 21 sources, TTS ÷ English slot has a median of 0.98 for (a) and 0.89
+  for (c); of (c)'s 15 misses 11 are too short (4 too long), of (a)'s 13
+  misses 6 are too short (7 too long). The voice speaks German at 0.231 s
+  per syllable; the English readers of these sources take 0.257 s per
+  syllable. More than half of (c)'s misses are short, so a voice-calibrated
+  test runs (exploratory, post-hoc, added after test outputs existed),
+  planned here before anything is generated:
+  - Rate: 30 German dev sources drawn with random.Random(0).sample from those
+    whose plain translation (a) in `hpc_8b_step4_dev` (seed 0) is a usable
+    German output; never test lines. Each (a), with a full stop, read by
+    Qwen3-TTS as in v2.28 (voice Aiden, same settings), 3 clean takes, at
+    most 10 rounds, under the new rule below. Rate = Σ median clean-take
+    seconds ÷ Σ eSpeak syllables.
+  - Budget: per test line, round half up (English slot in seconds ÷ rate)
+    syllables, ±10 %. Step 4's (c) is unchanged: (a) is kept when it is at
+    most 1.10 × the budget, otherwise prompt v1 with the repair loop, the
+    same prompts, checks and seeds (1000 × round). Only the budget changes.
+  - Sources: 100 German test sources drawn with random.Random(0).sample, in
+    numeric order, from those whose English recording is not flagged noisy,
+    that are not on the native-speaker sheet (its blinding), and whose (a)
+    at seed 0 is usable. Generation seed 0. (a) is reused from
+    `hpc_8b_step4_test`, not regenerated; (b) is not run.
+  - Speech: (a) and (c) with full stops, Qwen3-TTS as in v2.28, 3 clean
+    takes, at most 10 rounds, the median clean take. For this run Whisper's
+    transcript and the text are compared with spaces, punctuation and case
+    removed; a take is rejected only when the transcript is more than 10 %
+    longer in characters (split compounds do not count). Shortfalls are
+    reported and left out.
+  - Reported: fit within ±10 % of the English slot for (a) and (c), exact
+    McNemar, how many (c) hit their calibrated syllable budget, rejections
+    per system. GPU cap 0.6 H100-hours: three jobs of at most 8 (rate), 16
+    (loop) and 12 (speech) minutes on one H100.
