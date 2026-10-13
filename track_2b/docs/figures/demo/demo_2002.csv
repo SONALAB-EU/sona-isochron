@@ -1,0 +1,5 @@
+# drawn by isochron.time_check from results/time_check/durations_qwen.csv; seconds are trimmed, the median of 3 takes for the speech; Qwen3-TTS, voice Aiden
+track,seconds,text
+english,5.504,This will allow players to control actions and movements in video games by moving the device through the air.
+plain,7.856,"Dies wird es Spielern ermöglichen, Aktionen und Bewegungen in Videospielen durch Bewegen des Geräts in der Luft zu steuern."
+ours,6.176,Spielern wird durch Bewegen des Geräts in der Luft Aktionen und Bewegungen in Videospielen gesteuert.

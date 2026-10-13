@@ -1,0 +1,5 @@
+# drawn by isochron.time_check from results/time_check/durations_qwen.csv; seconds are trimmed, the median of 3 takes for the speech; Qwen3-TTS, voice Aiden
+track,seconds,text
+english,14.496,"Lakkha Singh presented the chhappan bhog bhajan as well. Singer, Raju Khandelwal was accompanying him."
+plain,7.008,Lakkha Singh präsentierte ebenfalls den chhappan bhog bhajan. Der Sänger Raju Khandelwal begleitete ihn.
+ours,5.536,"Lakkha Singh hat den chhappan bhog bhajan präsentiert, begleitet vom Sänger Raju Khandelwal."

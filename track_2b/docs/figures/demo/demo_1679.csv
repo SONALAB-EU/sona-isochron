@@ -1,0 +1,5 @@
+# drawn by isochron.time_check from results/time_check/durations_qwen.csv; seconds are trimmed, the median of 3 takes for the speech; Qwen3-TTS, voice Aiden
+track,seconds,text
+english,3.168,Aerosmith have cancelled their remaining concerts on their tour.
+plain,4.368,Aerosmith haben ihre verbleibenden Konzerte auf ihrer Tour abgesagt.
+ours,3.216,Aerosmith letzte Konzerte der Tour gestrichen
