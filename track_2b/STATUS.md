@@ -1,5 +1,30 @@
 # Status
 
+## Rater sheet punctuation, human speech, Qwen3-TTS (2026-10-13; decision log)
+
+Your decisions: (1) a full stop on every sheet line without terminal punctuation, same rule for both
+systems; (2) a human-speech check on FLEURS, planned in the protocol first; (3) Qwen3-TTS CustomVoice with one
+preset voice and rules fixed before generating; (4) the report's TTS sentence replaced. No sub-agents.
+
+- **(1) Sheet** (68a81e8, protocol v2.26): `native_check.full_stop` changed 4 lines, all (c). Every line now
+  ends with a full stop, starts with a capital and has no stray spaces. Left as they are: 3 (a) lines quote a
+  phrase ('Anarchie', 'Hausmarken', "nicht schwerwiegend"); no (c) line does. XLSX regenerated:
+  `results/native_check/rater/german_lines.xlsx`; key unchanged.
+- **(2) Human speech** (plan 10ce090 before computing, v2.27; results 71abe20; CPU, 22 s). Durations
+  re-measured from the cached FLEURS audio equal the stored ones. Syllables vs seconds: r = 0.85 (EN), 0.77
+  (DE), 0.93 (FR). Rate ratio to English: DE 1.13, FR 1.35 (budget: 0.964, 1.160). Ruler fit vs human fit:
+  kappa DE −0.11 (syllables), −0.16 (characters); FR +0.02, −0.04. Agreement: DE 66.0 vs 58.9 %, FR 50.2 vs
+  61.5 %. Ratio correlations r: DE 0.29 / 0.30, FR 0.46 / 0.48.
+- **(3) Qwen3-TTS** (rules 058f264 before generating, v2.28; results 4d795bf). Qwen3-TTS-12Hz-1.7B-CustomVoice
+  @ 0c0e305, qwen-tts 0.1.1 (Apache-2.0), voice Aiden, own venv. CPU smoke test first (job 2662243), then job
+  2662255: 3 min 26 s, 0.06 H100-hours. 157 takes, 19 rejected (all compound splits or misheard names; (a)
+  4/70, (c) 13/76, demo 2/26); 1 shortfall: 1912 (c), "Luxusstrandresorts", 0 clean takes in 10 rounds,
+  left out. Audio checks pass (float WAV, none clipped; 0.198–0.269 s per syllable). Fit: (a) 8/21, (c) 6/21,
+  McNemar p = 0.73. Syllables vs TTS seconds r = 0.98. Demo figures: `docs/figures/demo/`.
+- **GPU for the TTS in all:** Chatterbox 0.18 + Qwen 0.06 = 0.24 H100-hours.
+- **(4) Report:** the limitation now gives the human-speech and Qwen results; 6 pages.
+- Every reported number was recomputed from the saved files; the tests pass.
+
 ## TTS time check and demo audio (2026-10-13; decision log)
 
 Your instruction: (0) the XLSX sheet; (1) an open TTS that speaks German, default voice, fixed settings and

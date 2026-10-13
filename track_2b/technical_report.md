@@ -302,8 +302,10 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 ## 6. Limitations
 
-- **Syllables are a proxy for time.** A TTS time check failed its own checks (the voice adds words after the
-  text), so it gives no seconds (`results/time_check.md`; post-hoc, added after test outputs existed).
+- **Syllables are a weak proxy for time** (post-hoc, added after test outputs existed): in FLEURS test
+  recordings, neither ruler predicts whether a German or French reading fits the English slot (kappa −0.16
+  to +0.02; `results/human_speech.md`). With Qwen3-TTS, ours fits it in 6 of 21 sources, plain in 8
+  (`results/time_check_qwen.md`).
 - **The meaning checks miss small changes.** Caught, of the planted German changes (the source in German,
   or in English as for step 4; `results/judge_validation_*` and `results/step4_test_nli2.md`; the second
   NLI's columns are post-hoc, added after test outputs existed):

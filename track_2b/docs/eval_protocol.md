@@ -896,3 +896,16 @@ used.
   - GPU cap: 0.3 H100-hours (one job of at most 18 min). This time check is
     secondary to the human-speech check (v2.27); the Chatterbox run (v2.25)
     stays documented as failed.
+- 2026-10-13, v2.29: results of v2.27 and v2.28, recorded as computed.
+  Human speech (`results/human_speech.md`): neither ruler predicts whether a
+  German or French reading fits the English slot (Cohen's kappa −0.16 to
+  +0.02); length and duration ratios correlate at r 0.29–0.30 (DE) and
+  0.46–0.48 (FR), alike for both rulers; these readers speak 1.13 (DE) and
+  1.35 (FR) times as many syllables per second as the English ones (the
+  budget assumes 0.964 and 1.160). Qwen3-TTS (`results/time_check_qwen.md`,
+  job 2662255, 0.06 H100-hours): the audio checks pass; 19 of 157 takes
+  rejected, all for Whisper splitting a compound or mishearing a name; one
+  text (source 1912, (c)) has no clean take after 10 rounds and is left
+  out, as the rule says. Plain fits the slot in 8 of 21 sources, ours in 6
+  (exact McNemar p = 0.73). The report's syllables limitation now gives
+  these results.
