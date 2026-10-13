@@ -850,3 +850,25 @@ used.
   with a capital, and no line has double, leading or trailing spaces. Left as
   they are: 3 (a) lines quote a phrase, no (c) line does. The key, the rows
   and their order are unchanged.
+- 2026-10-13, v2.27: a human-speech check, exploratory and post-hoc, added
+  after test outputs existed, planned here before anything was computed
+  (`isochron.human_speech`, CPU only). Data: FLEURS test, the one recording
+  per sentence that `data/fleurs_{de,fr}_test.jsonl` names (EN, DE, FR),
+  trimmed as `slot_s` was (16 kHz, `build_fleurs.TRIM`); the durations are
+  measured again from the audio and must equal the stored ones; recordings
+  flagged noisy are skipped. Syllables: eSpeak NG 1.52.0 on the text read
+  (EN source, DE or FR reference); characters without spaces.
+  (a) Per language: Pearson r of syllables with trimmed seconds, with a 95 %
+  bootstrap interval (10,000 resamples over sentences, seed 0); seconds per
+  syllable as Σ seconds ÷ Σ syllables, its inverse against Pellegrino et
+  al.'s rates (EN 6.19, DE 5.97, FR 7.18 syllables per second), and the
+  measured DE/EN and FR/EN rate ratios against the ones step 4's syllable
+  budget uses (0.964, 1.160).
+  (b) Per sentence where both recordings are clean: the human reading fits
+  when its seconds are within ±10 % of the English slot. A ruler fits when
+  the reference's length is within ±10 % of step 4's budget for that source
+  (syllables: EN syllables × rate ratio, rounded half up; characters: EN
+  characters without spaces). For each ruler: agreement with the human fit
+  (share of sentences, and Cohen's kappa), and Pearson and Spearman r of its
+  length ÷ budget with seconds ÷ slot; 95 % bootstrap intervals, and paired
+  bootstrap differences syllables − characters. No decision depends on it.
