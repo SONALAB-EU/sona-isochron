@@ -299,6 +299,27 @@ uv run python -m isochron.meaning_check report results/raw/hpc_8b_step4_test res
   copy from `$HF_HOME/hub` instead.
 - The report needs the evaluation NLI's cache, which `isochron.step4_report --nli-cache` wrote.
 
+## TTS for the time check (2026-10-13)
+
+The time check (`isochron.time_check`, `results/time_check.md`) needs German speech. Chatterbox multilingual
+runs in a venv of its own, never the project's (`pyproject.toml` and `uv.lock` stay as they are):
+
+1. On the Mac: download the wheels of `hpc/tts_requirements.txt` that are not torch, torchaudio, triton or
+   `nvidia-*` (`pip download -r hpc/tts_requirements.txt --platform manylinux_2_28_x86_64 --python-version 3.11
+   --only-binary=:all: --no-deps`, plus `chatterbox-tts==0.1.7`), and copy them to
+   `~/isochron_work/tts/wheels`. The cluster's PyPI is throttled (copying from the Mac ran at 0.3–2.5 MB/s);
+   download.pytorch.org is not (166 MB/s measured on the login node), so torch and the CUDA libraries come
+   from there.
+2. `sbatch --account=aisc --partition=pot-hpi-aisc-batch --nodes=1 --exclude=ga03 --cpus-per-task=8 --mem=16G
+   --time=00:45:00 --job-name=isochron-tts-setup --output=hpc/logs/%x-%j.out --wrap="bash hpc/tts_setup.sh"`:
+   the venv (hash-checked) and the weights at a pinned revision. Took about 2 min (job 2662025).
+3. Copy the plan to `results/raw/time_check/plan.jsonl`, then `sbatch hpc/tts.sbatch`: one H100, at most
+   30 min. Run 2662058: 141 takes in 607 s (64 s to load the model).
+
+The shortrun partition takes no `sbatch` (interactive only), so these jobs use the batch partition.
+Job 2662027 failed after 43 s: `resemble-perth` needs `pkg_resources`, so the lock pins `setuptools<81`.
+GPU time for the TTS: 43 s + 610 s = 0.18 H100-hours (sacct).
+
 ## GPU-hours per run
 
 Measured on 2026-10-10 (sacct, elapsed time × H100s):

@@ -833,3 +833,13 @@ used.
   seeded rule from the test sources not on the sheet: 3 where (a) misses and
   (c) fits with its meaning kept by both NLI models, 1 where the loop ran and
   missed (`results/time_check/selection.json`).
+- 2026-10-13, v2.25: the time check ran (job 2662058) and failed its own
+  checks, so it gives no result. Whisper transcripts show that Chatterbox
+  often keeps speaking after the text (invented words): the median take of 8
+  of the 47 texts says at least 3 words more than its text, more often for
+  (c) (5 of 22 timed texts) than for (a) (2 of 22), which biases the seconds
+  against (c). 4 texts are outside 0.10–0.40 s per syllable, and 56 of 141
+  takes peaked above full scale and were clipped when written. The numbers
+  stay in `results/time_check.md`, marked as not valid; nothing goes into the
+  report, and no demo figures were drawn. The transcript check was added
+  after the speech was heard.

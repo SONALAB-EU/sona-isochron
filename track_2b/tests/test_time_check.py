@@ -75,3 +75,11 @@ def test_fit_median_take_and_paired_statistics() -> None:
     assert line["r"] == pytest.approx(1.0) and line["slope"] == pytest.approx(0.2) and line["intercept"] == pytest.approx(0.1)
     assert line["per_unit"] == pytest.approx(12.3 / 60)
     assert tc.text_id("Haus") == tc.text_id("Haus") != tc.text_id("Haus.")
+
+
+def test_extra_words_counts_speech_after_the_text() -> None:
+    text = "Soziale Löwen leben in Rudeln zusammen und sind Katzen"
+    assert tc.extra_words(text, "Soziale Löwen leben in Rudeln zusammen und sind Katzen.") == 0
+    assert tc.extra_words(text, "Soziale Löwen leben in Wurden zusammen und sind Katzen.") == 0  # a misheard word
+    assert tc.extra_words(text, "Soziale Löwen leben in Rudeln zusammen und sind Katzen. That I've Deconstued Your En.") == 6  # I've counts as two words
+    assert tc.extra_words(text, "Tourist D. S.") == 3  # nothing in common: every word is extra

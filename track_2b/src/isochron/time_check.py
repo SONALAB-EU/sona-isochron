@@ -137,6 +137,20 @@ def fit_line(x: list[float], y: list[float]) -> dict[str, float]:
             "per_unit": float(b.sum() / a.sum()), "n": len(a)}
 
 
+def extra_words(text: str, transcript: str) -> int:
+    """Words the speech has after the last word it shares with its text (by difflib's matching blocks)."""
+    import difflib
+    import re
+
+    words = lambda s: re.findall(r"\w+", s.lower())  # noqa: E731
+    said, asr = words(text), words(transcript)
+    blocks = [b for b in difflib.SequenceMatcher(None, said, asr, autojunk=False).get_matching_blocks() if b.size]
+    return len(asr) - (blocks[-1].b + blocks[-1].size if blocks else 0)
+
+
+BABBLE = 3  # a take with at least this many extra words says more than its text
+
+
 def read_csv_rows(path: Path) -> list[dict[str, str]]:
     with open(path, encoding="utf-8-sig") as f:
         return list(csv.DictReader(line for line in f if not line.startswith("#")))
@@ -255,6 +269,7 @@ def report() -> None:
                          "clipped_share": f"{timing.clipped:.5f}", "sha256": sha256(path),
                          "licence": FLEURS_LICENCE if kind == "english" else TTS_LICENCE})
 
+    clipped: list[tuple[str, float, float]] = []
     slots: dict[str, float] = {}
     for sid in selection["timed_sources"] + selection["demo_fit"] + selection["demo_miss"]:
         path = AUDIO / "english" / f"{sid}.wav"
@@ -274,17 +289,29 @@ def report() -> None:
                 raise SystemExit(f"missing {path}: did the TTS job finish? ({settings.get('stopped')})")
             t = measure(*load(path))
             takes.setdefault(tid, []).append(t.trimmed_s)
-            if t.clipped > 0.001 or log[(tid, k)]["peak"] >= 1.0:
-                problems.append(f"{path.name}: clipped (peak {log[(tid, k)]['peak']}, {t.clipped:.2%} at full scale)")
+            if log[(tid, k)]["peak"] >= 1.0:
+                clipped.append((path.name, log[(tid, k)]["peak"], t.clipped))
             record(path, "tts", t, id=" ".join(sorted({u["id"] for u in entry["uses"]})),
                    system=" ".join(sorted({u["system"] for u in entry["uses"]})), text_id=tid, take=k,
                    seed=log[(tid, k)]["seed"], recording="")
         seconds[tid] = statistics.median(takes[tid])
     syll = {e["text_id"]: length(e["text"], "syllables", "de") for e in texts}
     per_syll = {tid: seconds[tid] / syll[tid] for tid in seconds}
-    for tid, v in per_syll.items():
-        if not 0.10 <= v <= 0.40:
-            problems.append(f"{tid}: {v:.3f} s per syllable, outside 0.10–0.40")
+    slow = {tid: v for tid, v in per_syll.items() if not 0.10 <= v <= 0.40}
+    if clipped:
+        problems.append(f"{len(clipped)} of {len(log)} takes peaked above full scale before 16-bit writing (max "
+                        f"{max(c[1] for c in clipped):.3f}), so their peaks are clipped; samples at full scale: at most "
+                        f"{100 * max(c[2] for c in clipped):.3f} % of a take")
+    if slow:
+        problems.append(f"{len(slow)} texts outside 0.10–0.40 s per syllable (median take): "
+                        + ", ".join(f"{tid} {v:.3f}" for tid, v in sorted(slow.items())))
+    asr_path = OUT / "asr.jsonl"
+    babble: dict[tuple[str, int], int] = {}
+    if asr_path.is_file():
+        heard = {e["file"]: e["text"] for e in map(json.loads, asr_path.read_text(encoding="utf-8").splitlines())}
+        for e in texts:
+            for k in range(TAKES):
+                babble[(e["text_id"], k)] = extra_words(e["text"], heard[f"{e['text_id']}_take{k}.wav"])
 
     by = {(u["id"], u["system"]): e["text_id"] for e in texts for u in e["uses"]}
     timed = selection["timed_sources"]
@@ -318,11 +345,37 @@ def report() -> None:
                 w.writerow([sid, u["system"], u["purpose"], tid, syll[tid], " ".join(f"{x:.3f}" for x in takes[tid]),
                             f"{seconds[tid]:.3f}", f"{slots[sid]:.3f}", f"{seconds[tid] / slots[sid]:.3f}",
                             int(fits(seconds[tid], slots[sid]))])
-    figures = demo(selection, texts, by, seconds, takes, slots, fleurs)
     pct = lambda k: f"{k}/{n} ({100 * k / n:.0f} %)"  # noqa: E731
+    medians = {tid: median_take(takes[tid]) for tid in takes}
+    bad_median = {tid for tid in takes if babble.get((tid, medians[tid]), 0) >= BABBLE}
+    flagged = {r["id"] for r in table if by[(r["id"], "a")] in bad_median or by[(r["id"], "c")] in bad_median}
+    failed = bool(clipped or slow or bad_median or not babble)
+
+    def mark(sid: str, system: str) -> str:
+        return "\\*" if by[(sid, system)] in bad_median else ""
+
+    figures = {} if failed else demo(selection, texts, by, seconds, takes, slots, fleurs)  # no video material from invalid seconds
+    qc = []
+    if babble:
+        for system in "ac":
+            tids = sorted({by[(sid, system)] for sid in timed})
+            qc.append(f"| ({system}) on the timed sources | {len(tids)} | "
+                      f"{sum(babble[(t, k)] >= BABBLE for t in tids for k in range(TAKES))}/{TAKES * len(tids)} | "
+                      f"{sum(t in bad_median for t in tids)}/{len(tids)} |")
+        demo_tids = sorted({by[(sid, s_)] for sid in selection["demo_fit"] + selection["demo_miss"] for s_ in "ac"})
+        qc.append(f"| demo texts | {len(demo_tids)} | {sum(babble[(t, k)] >= BABBLE for t in demo_tids for k in range(TAKES))}"
+                  f"/{TAKES * len(demo_tids)} | {sum(t in bad_median for t in demo_tids)}/{len(demo_tids)} |")
     md = [
         "# Time check: German speech against the English slot (exploratory, post-hoc)", "",
         "Post-hoc, added after test outputs existed (protocol v2.24). Exploratory: no threshold was fixed in advance.", "",
+        ("**Status: the check failed.** " + "; ".join(
+            ([f"In {len(bad_median)} texts the median take says more than its text (Whisper finds at least {BABBLE} "
+              "words after the text's last word), so its duration is not the text's"] if bad_median else [])
+            + (["no transcripts, so the speech was not checked against its text"] if not babble else [])
+            + ([f"{len(slow)} texts are outside 0.10–0.40 s per syllable"] if slow else [])
+            + ([f"{len(clipped)} takes are clipped"] if clipped else []))
+         + ". The seconds below are reported as measured, but they are not valid as the spoken length of the texts, "
+           "and the comparison of (a) with (c) is not a result." if failed else "**Status: every check passed.**"), "",
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC; git commit {commit}",
         f"- Texts: step 4 test, run `{selection['run']}` (Apertus 1.5 8B, BF16; vLLM on the cluster, its endpoint in "
         f"`results/step4_test.md`), German, syllable budget, generation seed {GEN_SEED}",
@@ -342,8 +395,18 @@ def report() -> None:
         f"| (c) ours | {pct(c_fit)} | {statistics.median(ratio['c']):.2f} | {min(ratio['c']):.2f}–{max(ratio['c']):.2f} |", "",
         f"Paired, per source: (c) fits and (a) does not in {only_c}, the reverse in {only_a}; exact McNemar "
         f"p = {mcnemar_exact(only_c, only_a):.3f}. In {sum(r['same_text'] for r in table)} sources (c) kept (a)'s text, "
-        "so both read the same audio. Absolute shares depend on the voice's speaking rate; the comparison of (a) "
-        "with (c) is what counts.", "",
+        "so both read the same audio. "
+        + ("Not a result: see the status above." if failed else "Absolute shares depend on the voice's speaking rate; "
+           "the comparison of (a) with (c) is what counts."), "",
+        "## Does the speech say its text, and only that?", "",
+        f"Whisper small (openai-whisper 20250625, MIT; German, temperature 0; `scripts/asr_whisper.py`) transcribed "
+        f"every take (`{OUT / 'asr.jsonl'}`). A take *says more than its text* when at least {BABBLE} transcribed words "
+        "follow the last word it shares with the text (difflib matching blocks). Diagnosis only, decided after the "
+        "speech was heard.", "",
+        "| Texts | n | Takes that say more | Texts whose median take says more |", "|---|---:|---:|---:|",
+        *(qc or ["| (no transcripts) | | | |"]), "",
+        f"Sources with a median take that says more, for (a) or (c): {len(flagged)} of {n}"
+        + (f" ({', '.join(sorted(flagged, key=int))})" if flagged else "") + ".", "",
         "## Do syllables predict seconds?", "",
         f"- German speech, {line['n']} distinct texts: r = {line['r']:.2f}; {line['per_unit']:.3f} s per syllable overall; "
         f"least squares: {line['slope']:.3f} s per syllable + {line['intercept']:.2f} s.",
@@ -353,14 +416,15 @@ def report() -> None:
         f"(max − min over {TAKES} takes; largest {100 * max(spread):.0f} %).", "",
         "## Per source", "",
         "| Source | English slot (s) | (a) s | (c) s | (a) fits | (c) fits |", "|---|---:|---:|---:|---|---|",
-        *(f"| {r['id']} | {r['slot']:.2f} | {r['a']:.2f} | {r['c']:.2f} | {'yes' if r['a_fit'] else 'no'} | "
-          f"{'yes' if r['c_fit'] else 'no'} |" for r in table), "",
+        *(f"| {r['id']} | {r['slot']:.2f} | {r['a']:.2f}{mark(r['id'], 'a')} | {r['c']:.2f}{mark(r['id'], 'c')} | "
+          f"{'yes' if r['a_fit'] else 'no'} | {'yes' if r['c_fit'] else 'no'} |" for r in table), "",
+        "\\*: the median take says more than its text.", "",
         "## Demo lines", "",
         f"Drawn by the rule in `results/time_check/selection.json`: {selection['rule']}. Eligible: "
         f"{selection['eligible_fit']} fit, {selection['eligible_miss']} miss, of {selection['pool']} sources.", "",
         "| Source | Kind | English slot (s) | (a) s | (c) s | Figure |", "|---|---|---:|---:|---:|---|",
         *(f"| {sid} | {kind} | {slots[sid]:.2f} | {seconds[by[(sid, 'a')]]:.2f} | {seconds[by[(sid, 'c')]]:.2f} | "
-          f"`{figures[sid]}` |" for kind, ids in (("fit", selection["demo_fit"]), ("loop missed", selection["demo_miss"]))
+          f"{'`' + figures[sid] + '`' if sid in figures else 'not drawn (the check failed)'} |" for kind, ids in (("fit", selection["demo_fit"]), ("loop missed", selection["demo_miss"]))
           for sid in ids), "",
         "## Checks", "",
         f"- Files: {len(manifest)} (`{manifest_path}`, with SHA-256 and licence; the audio stays in `audio/`, "
