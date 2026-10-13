@@ -1,0 +1,127 @@
+# Tests and the Docker image, on every push and pull request. No secrets and no LLM endpoint: the tests never
+# call one, and nothing here sets LLM_NAME, LLM_BASE_URL or LLM_API_KEY.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (Python 3.11)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: track_2b
+    env:
+      ESPEAK_VERSION: 1.52.0
+      ESPEAK_URL: https://github.com/espeak-ng/espeak-ng/archive/refs/tags/1.52.0.tar.gz
+      ESPEAK_SHA256: bb4338102ff3b49a81423da8a1a158b420124b055b60fa76cfb4b18677130a23
+      SONIC_URL: https://github.com/waywardgeek/sonic/archive/fbf75c3d6d846bad3bb3d456cbc5d07d9fd8c104.tar.gz
+      SONIC_SHA256: 715827b5a39b79e56e44397d7b845910df996d4cca74777b3b61629b1ddc98c1
+      HF_HUB_DISABLE_TELEMETRY: 1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: 0.12.3
+          python-version: "3.11"
+          enable-cache: true
+          cache-dependency-glob: track_2b/uv.lock
+
+      # eSpeak NG 1.52.0 built from the same pinned sources as the Docker image (Dockerfile), since the
+      # syllable counts are checked against 1.52.0 and Ubuntu packages an older release
+      - name: Restore eSpeak NG ${{ env.ESPEAK_VERSION }}
+        id: espeak-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/espeak-ng
+          key: espeak-ng-${{ env.ESPEAK_VERSION }}-${{ env.ESPEAK_SHA256 }}-${{ env.SONIC_SHA256 }}-${{ env.ImageOS }}-${{ runner.arch }}
+
+      - name: Build eSpeak NG ${{ env.ESPEAK_VERSION }}
+        if: steps.espeak-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}
+        run: |
+          curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors -o espeak.tar.gz "$ESPEAK_URL"
+          curl -fsSL --retry 6 --retry-delay 10 --retry-all-errors -o sonic.tar.gz "$SONIC_URL"
+          echo "$ESPEAK_SHA256  espeak.tar.gz" | sha256sum -c -
+          echo "$SONIC_SHA256  sonic.tar.gz" | sha256sum -c -
+          mkdir espeak sonic
+          tar -xzf espeak.tar.gz -C espeak --strip-components=1
+          tar -xzf sonic.tar.gz -C sonic --strip-components=1
+          cmake -S espeak -B out -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$HOME/espeak-ng" \
+            -DBUILD_SHARED_LIBS=OFF -DUSE_MBROLA=OFF -DUSE_LIBPCAUDIO=OFF -DUSE_ASYNC=OFF -DBUILD_TESTING=OFF \
+            -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DFETCHCONTENT_SOURCE_DIR_SONIC-GIT="$PWD/sonic"
+          cmake --build out -j "$(nproc)"
+          cmake --install out
+
+      - name: Put eSpeak NG on PATH
+        run: |
+          echo "$HOME/espeak-ng/bin" >> "$GITHUB_PATH"
+          "$HOME/espeak-ng/bin/espeak-ng" --version | grep -q "eSpeak NG text-to-speech: $ESPEAK_VERSION"
+
+      # Every package of uv.lock except torch and the CUDA packages only its CUDA build needs; then torch at the
+      # locked version as the CPU build, with the hashes the Dockerfile pins (one source for both)
+      - name: Install from uv.lock
+        run: |
+          skip=$(python3 -c "import tomllib; print(' '.join('--no-install-package ' + p['name'] for p in tomllib.load(open('uv.lock', 'rb'))['package'] if p['name'] in ('torch', 'triton') or p['name'].startswith(('nvidia-', 'cuda-'))))")
+          uv sync --locked --all-groups $skip
+          grep -o "torch==[^']*+cpu[^']*" Dockerfile > "$RUNNER_TEMP/torch-cpu.txt"
+          test -s "$RUNNER_TEMP/torch-cpu.txt"
+          uv pip install --no-deps --require-hashes --index-url https://download.pytorch.org/whl/cpu \
+            -r "$RUNNER_TEMP/torch-cpu.txt"
+          locked=$(python3 -c "import tomllib; print(next(p['version'] for p in tomllib.load(open('uv.lock', 'rb'))['package'] if p['name'] == 'torch'))")
+          uv run --no-sync python -c "import torch, sys; sys.exit(torch.__version__ != '$locked+cpu' and torch.__version__)"
+
+      # The NLI model and the FLEURS train transcriptions at their pinned revisions; without them some tests
+      # would skip rather than run
+      - name: Restore Hugging Face cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/huggingface/hub
+          key: hf-${{ hashFiles('track_2b/src/isochron/metrics/meaning.py', 'track_2b/src/isochron/data/fleurs.py') }}
+
+      - name: Download the NLI model and FLEURS transcriptions
+        run: |
+          uv run --no-sync python -c "
+          from isochron.data.fleurs import fetch
+          from isochron.metrics.meaning import NLI
+          NLI(device='cpu')
+          for config in ('en_us', 'de_de', 'fr_fr', 'it_it'):
+              fetch(f'data/{config}/train.tsv')
+          "
+
+      # --no-sync keeps the CPU torch; the suite counts only if nothing was skipped
+      - name: Run the tests
+        run: |
+          uv run --no-sync pytest -rs --junitxml="$RUNNER_TEMP/pytest.xml"
+          if grep -q '<skipped' "$RUNNER_TEMP/pytest.xml"; then echo "::error::tests were skipped (see above)"; exit 1; fi
+
+  docker:
+    name: Docker image (linux/amd64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Built on an amd64 runner, so no emulation; nothing is pushed or loaded
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: track_2b
+          platforms: linux/amd64
+          push: false
+          outputs: type=cacheonly
+          cache-from: type=gha,scope=isochron-app-amd64
+          cache-to: type=gha,mode=max,scope=isochron-app-amd64
