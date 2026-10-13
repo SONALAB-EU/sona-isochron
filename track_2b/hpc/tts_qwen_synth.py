@@ -45,6 +45,15 @@ def extra_words(text: str, transcript: str) -> int:
     return len(asr) - (blocks[-1].b + blocks[-1].size if blocks else 0)
 
 
+def longer_chars(text: str, transcript: str) -> float:
+    """Transcript length ÷ text length, in characters without spaces, punctuation or case (protocol v2.30)."""
+    norm = lambda s: re.sub(r"[\W_]+", "", s.lower())  # noqa: E731
+    return len(norm(transcript)) / max(1, len(norm(text)))
+
+
+MAX_LONGER = 1.10  # the chars10 rule: a transcript more than 10 % longer is rejected
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("plan", type=Path)
@@ -54,6 +63,8 @@ def main() -> None:
     ap.add_argument("--budget-min", type=float, default=13.0)
     ap.add_argument("--device", default="cuda", help="cpu only for a smoke test")
     ap.add_argument("--limit", type=int, help="only the first N texts and 1 round (a smoke test)")
+    ap.add_argument("--rule", choices=("extra-words", "chars10"), default="extra-words",
+                    help="extra-words: at most 1 word after the text (v2.28); chars10: transcript at most 10 %% longer (v2.30)")
     args = ap.parse_args()
     started = time.time()
     import librosa
@@ -99,12 +110,15 @@ def main() -> None:
                 heard = asr.transcribe(y16, language=WHISPER["language"], temperature=WHISPER["temperature"],
                                        fp16=False)["text"].strip() if len(audio) else ""
                 extra = extra_words(spoken[tid], heard) if heard else 0
-                ok = bool(len(audio)) and bool(heard) and extra <= MAX_EXTRA
+                longer = longer_chars(spoken[tid], heard)
+                ok = bool(len(audio)) and bool(heard) and (
+                    extra <= MAX_EXTRA if args.rule == "extra-words" else longer <= MAX_LONGER)
                 if ok:
                     clean[tid].append(name)
                 log.write(json.dumps({"text_id": tid, "round": r, "seed": r, "file": name, "samples": len(audio),
                                       "peak": round(float(np.abs(audio).max()), 4) if len(audio) else 0.0,
-                                      "transcript": heard, "extra_words": extra, "clean": ok,
+                                      "transcript": heard, "extra_words": extra,
+                                      "longer": round(longer, 4), "clean": ok,
                                       "take": clean[tid].index(name) if ok and name in clean[tid][:TAKES] else None},
                                      ensure_ascii=False) + "\n")
             log.flush()
@@ -112,7 +126,8 @@ def main() -> None:
                   f"{sum(len(c) >= TAKES for c in clean.values())}/{len(clean)} texts have {TAKES} clean takes", flush=True)
     settings = {"model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "voice": VOICE, "language": LANGUAGE, **SETTINGS,
                 "dtype": "bfloat16", "attn_implementation": "sdpa", "sample_rate": sr if texts else None,
-                "takes": TAKES, "rounds": ROUNDS, "max_extra_words": MAX_EXTRA, "whisper": WHISPER,
+                "takes": TAKES, "rounds": ROUNDS, "rule": args.rule,
+                "max_extra_words": MAX_EXTRA, "max_longer": MAX_LONGER, "whisper": WHISPER,
                 "gpu": torch.cuda.get_device_name(0) if cuda else "none (cpu)", "load_s": round(loaded, 1), "wall_s": round(time.time() - started, 1),
                 "stopped": stopped, "python": platform.python_version(),
                 "versions": {p: version(p) for p in ("qwen-tts", "torch", "torchaudio", "transformers", "accelerate",

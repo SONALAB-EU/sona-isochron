@@ -101,3 +101,16 @@ def test_the_qwen_job_uses_the_same_rules_as_the_package() -> None:
         assert job.extra_words(text, heard) == tc.extra_words(text, heard)
     assert job.extra_words("Luxusstrandresorts.", "Luxus Strand Resorts.") == 3  # a split compound counts as extra
     assert job.MAX_EXTRA == 1 and job.TAKES == 3 and job.ROUNDS == 10 and job.VOICE == "Aiden"
+
+
+def test_the_chars10_rule_ignores_split_compounds_but_not_extra_speech() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location("tts_qwen_synth", Path(__file__).resolve().parents[1] / "hpc" / "tts_qwen_synth.py")
+    job = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(job)
+    text = "Die meisten kleinen Inseln sind souverän, Luxusstrandresorts."
+    assert job.longer_chars(text, "Die meisten kleinen Inseln sind souverän. Luxus-Strand-Resorts!") == 1.0
+    assert job.longer_chars(text, text + " Und dann noch viel mehr Worte danach.") > job.MAX_LONGER
+    assert job.longer_chars("Ja.", "") == 0.0

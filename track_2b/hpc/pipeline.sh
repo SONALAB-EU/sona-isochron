@@ -33,6 +33,7 @@
 #   GATE        a file: once Apertus is healthy, generation waits until it exists, and stops if
 #               GATE.stop appears (hpc/lib.sh, wait_for_gate)       default no gate
 #   GATE_WAIT   seconds to wait at the gate                         default 2700
+#   STEP4_EXTRA more isochron.step4 options (the voice-calibrated test, protocol v2.30)  default none
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -125,7 +126,7 @@ main() {
             # shellcheck disable=SC2086
             uv run --no-sync python -m isochron.step4 --langs $LANGS --split "$SPLIT" $test_flag ${IDS:+--ids $IDS} \
                 ${LIMIT:+--limit $LIMIT} ${EXCLUDE_GONOGO:+--exclude-gonogo} --seeds $SEEDS --quantisation BF16 --workers "$WORKERS" \
-                --device "$NLI_DEVICE" --out "${runs[0]}" --resume
+                --device "$NLI_DEVICE" --out "${runs[0]}" --resume ${STEP4_EXTRA:-}
         else
             for run in "${runs[@]}"; do
                 lang=${run#results/raw/"${TAG}"_step2_}

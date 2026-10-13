@@ -24,9 +24,12 @@ require_compute_node
 require_gpu
 Q=$ISOCHRON_WORK/tts-qwen
 [ -x "$Q/venv/bin/python" ] || die "no Qwen3-TTS environment: run hpc/tts_qwen_setup.sh first"
-[ -s results/raw/time_check/plan.jsonl ] || die "no plan: copy results/raw/time_check/plan.jsonl first"
+# The voice-calibrated test (protocol v2.30) sets PLAN, OUT_DIR, RULE=chars10 and BUDGET_MIN with
+# sbatch --export=ALL,..., and a shorter --time.
+PLAN=${PLAN:-results/raw/time_check/plan.jsonl}
+[ -s "$PLAN" ] || die "no plan: copy $PLAN first"
 export HF_HUB_OFFLINE=1
-log "job $SLURM_JOB_ID: Qwen3-TTS ($(cat .git_commit 2> /dev/null || echo 'no .git_commit'))"
-"$Q/venv/bin/python" hpc/tts_qwen_synth.py results/raw/time_check/plan.jsonl --model "$Q/model" --whisper "$Q/whisper" \
-    --out results/raw/time_check/qwen --budget-min 13
+log "job $SLURM_JOB_ID: Qwen3-TTS on $PLAN, rule ${RULE:-extra-words} ($(cat .git_commit 2> /dev/null || echo 'no .git_commit'))"
+"$Q/venv/bin/python" hpc/tts_qwen_synth.py "$PLAN" --model "$Q/model" --whisper "$Q/whisper" \
+    --out "${OUT_DIR:-results/raw/time_check/qwen}" --budget-min "${BUDGET_MIN:-13}" --rule "${RULE:-extra-words}"
 log "done"

@@ -229,8 +229,10 @@ def english() -> None:
 
     selection = json.loads((OUT / "selection.json").read_text(encoding="utf-8"))
     fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
-    wanted = {fleurs[sid]["src_recording_id"]: sid
-              for sid in selection["timed_sources"] + selection["demo_fit"] + selection["demo_miss"]}
+    ids = selection["timed_sources"] + selection["demo_fit"] + selection["demo_miss"]
+    if (CAL / "selection.json").is_file():  # the voice-calibrated test's sources (protocol v2.30)
+        ids += json.loads((CAL / "selection.json").read_text(encoding="utf-8"))["test_ids"]
+    wanted = {fleurs[sid]["src_recording_id"]: sid for sid in ids}
     pf = pq.ParquetFile(fetch(f"parquet-data/en_us/{SPLITS['test']}-00000-of-00001.parquet"))
     (AUDIO / "english").mkdir(parents=True, exist_ok=True)
     found = 0
@@ -679,6 +681,225 @@ def report_qwen() -> None:
     print("\n".join(md))
 
 
+CAL = OUT / "calibrated"
+CAL_RAW = RAW / "calibrated"
+DEV_RUN = Path("results/raw/hpc_8b_step4_dev")
+CAL_RUN = Path("results/raw/hpc_8b_step4_test_calibrated")
+N_DEV, N_CAL = 30, 100
+
+
+def usable(text: str | None, lang: str = "de") -> bool:
+    from isochron.language import check as check_language
+
+    return bool(text) and not check_language(text, lang).wrong
+
+
+def write_plan(path: Path, entries: dict[str, dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for entry in entries.values():
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def cal_plan() -> None:
+    """The voice-calibrated test's draws (protocol v2.30): 30 dev plain translations for the voice's rate, and
+    100 test sources."""
+    from isochron.native_check import full_stop
+
+    commit = git_commit()
+    dev = {it["id"]: it for it in map(json.loads, (DEV_RUN / "items.jsonl").read_text(encoding="utf-8").splitlines())
+           if it and it["lang"] == "de" and it["seed"] == GEN_SEED and usable(it["a"]["text"])}
+    dev_ids = sorted(random.Random(SEED).sample(sorted(dev, key=int), N_DEV), key=int)
+    entries: dict[str, dict[str, Any]] = {}
+    for sid in dev_ids:
+        text = full_stop(dev[sid]["a"]["text"])
+        entries.setdefault(text_id(text), {"text_id": text_id(text), "text": text, "uses": []})["uses"].append(
+            {"id": sid, "system": "a", "purpose": "rate (dev)"})
+    write_plan(CAL / "dev_plan.jsonl", entries)
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    sheet = {k["id"] for k in read_csv_rows(KEY)}
+    test = {it["id"]: it for it in map(json.loads, (RUN / "items.jsonl").read_text(encoding="utf-8").splitlines())
+            if it and it["seed"] == GEN_SEED}
+    pool = sorted((sid for sid, it in test.items() if not fleurs[sid]["noisy_src"] and sid not in sheet
+                   and usable(it["a"]["text"])), key=int)
+    test_ids = sorted(random.Random(SEED).sample(pool, N_CAL), key=int)
+    selection = {"written": f"{datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC", "commit": commit, "seed": SEED,
+                 "dev_run": DEV_RUN.name, "dev_ids": dev_ids, "dev_pool": len(dev), "test_run": RUN.name,
+                 "test_pool": len(pool), "test_ids": test_ids, "generation_seed": GEN_SEED,
+                 "rule": (f"dev: random.Random({SEED}).sample of {N_DEV} German dev sources whose (a) at seed {GEN_SEED} is "
+                          f"usable; test: random.Random({SEED}).sample of {N_CAL} German test sources, English recording "
+                          "not noisy, not on the native-speaker sheet, (a) at seed 0 usable; both from ids in numeric order")}
+    (CAL / "selection.json").write_text(json.dumps(selection, indent=1) + "\n", encoding="utf-8")
+    CAL_RAW.mkdir(parents=True, exist_ok=True)
+    (CAL_RAW / "dev_plan.jsonl").write_bytes((CAL / "dev_plan.jsonl").read_bytes())
+    print(f"dev: {len(dev_ids)} of {len(dev)}; test: {len(test_ids)} of {len(pool)}")
+
+
+def clean_takes(folder: Path) -> tuple[dict[str, list[float]], dict[str, list[Path]], list[dict[str, Any]]]:
+    """Each text's clean takes (trimmed seconds, files), in take order, from a Qwen job's log."""
+    log = [json.loads(line) for line in (folder / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+    seconds: dict[str, list[float]] = {}
+    files: dict[str, list[Path]] = {}
+    for e in sorted(log, key=lambda e: (e["text_id"], e["round"])):
+        seconds.setdefault(e["text_id"], [])
+        files.setdefault(e["text_id"], [])
+        if e["clean"] and e["take"] is not None:
+            seconds[e["text_id"]].append(measure(*load(folder / e["file"])).trimmed_s)
+            files[e["text_id"]].append(folder / e["file"])
+    return seconds, files, log
+
+
+def cal_targets() -> None:
+    """The voice's rate from the dev takes, and each test source's calibrated syllable budget."""
+    from isochron.metrics.length import length
+
+    plan = [json.loads(line) for line in (CAL / "dev_plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    takes, _, _ = clean_takes(AUDIO / "qwen_dev")
+    full = {e["text_id"]: e for e in plan if len(takes.get(e["text_id"], [])) == TAKES}
+    secs = sum(statistics.median(takes[t]) for t in full)
+    syll = sum(length(e["text"], "syllables", "de") for e in full.values())
+    rate = secs / syll
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    selection = json.loads((CAL / "selection.json").read_text(encoding="utf-8"))
+    targets = {sid: int(fleurs[sid]["slot_s"] / rate + 0.5) for sid in selection["test_ids"]}
+    (CAL / "rate.json").write_text(json.dumps({
+        "seconds_per_syllable": round(rate, 5), "texts": len(full), "short_of_3_clean_takes": len(plan) - len(full),
+        "seconds": round(secs, 3), "syllables": syll, "rule": "Σ median clean-take seconds ÷ Σ eSpeak syllables, dev"},
+        indent=1) + "\n", encoding="utf-8")
+    (CAL / "targets.json").write_text(json.dumps(targets, indent=1) + "\n", encoding="utf-8")
+    CAL_RAW.mkdir(parents=True, exist_ok=True)
+    (CAL_RAW / "targets.json").write_bytes((CAL / "targets.json").read_bytes())
+    print(f"rate {rate:.4f} s per syllable from {len(full)} dev texts; {len(targets)} targets, "
+          f"{min(targets.values())}–{max(targets.values())} syllables")
+
+
+def cal_tts_plan() -> None:
+    """The speech plan of the calibrated run: (a) and (c) of the 100 test sources."""
+    from isochron.native_check import full_stop
+
+    items = [json.loads(line) for line in (CAL_RUN / "items.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    entries: dict[str, dict[str, Any]] = {}
+    for it in sorted(items, key=lambda it: int(it["id"])):
+        for system, text in (("a", it["a"]["text"]), ("c", it["budgets"]["calibrated"]["c"]["text"])):
+            if usable(text):
+                spoken = full_stop(text)
+                entries.setdefault(text_id(spoken), {"text_id": text_id(spoken), "text": spoken, "uses": []})["uses"].append(
+                    {"id": it["id"], "system": system, "purpose": "calibrated"})
+    write_plan(CAL / "plan.jsonl", entries)
+    (CAL_RAW / "plan.jsonl").write_bytes((CAL / "plan.jsonl").read_bytes())
+    print(f"{len(items)} sources, {len(entries)} distinct texts")
+
+
+def report_cal() -> None:
+    """The voice-calibrated test (protocol v2.30)."""
+    from isochron.metrics.length import counter_description, hit, length
+
+    commit = git_commit()
+    selection = json.loads((CAL / "selection.json").read_text(encoding="utf-8"))
+    rate = json.loads((CAL / "rate.json").read_text(encoding="utf-8"))
+    targets = {k: int(v) for k, v in json.loads((CAL / "targets.json").read_text(encoding="utf-8")).items()}
+    texts = [json.loads(line) for line in (CAL / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    items = {it["id"]: it for it in map(json.loads, (CAL_RUN / "items.jsonl").read_text(encoding="utf-8").splitlines()) if it}
+    run_cfg = json.loads((CAL_RUN / "config.json").read_text(encoding="utf-8"))
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    settings = json.loads((AUDIO / "qwen_cal" / "settings.json").read_text(encoding="utf-8"))
+    dev_settings = json.loads((AUDIO / "qwen_dev" / "settings.json").read_text(encoding="utf-8"))
+    takes, files, log = clean_takes(AUDIO / "qwen_cal")
+    by = {(u["id"], u["system"]): e["text_id"] for e in texts for u in e["uses"]}
+    seconds = {t: statistics.median(v) for t, v in takes.items() if len(v) == TAKES}
+    short = sorted(t for t, v in takes.items() if len(v) < TAKES)
+    problems = []
+    syll = {e["text_id"]: length(e["text"], "syllables", "de") for e in texts}
+    per_syll = {t: seconds[t] / syll[t] for t in seconds}
+    slow = {t: v for t, v in per_syll.items() if not 0.10 <= v <= 0.40}
+    if slow:
+        problems.append(f"{len(slow)} texts outside 0.10–0.40 s per syllable")
+    slots = {sid: measure(*load(AUDIO / "english" / f"{sid}.wav")).trimmed_s for sid in selection["test_ids"]}
+    for sid in selection["test_ids"]:
+        if abs(slots[sid] - fleurs[sid]["slot_s"]) > 0.0015:
+            problems.append(f"English {sid}: {slots[sid]:.3f} s, stored {fleurs[sid]['slot_s']}")
+    rows, missing = [], []
+    for sid in selection["test_ids"]:
+        a, c = by.get((sid, "a")), by.get((sid, "c"))
+        if a in seconds and c in seconds:
+            ctext = items[sid]["budgets"]["calibrated"]["c"]["text"]
+            rows.append({"id": sid, "slot": slots[sid], "a": seconds[a], "c": seconds[c], "a_fit": fits(seconds[a], slots[sid]),
+                         "c_fit": fits(seconds[c], slots[sid]), "target": targets[sid],
+                         "c_syll": length(ctext, "syllables", "de"),
+                         "c_hits": hit(length(ctext, "syllables", "de"), targets[sid]),
+                         "kept": items[sid]["budgets"]["calibrated"]["c"]["kept_plain"], "same": a == c})
+        else:
+            missing.append(sid)
+    n = len(rows)
+    a_fit, c_fit = sum(r["a_fit"] for r in rows), sum(r["c_fit"] for r in rows)
+    only_c = sum(r["c_fit"] and not r["a_fit"] for r in rows)
+    only_a = sum(r["a_fit"] and not r["c_fit"] for r in rows)
+    direction = {x: (sum(not r[x + "_fit"] and r[x] < r["slot"] for r in rows),
+                     sum(not r[x + "_fit"] and r[x] > r["slot"] for r in rows)) for x in "ac"}
+    ratio = {x: [r[x] / r["slot"] for r in rows] for x in "ac"}
+
+    def rejected(system: str) -> str:
+        tids = {by[(sid, system)] for sid in selection["test_ids"] if (sid, system) in by}
+        es = [e for e in log if e["text_id"] in tids]
+        return f"{sum(not e['clean'] for e in es)}/{len(es)}"
+
+    with open(CAL / "durations.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "english_slot_s", "a_s", "c_s", "a_fits", "c_fits", "calibrated_target", "c_syllables",
+                    "c_hits_target", "c_kept_plain"])
+        for r in rows:
+            w.writerow([r["id"], f"{r['slot']:.3f}", f"{r['a']:.3f}", f"{r['c']:.3f}", int(r["a_fit"]), int(r["c_fit"]),
+                        r["target"], r["c_syll"], int(r["c_hits"]), int(r["kept"])])
+    with open(CAL / "manifest.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["file", "kind", "text_id", "round", "seed", "clean", "trimmed_s", "sha256", "licence"])
+        for folder in ("qwen_dev", "qwen_cal"):
+            for e in (json.loads(x) for x in (AUDIO / folder / "log.jsonl").read_text(encoding="utf-8").splitlines()):
+                path = AUDIO / folder / e["file"]
+                w.writerow([path.as_posix(), folder, e["text_id"], e["round"], e["seed"], int(e["clean"]),
+                            f"{measure(*load(path)).trimmed_s:.3f}", sha256(path), QWEN_LICENCE])
+        for sid in selection["test_ids"]:
+            path = AUDIO / "english" / f"{sid}.wav"
+            w.writerow([path.as_posix(), "english", "", "", "", "", f"{slots[sid]:.3f}", sha256(path), FLEURS_LICENCE])
+    md = [
+        "# Voice-calibrated syllable budgets: German speech against the English slot (exploratory, post-hoc)", "",
+        "Post-hoc, added after test outputs existed; planned before generation (protocol v2.30), after the Qwen3-TTS "
+        "time check showed (c) running short (`results/time_check_qwen.md`).", "",
+        ("**Status: every check of the audio passed.**" if not problems else "**Status: the check failed:** "
+         + "; ".join(problems) + ".") + (f" {len(short)} text(s) short of {TAKES} clean takes, left out with their "
+                                         f"source(s): {', '.join(missing) or '–'}." if short else ""), "",
+        f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC; git commit {commit}",
+        f"- Voice rate: {rate['seconds_per_syllable']:.4f} s per syllable, from {rate['texts']} German dev plain "
+        f"translations (`{CAL / 'rate.json'}`); dev only, never test lines.",
+        f"- Budget: round half up (English slot ÷ rate) syllables, ±10 % ({min(targets.values())}–{max(targets.values())} "
+        "syllables). Step 4's (c) otherwise unchanged; (a) reused from `hpc_8b_step4_test`, (b) not run.",
+        f"- Generation: run `{CAL_RUN.name}`, {run_cfg['model']}, {run_cfg['quantisation']}, endpoint "
+        f"{run_cfg['endpoint']} (vLLM on the cluster), seed {GEN_SEED}, git commit {run_cfg['git_commit']}.",
+        f"- Sources: {len(selection['test_ids'])} test sources ({selection['rule']}).",
+        f"- TTS: {QWEN_ENGINE}; preset voice {settings['voice']}; settings as in v2.28 "
+        f"(temperature {settings['temperature']}, top_k {settings['top_k']}, top_p {settings['top_p']}, repetition "
+        f"penalty {settings['repetition_penalty']}); round r seeds torch with r; 3 clean takes, at most "
+        f"{settings['rounds']} rounds; Whisper rule chars10 (transcript at most 10 % longer, spaces, punctuation and case "
+        f"removed); float WAV; the median clean take. Jobs: dev {dev_settings['wall_s']:.0f} s, test "
+        f"{settings['wall_s']:.0f} s wall time on {settings['gpu']}. Syllables: {counter_description('espeak')}.",
+        f"- n: {n} sources with 3 clean takes for both (a) and (c)", "",
+        "## Fit in seconds", "",
+        "| System | Fits the English slot | Too short | Too long | Median speech ÷ slot | Takes rejected |",
+        "|---|---|---:|---:|---:|---:|",
+        *(f"| {label} | {sum(r[x + '_fit'] for r in rows)}/{n} ({100 * sum(r[x + '_fit'] for r in rows) / n:.0f} %) | "
+          f"{direction[x][0]} | {direction[x][1]} | {statistics.median(ratio[x]):.2f} | {rejected(x)} |"
+          for x, label in (("a", "(a) plain translation"), ("c", "(c) ours, calibrated budget"))), "",
+        f"Paired: (c) fits and (a) does not in {only_c}, the reverse in {only_a}; exact McNemar "
+        f"p = {mcnemar_exact(only_c, only_a):.4f}. (c) kept (a) in {sum(r['kept'] for r in rows)} sources.", "",
+        f"(c) hits its calibrated syllable budget (±10 %) in {sum(r['c_hits'] for r in rows)}/{n}; of those, "
+        f"{sum(r['c_hits'] and r['c_fit'] for r in rows)} also fit the English slot in seconds.", "",
+        f"Seconds per syllable of the speech (median clean take): {min(per_syll.values()):.3f}–{max(per_syll.values()):.3f}.",
+        "", f"Per source: `{CAL / 'durations.csv'}`; files, SHA-256 and licences: `{CAL / 'manifest.csv'}` (audio in "
+            "the git-ignored `audio/`).", ""]
+    (Path("results") / "time_check_calibrated.md").write_text("\n".join(md), encoding="utf-8")
+    print("\n".join(md))
+
+
 def median_take(values: list[float]) -> int:
     """The take whose duration is the median (the middle of three)."""
     return sorted(range(len(values)), key=lambda k: values[k])[len(values) // 2]
@@ -686,9 +907,11 @@ def median_take(values: list[float]) -> int:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", choices=("plan", "english", "report", "report-qwen"))
+    ap.add_argument("cmd", choices=("plan", "english", "report", "report-qwen", "cal-plan", "cal-targets", "cal-tts-plan",
+                                    "report-cal"))
     args = ap.parse_args(argv)
-    {"plan": plan, "english": english, "report": report, "report-qwen": report_qwen}[args.cmd]()
+    {"plan": plan, "english": english, "report": report, "report-qwen": report_qwen, "cal-plan": cal_plan,
+     "cal-targets": cal_targets, "cal-tts-plan": cal_tts_plan, "report-cal": report_cal}[args.cmd]()
 
 
 if __name__ == "__main__":

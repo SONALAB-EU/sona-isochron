@@ -51,7 +51,8 @@ from isochron.run import GENERATION, LLAMACPP_SAMPLERS, backend_info, check_endp
 from isochron.schema import SentenceRecord, read_jsonl
 
 RATES = {"en": 6.19, "de": 5.97, "fr": 7.18, "it": 6.99}  # syllables per second, Pellegrino et al. (2011)
-BUDGETS = {"isometric": "chars", "isosyllabic": "syllables"}
+BUDGETS = {"isometric": "chars", "isosyllabic": "syllables", "calibrated": "syllables"}
+DEFAULT_BUDGETS = ["isometric", "isosyllabic"]  # the frozen step 4; calibrated only on request (protocol v2.30)
 KEEP_PLAIN = 1.10  # (c) keeps (a) when it is at most this times the budget
 PROMPTS = {
     "plain": "translate_plain_v1",
@@ -91,7 +92,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--split", choices=("dev", "test"), default="dev")
     ap.add_argument("--allow-test", action="store_true", help="the test split is for final numbers only")
     ap.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
-    ap.add_argument("--budgets", nargs="+", choices=sorted(BUDGETS), default=sorted(BUDGETS))
+    ap.add_argument("--budgets", nargs="+", choices=sorted(BUDGETS), default=DEFAULT_BUDGETS)
+    ap.add_argument("--calibrated-targets", type=Path,
+                    help="JSON {id: syllables}: the calibrated budget per sentence (isochron.time_check cal-targets)")
+    ap.add_argument("--plain-from", type=Path, help="reuse (a) from this run's items (same id and seed), not regenerated")
+    ap.add_argument("--systems", nargs="+", choices=("b", "c"), default=["b", "c"], help="which of (b) and (c) to run")
     ap.add_argument("--ids", nargs="+", help="FLEURS sentence ids")
     ap.add_argument("--exclude-gonogo", action="store_true", help="skip the ids of the 50 go/no-go sentences")
     ap.add_argument("--limit", type=int, help="first N sentences per language, in file order")
@@ -165,6 +170,11 @@ def main(argv: list[str] | None = None) -> None:
                   "ids": {lang: [r.id for r in rs] for lang, rs in records.items()}},
         "tts": "none", "workers": args.workers, "sessions": [session],
     }
+    if args.calibrated_targets or args.plain_from or args.systems != ["b", "c"]:  # the frozen runs never set these
+        cfg["calibrated_targets"] = {"file": str(args.calibrated_targets), "sha256": hashlib.sha256(
+            args.calibrated_targets.read_bytes()).hexdigest()} if args.calibrated_targets else None
+        cfg["plain_from"] = str(args.plain_from) if args.plain_from else None
+        cfg["systems"] = args.systems
     if (out / "config.json").exists():
         if not args.resume:
             sys.exit(f"{out} already holds a run; pass --resume to continue it")
@@ -185,6 +195,14 @@ def main(argv: list[str] | None = None) -> None:
     print(f"step 4: {n_all} items, {len(done)} done, {len(todo)} to go, {args.workers} worker(s) → {out}", flush=True)
 
     nli_lock, write_lock = threading.Lock(), threading.Lock()
+    targets = {str(k): int(v) for k, v in json.loads(args.calibrated_targets.read_text(encoding="utf-8")).items()} \
+        if args.calibrated_targets else {}
+    if "calibrated" in args.budgets and not targets:
+        sys.exit("--budgets calibrated needs --calibrated-targets")
+    reused = None
+    if args.plain_from:
+        reused = {(it["lang"], it["id"], it["seed"]): it["a"] for it in map(
+            json.loads, (args.plain_from / "items.jsonl").read_text(encoding="utf-8").splitlines()) if it}
 
     def meaning(sources, outputs):
         with nli_lock:
@@ -206,7 +224,11 @@ def main(argv: list[str] | None = None) -> None:
         # (a) plain translation; an unparsable answer is asked again with the next seed
         tries = []
         plain = None
-        for k in range(PLAIN_TRIES):
+        if reused is not None:  # --plain-from: (a) as the earlier run wrote it
+            earlier = reused[(lang, r.id, seed)]
+            item["a"] = {**earlier, "reused_from": str(args.plain_from)}
+            plain = earlier["text"]
+        for k in range(PLAIN_TRIES if reused is None else 0):
             prompt = prompts["plain"].render(lang, None, r.src_text)
             raw, info = call(prompt, seed + ROUND_SEED_STEP * k, r.ref_text, "", lang, 0)
             text, error = parse_translation(raw)
@@ -214,20 +236,24 @@ def main(argv: list[str] | None = None) -> None:
             if text:
                 plain = text
                 break
-        item["a"] = {"text": plain, "tries": tries,
-                     "language": asdict(check_language(plain, lang)) if plain else None}
+        if reused is None:
+            item["a"] = {"text": plain, "tries": tries,
+                         "language": asdict(check_language(plain, lang)) if plain else None}
         item["budgets"] = {}
         for kind in args.budgets:
             unit = BUDGETS[kind]
-            goal = budget(kind, r.src_text, lang, counter)
+            goal = targets[r.id] if kind == "calibrated" else budget(kind, r.src_text, lang, counter)
             entry: dict[str, Any] = {"unit": unit, "target": goal}
             # (b) one step, closest of 4
-            prompt = prompts[f"budget_{unit}"].render(lang, goal, r.src_text)
-            raw, info = call(prompt, seed, r.ref_text, unit, lang, goal)
-            cands, error = parse_candidates(raw)
-            idx = select(cands, "closest", lambda t: length(t, unit, lang, counter), goal)
-            entry["b"] = {"raw": raw, "parse_error": error, "candidates": cands, "llm": info,
-                          "chosen": idx, "text": cands[idx] if idx is not None else None}
+            if "b" not in args.systems:
+                entry["b"] = None
+            else:
+                prompt = prompts[f"budget_{unit}"].render(lang, goal, r.src_text)
+                raw, info = call(prompt, seed, r.ref_text, unit, lang, goal)
+                cands, error = parse_candidates(raw)
+                idx = select(cands, "closest", lambda t: length(t, unit, lang, counter), goal)
+                entry["b"] = {"raw": raw, "parse_error": error, "candidates": cands, "llm": info,
+                              "chosen": idx, "text": cands[idx] if idx is not None else None}
             # (c) translate, then shorten
             if plain is None:
                 entry["c"] = {"kept_plain": False, "text": None, "loop": None}
