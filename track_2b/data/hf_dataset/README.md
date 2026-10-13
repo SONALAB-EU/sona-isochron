@@ -438,8 +438,8 @@ reported numbers, and everything was frozen before any test output existed. No a
 ## Dataset Details
 
 - **Curated by:** the isochron team, Hack Apertus 2026, Track 2B
-- **Funded by [optional]:** [More Information Needed]
-- **Shared by [optional]:** [More Information Needed]
+- **Funded by [optional]:** SONALAB
+- **Shared by [optional]:** SONALAB
 - **Language(s) (NLP):** English (sources), German and French (references and outputs)
 - **License:** CC BY-SA 4.0 (see [Data Instance Licenses](#data-instance-licenses))
 - **Git repository:** [More Information Needed]
