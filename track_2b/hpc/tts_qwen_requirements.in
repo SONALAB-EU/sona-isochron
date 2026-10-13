@@ -1,0 +1,16 @@
+# The Qwen3-TTS environment for the time check and the demo (protocol v2.28): its own venv on the cluster,
+# never the project's. qwen-tts 0.1.1 is installed with --no-deps (its gradio demo is not needed); these
+# are its runtime imports at its own pins, plus openai-whisper for the rejection rule. torch and
+# torchaudio are the CUDA 12.4 builds from download.pytorch.org (the cluster's PyPI is throttled).
+torch==2.6.0+cu124
+torchaudio==2.6.0+cu124
+transformers==4.57.3
+accelerate==1.12.0
+librosa
+soundfile
+sox
+onnxruntime
+einops
+numpy<2.3
+huggingface-hub
+openai-whisper==20250625
