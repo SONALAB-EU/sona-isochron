@@ -956,3 +956,16 @@ used.
   in 59. Misses: (a) 23 too short, 51 too long; (c) 28 too short, 24 too
   long. GPU: 0.29 H100-hours for the four jobs, one of which (2662394) ran
   out of memory.
+- 2026-10-13, v2.33: demo voices, fixed before generating. For the 4 demo
+  lines only, the German speech matches the English reader's gender in
+  FLEURS (`gender`: 0 male, 1 female, 2 other; the recording that
+  `data/fleurs_de_test.jsonl` names). Male: Aiden. Female: the first preset in
+  the model's own list (`get_supported_speakers()`, the order of
+  `talker_config.spk_id` in the checkpoint's config: serena, vivian, uncle_fu,
+  ryan, aiden, ono_anna, sohee, eric, dylan) that the model card describes as
+  female, which is Serena ("warm, gentle young female voice"). Readers: 1903,
+  2002 and 1679 female (Serena), 1891 male (Aiden). All 8 demo texts are read
+  again in one job with v2.28's rules (extra-words Whisper rule, 3 clean
+  takes, at most 10 rounds, float WAV, the same settings and round seeds);
+  the figures use the median clean take. The timing-check results stay as
+  they are, with Aiden.
