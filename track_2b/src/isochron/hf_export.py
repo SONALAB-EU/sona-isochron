@@ -8,6 +8,9 @@ and a test split (the reported numbers):
   judge_controls: the planted meaning controls with every check's verdict;
 - metadata: one row per sentence or control pair with its licence and source, and runs: each run's
   configuration (model, quantisation, prompts and their hashes, seeds, commits), without local paths.
+Two more configs, both on test sources: native_check, the 50 lines of the native-speaker check as rated
+(system labels from the key, the ratings with protocol v2.34's copies for identical pairs, the rater's
+comments), and timing, the durations of every timing test (results/time_check/; no audio).
 
 `build` reads the raw runs (results/raw/, not in git) and scores every output as the report tools do
 (isochron.pilot_report for step 2, isochron.step4_report for step 4, isochron.meaning_check for the second
@@ -23,6 +26,7 @@ exported files alone and lists every cell that differs, and every row that one s
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 from collections import Counter, defaultdict
 from functools import lru_cache
@@ -46,7 +50,23 @@ STEP4 = {"dev": ["hpc_8b_step4_dev"], "test": ["hpc_8b_step4_test", "hpc_8b_step
 STEP4_TEST_NLI = RAW / "step4_test_nli_cache.jsonl"
 SECOND_NLI = RAW / "meaning_check"
 VALIDATION = "results/judge_validation_{suite}_v3_qwen3-14b_hpc_8b.md"
-CONFIGS = ("step2_inputs", "step2_responses", "step4_inputs", "step4_responses", "judge_controls", "metadata", "runs")
+CONFIGS = ("step2_inputs", "step2_responses", "step4_inputs", "step4_responses", "judge_controls", "native_check",
+           "timing", "metadata", "runs")
+NATIVE = Path("results/native_check")
+NATIVE_MARKS = NATIVE / "returned/german_lines_rated_part1.xlsx"  # the rater's marks and comments
+NATIVE_AS_RATED = NATIVE / "returned/step4_sheet_de_as_rated.csv"  # the texts as the rater saw them
+NATIVE_KEY = NATIVE / "step4_key_de.csv"
+TIMING = Path("results/time_check")
+TIMING_TESTS = {  # name: durations file, results file, TTS, whether its seconds are valid
+    "chatterbox": (TIMING / "durations.csv", "results/time_check.md",
+                   "Chatterbox multilingual (chatterbox-tts 0.1.7, MIT), default voice", False),
+    "qwen3_tts": (TIMING / "durations_qwen.csv", "results/time_check_qwen.md",
+                  "Qwen3-TTS-12Hz-1.7B-CustomVoice @ 0c0e305 (Apache-2.0), voice Aiden", True),
+    "qwen3_tts_calibrated": (TIMING / "calibrated/durations.csv", "results/time_check_calibrated.md",
+                             "Qwen3-TTS-12Hz-1.7B-CustomVoice @ 0c0e305 (Apache-2.0), voice Aiden", True),
+    "demo_voices": (TIMING / "demo_voices/durations.csv", None,
+                    "Qwen3-TTS-12Hz-1.7B-CustomVoice @ 0c0e305 (Apache-2.0)", True),
+}
 LOOPBACK = "local OpenAI-compatible server on loopback (127.0.0.1)"
 
 
@@ -298,6 +318,79 @@ def instance_meta(inputs: list[dict], experiment: str) -> list[dict]:
     return list(rows.values())
 
 
+def truth(value: str) -> bool | None:
+    return {"True": True, "False": False, "1": True, "0": False}.get((value or "").strip())
+
+
+def native_rows() -> list[dict]:
+    """The native-speaker check: every line of the sheet as rated, its system from the key, and the marks the
+    scoring uses (isochron.native_check: the rated copy's marks also apply to an identical pair, v2.34)."""
+    from isochron.native_check import MEANING, read_marks, with_identical_pairs, yes_no
+
+    raw = read_marks(NATIVE_MARKS)
+    with open(NATIVE_AS_RATED, encoding="utf-8-sig") as f:
+        sheet = {r["line"]: r for r in csv.DictReader(f)}
+    with open(NATIVE_KEY, encoding="utf-8") as f:
+        key = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    marks, origin = with_identical_pairs(raw, key, NATIVE_AS_RATED)
+    rows = []
+    for k in sorted(key, key=lambda r: int(r["line"])):
+        line, m = k["line"], marks.get(k["line"])
+        rows.append({
+            "line": int(line), "case_id": f"step4/test/de/{k['id']}", "split": "test", "split_role": "descriptive",
+            "run": k["run"], "lang": "de", "fleurs_id": k["id"], "seed": int(k["seed"]), "budget": k["budget"],
+            "system": k["system"], "english_source": sheet[line]["english_source"],
+            "german_output": sheet[line]["german_output"], "kept_plain": truth(k["kept_plain"]),
+            "same_text_as_its_pair": truth(k["same_text_as_its_pair"]), "fits_budget": truth(k["fits_budget"]),
+            "rating": origin.get(line, "not rated"),
+            "meaning": MEANING.get((m.get("meaning") or "").strip().lower()) if m else None,
+            "added_info": yes_no(m.get("added_info", "")) if m else None,
+            "natural_german": yes_no(m.get("natural_german", "")) if m else None,
+            "rater_comment": (raw[line].get("comment") or "").strip() or None,
+            **{c: truth(k[c]) for c in ("nli_kept_ref", "nli_added_ref", "nli_dropped_ref", "nli_kept_src",
+                                        "nli2_kept_ref", "nli2_added_ref", "nli2_dropped_ref", "nli2_kept_src")},
+            "judge_recall": float(k["judge_recall"]) if k["judge_recall"] else None,
+            **{c: truth(k[c]) for c in ("judge_dropped_or_changed", "judge_added", "judge_complete")}})
+    return rows
+
+
+def timing_rows() -> list[dict]:
+    """Every timing test's durations, one row per text and system (no audio)."""
+    def seconds(value: str | None) -> list[float] | None:
+        return [float(x) for x in value.split()] if value else None
+
+    def number(value: str | None) -> float | None:
+        return float(value) if value not in (None, "") else None
+
+    rows = []
+    for test, (path, results, tts, ok) in TIMING_TESTS.items():
+        with open(path, encoding="utf-8") as f:
+            records = list(csv.DictReader(f))
+        base = {"split": "test", "split_role": "exploratory", "timing_test": test, "results_file": results,
+                "tts": tts, "seconds_valid": ok}
+        if test == "qwen3_tts_calibrated":  # one row per source in the file: a row per system here
+            for r in records:
+                for system in ("a", "c"):
+                    median, slot = float(r[f"{system}_s"]), float(r["english_slot_s"])
+                    rows.append({**base, "fleurs_id": r["id"], "system": system, "purpose": "time_check", "voice": "Aiden",
+                                 "text_id": None, "syllables": int(r["c_syllables"]) if system == "c" else None,
+                                 "take_s": None, "median_s": median, "english_slot_s": slot,
+                                 "ratio": round(median / slot, 3), "fits_slot": r[f"{system}_fits"] == "1",
+                                 "calibrated_target": int(r["calibrated_target"]) if system == "c" else None,
+                                 "hits_calibrated_target": r["c_hits_target"] == "1" if system == "c" else None,
+                                 "kept_plain": r["c_kept_plain"] == "1" if system == "c" else None})
+            continue
+        for r in records:
+            rows.append({**base, "fleurs_id": r["id"], "system": r["system"], "purpose": r.get("purpose", "demo"),
+                         "voice": r.get("voice") or ("Aiden" if test == "qwen3_tts" else "default"),
+                         "text_id": r["text_id"], "syllables": int(r["syllables"]) if r.get("syllables") else None,
+                         "take_s": seconds(r.get("clean_take_s") or r.get("take_s")),
+                         "median_s": number(r["median_s"]), "english_slot_s": number(r["english_slot_s"]),
+                         "ratio": number(r.get("ratio")), "fits_slot": truth(r.get("fits_slot")),
+                         "calibrated_target": None, "hits_calibrated_target": None, "kept_plain": None})
+    return rows
+
+
 def write(out: Path, config: str, split: str, rows: list[dict]) -> None:
     (out / config).mkdir(parents=True, exist_ok=True)
     with open(out / config / f"{split}.jsonl", "w", encoding="utf-8") as f:
@@ -324,6 +417,12 @@ def build(out: Path, nli_cache: Path) -> None:
                 meta[split][m["instance_id"]] = m
     controls, control_meta = control_verdicts()
     write(out, "judge_controls", "controls", controls)
+    native, timing = native_rows(), timing_rows()
+    write(out, "native_check", "test", native)
+    write(out, "timing", "test", timing)
+    for config, rows in (("native_check", native), ("timing", timing)):
+        for iid in dict.fromkeys(f"fleurs/test/de/{r['fleurs_id']}" for r in rows):
+            meta["test"][iid]["used_in"].append(config)  # every one is a step 4 test sentence
     for split in ("dev", "test"):
         write(out, "metadata", split, sorted(meta[split].values(), key=lambda m: m["instance_id"]))
     write(out, "metadata", "controls", control_meta)
@@ -535,7 +634,96 @@ def check(d: Path, results: Path = Path("results")) -> tuple[Counter, list[str]]
             compare({"Pairs": str(len(c)), "Evaluation NLI (the loop's)": rate("nli_correct"),
                      "Second NLI": rate("nli2_correct")}, nli2_table, nli2_header, control,
                     f"step4_test_nli2.md {nli2_t}", mismatches, counts)
+    check_native(d, results, mismatches, counts)
+    check_timing(d, results, mismatches, counts)
     return counts, mismatches
+
+
+def check_native(d: Path, results: Path, mismatches: list[str], counts: Counter) -> None:
+    """The native-speaker rates per system and the agreement with each automatic check."""
+    from isochron.native_check import STEP4_CHECKS, kappa, rate
+
+    rows = [r for r in read_jsonl(d / "native_check" / "test.jsonl") if r["meaning"] and r["added_info"] is not None]
+    path = results / "native_check_step4_agreement.md"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    tables = []
+    for i, line in enumerate(lines):
+        if line.startswith("|") and (i == 0 or not lines[i - 1].startswith("|")):
+            tables.append(first_table(lines[i:]))
+    rates, agree = tables[0], tables[1]
+    names = {"a": "(a) plain translation", "c": "(c) ours: translate, then shorten"}
+    got = {}
+    for system, name in names.items():
+        ls = [r for r in rows if r["system"] == system]
+        nat = [r for r in ls if r["natural_german"] is not None]
+        got[name] = ([name, str(len(ls))] + [rate(sum(r["meaning"] == v for r in ls), len(ls))
+                                             for v in ("kept", "minor loss", "wrong")]
+                     + [rate(sum(r["added_info"] for r in ls), len(ls)), rate(sum(r["natural_german"] for r in nat), len(nat))])
+    for check_name, ok, lost, added in STEP4_CHECKS:
+        for on, column, human in (("kept, nothing added", ok, lambda r: r["meaning"] == "kept" and not r["added_info"]),
+                                  ("information lost (minor or wrong)", lost, lambda r: r["meaning"] != "kept"),
+                                  ("information added", added, lambda r: r["added_info"])):
+            if column is None:
+                continue
+            pairs = [(human(r), r[column]) for r in rows if r[column] is not None]
+            k = kappa([p[0] for p in pairs], [p[1] for p in pairs])
+            got[f"{check_name} | {on}"] = [check_name, on, str(len(pairs)),
+                                           f"{100 * sum(a == b for a, b in pairs) / len(pairs):.0f} %",
+                                           "–" if k is None else f"{k:.2f}"]
+    have = {}
+    for table, width in ((rates, 1), (agree, 2)):
+        for line in table[2:]:
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            have[" | ".join(cells[:width])] = cells
+    for row, cells in got.items():
+        counts[path.name] += len(cells)
+        if have.get(row) != cells:
+            mismatches.append(f"{path.name} | {row}: results {have.get(row)}, export {cells}")
+    unmatched(have, got, path.name, mismatches)
+
+
+def check_timing(d: Path, results: Path, mismatches: list[str], counts: Counter) -> None:
+    """Fit in seconds per system, and the paired counts, of each timing test that reports them."""
+    rows = read_jsonl(d / "timing" / "test.jsonl")
+    for test, title_c in (("chatterbox", "(c) ours"), ("qwen3_tts", "(c) ours"),
+                          ("qwen3_tts_calibrated", "(c) ours, calibrated budget")):
+        path = results / Path(TIMING_TESTS[test][1]).name
+        text = path.read_text(encoding="utf-8")
+        timed = [r for r in rows if r["timing_test"] == test and r["purpose"] == "time_check" and r["median_s"] is not None]
+        paired = {r["fleurs_id"] for r in timed if r["system"] == "a"} & {r["fleurs_id"] for r in timed if r["system"] == "c"}
+        by = {s: {r["fleurs_id"]: r for r in timed if r["system"] == s and r["fleurs_id"] in paired} for s in ("a", "c")}
+        lines = text.splitlines()
+        table = first_table(lines[lines.index("## Fit in seconds") + 1:])
+        header = [c.strip() for c in table[0].strip().strip("|").split("|")]
+        have = {cells[0]: cells for cells in ([c.strip() for c in ln.strip().strip("|").split("|")] for ln in table[2:])}
+        got_rows = {}
+        for system, name in (("a", "(a) plain translation"), ("c", title_c)):
+            rs = list(by[system].values())
+            ratios = sorted(r["median_s"] / r["english_slot_s"] for r in rs)
+            fits = sum(r["fits_slot"] for r in rs)
+            got = {"Fits the English slot": f"{fits}/{len(rs)} ({100 * fits / len(rs):.0f} %)",
+                   "Median speech ÷ slot": f"{float(np.median(ratios)):.2f}",
+                   "Range": f"{ratios[0]:.2f}–{ratios[-1]:.2f}",
+                   "Too short": str(sum(x < 0.9 for x in ratios)), "Too long": str(sum(x > 1.1 for x in ratios))}
+            got_rows[name] = got
+            compare(got, have, header, name, f"{path.name} Fit in seconds", mismatches, counts)
+        unmatched(have, got_rows, f"{path.name} Fit in seconds", mismatches)
+        only_c = sum(by["c"][i]["fits_slot"] and not by["a"][i]["fits_slot"] for i in paired)
+        only_a = sum(by["a"][i]["fits_slot"] and not by["c"][i]["fits_slot"] for i in paired)
+        sentence = f"(c) fits and (a) does not in {only_c}, the reverse in {only_a}"
+        counts[path.name] += 2
+        if sentence not in text:
+            mismatches.append(f"{path.name}: no sentence {sentence!r}")
+        if test == "qwen3_tts_calibrated":
+            c = list(by["c"].values())
+            hits = [r for r in c if r["hits_calibrated_target"]]
+            sentences = [(f"(c) hits its calibrated syllable budget (±10 %) in {len(hits)}/{len(c)}; of those, "
+                          f"{sum(r['fits_slot'] for r in hits)} also fit the English slot"),
+                         f"(c) kept (a) in {sum(r['kept_plain'] for r in c)} sources"]
+            for sentence in sentences:
+                counts[path.name] += 1
+                if sentence not in text:
+                    mismatches.append(f"{path.name}: no sentence {sentence!r}")
 
 
 def main(argv: list[str] | None = None) -> None:

@@ -314,6 +314,114 @@ dataset_info:
     dtype: bool
   - name: split
     dtype: string
+- config_name: native_check
+  features:
+  - name: line
+    dtype: int64
+  - name: case_id
+    dtype: string
+  - name: split
+    dtype: string
+  - name: split_role
+    dtype: string
+  - name: run
+    dtype: string
+  - name: lang
+    dtype: string
+  - name: fleurs_id
+    dtype: string
+  - name: seed
+    dtype: int64
+  - name: budget
+    dtype: string
+  - name: system
+    dtype: string
+  - name: english_source
+    dtype: string
+  - name: german_output
+    dtype: string
+  - name: kept_plain
+    dtype: bool
+  - name: same_text_as_its_pair
+    dtype: bool
+  - name: fits_budget
+    dtype: bool
+  - name: rating
+    dtype: string
+  - name: meaning
+    dtype: string
+  - name: added_info
+    dtype: bool
+  - name: natural_german
+    dtype: bool
+  - name: rater_comment
+    dtype: string
+  - name: nli_kept_ref
+    dtype: bool
+  - name: nli_added_ref
+    dtype: bool
+  - name: nli_dropped_ref
+    dtype: bool
+  - name: nli_kept_src
+    dtype: bool
+  - name: nli2_kept_ref
+    dtype: bool
+  - name: nli2_added_ref
+    dtype: bool
+  - name: nli2_dropped_ref
+    dtype: bool
+  - name: nli2_kept_src
+    dtype: bool
+  - name: judge_recall
+    dtype: float64
+  - name: judge_dropped_or_changed
+    dtype: bool
+  - name: judge_added
+    dtype: bool
+  - name: judge_complete
+    dtype: bool
+- config_name: timing
+  features:
+  - name: split
+    dtype: string
+  - name: split_role
+    dtype: string
+  - name: timing_test
+    dtype: string
+  - name: results_file
+    dtype: string
+  - name: tts
+    dtype: string
+  - name: seconds_valid
+    dtype: bool
+  - name: fleurs_id
+    dtype: string
+  - name: system
+    dtype: string
+  - name: purpose
+    dtype: string
+  - name: voice
+    dtype: string
+  - name: text_id
+    dtype: string
+  - name: syllables
+    dtype: int64
+  - name: take_s
+    list: float64
+  - name: median_s
+    dtype: float64
+  - name: english_slot_s
+    dtype: float64
+  - name: ratio
+    dtype: float64
+  - name: fits_slot
+    dtype: bool
+  - name: calibrated_target
+    dtype: int64
+  - name: hits_calibrated_target
+    dtype: bool
+  - name: kept_plain
+    dtype: bool
 - config_name: metadata
   features:
   - name: instance_id
@@ -402,6 +510,14 @@ configs:
   data_files:
   - split: controls
     path: judge_controls/controls.jsonl
+- config_name: native_check
+  data_files:
+  - split: test
+    path: native_check/test.jsonl
+- config_name: timing
+  data_files:
+  - split: test
+    path: timing/test.jsonl
 - config_name: metadata
   data_files:
   - split: dev
@@ -432,8 +548,16 @@ included:
 - **Step 2, shortening in the same language** (the engine). A German or French FLEURS sentence is
   shortened to 90, 80, 70 or 60 % of its syllables, without and with the repair loop.
 
+Two checks of step 4 follow, both post-hoc (added after test outputs existed):
+
+- **The native-speaker check.** One German native speaker rated 50 German lines from step 4 test, blind
+  to the system: 25 English sources, each with (a) and (c) under the syllable budget.
+- **Timing in seconds.** German outputs were read by text-to-speech and timed against the English FLEURS
+  recording of the source. This includes a voice-calibrated syllable budget.
+
 The **dev** split is exploratory: prompts and settings were chosen on it. The **test** split holds the
-reported numbers, and everything was frozen before any test output existed. No audio is included.
+reported numbers, and everything was frozen before any test output existed. No audio is included: the
+timing config holds durations only.
 
 ## Dataset Details
 
@@ -458,13 +582,13 @@ reported numbers, and everything was frozen before any test output existed. No a
 
 ### Out-of-Scope Use
 
-- Training a production dubbing or translation system. The outputs are machine-generated, are not
-  checked by native speakers, and include outputs that drop or change meaning (by design: they are the
-  measured failures).
+- Training a production dubbing or translation system. The outputs are machine-generated, only 30 of
+  them were rated by a native speaker, and they include outputs that drop or change meaning (by design:
+  they are the measured failures).
 - Treating the judge's fit & complete rate or fact recall as a measurement of meaning preservation.
   They are upper bounds (see [Risks, Bias, and Limitations](#risks-bias-and-limitations)).
-- Treating fit as fit in seconds. No speech was synthesised; length is measured in characters and in
-  eSpeak NG syllables.
+- Treating fit as fit in seconds. Step 2 and step 4 measure length in characters and in eSpeak NG
+  syllables. Only the `timing` config measures seconds, and only for one synthetic voice.
 - Any use the source licences or the Apertus 1.5 Acceptable Use Policy do not permit.
 
 ### Specifications
@@ -513,7 +637,7 @@ differences and the judge's numbers.
 
 ## Dataset Structure
 
-The template's three components map to seven JSONL configs. Load one with
+The template's three components map to nine JSONL configs. Load one with
 `datasets.load_dataset("<repo>", "<config>")`.
 
 | Component | Config | Splits and rows | One row per |
@@ -523,10 +647,14 @@ The template's three components map to seven JSONL configs. Load one with
 | Model responses | `step4_responses` | dev 3,366, test 16,296 | sentence, seed, budget and system |
 | Model responses | `step2_responses` | dev 480, test 16,296 | sentence, level, seed, prompt variant and condition |
 | Model responses | `judge_controls` | controls 680 | planted control pair, with every check's verdict |
+| Model responses | `native_check` | test 50 | line of the native-speaker sheet, with its system, the rating and the automatic checks |
+| Model responses | `timing` | test 309 | text and system in one timing test, with its durations in seconds |
 | Metadata | `metadata` | dev 187, test 679, controls 680 | sentence or control pair, with its licence and source |
 | Metadata | `runs` | dev 5, test 4 | generation run, with its full configuration |
 
-Responses link to inputs by `case_id`, and to runs by `run`. Metadata rows link by `split`, `lang` and
+Responses link to inputs by `case_id`, and to runs by `run`. `native_check` links to `step4_inputs` by
+`case_id`, and to `step4_responses` by `fleurs_id`, `system`, `budget` (`isosyllabic`) and `seed` (0).
+`timing` links by `fleurs_id` and `system`. Metadata rows link by `split`, `lang` and
 `fleurs_id` (sentences) or by `instance_id` = `controls/` + `pair_id` (controls). `export.json` names
 the raw runs and the git commit of the export.
 
@@ -605,8 +733,47 @@ Fields that do not apply to a row are `null`.
   - `nli_xl` and `hard_xl`: the same pairs with the English original as the source (cross-lingual, as
     in step 4)
 
+**`native_check`:**
+- `line` (1–50, the order on the sheet, shuffled), `case_id`, `split`, `split_role` (`descriptive`),
+  `run`, `lang`, `fleurs_id`, `seed`, `budget`
+- `system`: `a` or `c`, from the key. The rater never saw it.
+- `english_source`, `german_output`: the line exactly as rated. This is the version before the full-stop
+  rule (protocol v2.26), so 4 of (c)'s lines have no final full stop.
+- `kept_plain`, `same_text_as_its_pair`, `fits_budget`
+- `rating`: where the marks come from.
+  - `rated`: the rater's own marks (25 lines).
+  - `copied from line N`: the pair's German is identical, so the rated copy's marks apply (protocol v2.34;
+    5 lines).
+  - `not rated`: the rater marked it a duplicate of its pair, whose German differs (20 lines).
+- The marks: `meaning` (`kept`, `minor loss`, `wrong`), `added_info`, `natural_german`
+- `rater_comment`: the rater's own comment on this line, as written (also on unrated lines, for example
+  "duplicate").
+- The automatic checks of the same output, from the key: `nli_kept_ref`, `nli_added_ref`,
+  `nli_dropped_ref`, `nli_kept_src`, `nli2_kept_ref`, `nli2_added_ref`, `nli2_dropped_ref`,
+  `nli2_kept_src`, `judge_recall`, `judge_dropped_or_changed`, `judge_added`, `judge_complete`
+
+**`timing`:**
+- `split`, `split_role` (`exploratory`), `fleurs_id`, `system` (`a` or `c`)
+- `timing_test`: one of four tests.
+  - `chatterbox`: the first run. Its check failed, so `seconds_valid` is false: the takes often said more
+    than their text.
+  - `qwen3_tts`: the sheet's sources.
+  - `qwen3_tts_calibrated`: 99 test sources, with (c) under a budget calibrated to the voice.
+  - `demo_voices`: the demo lines in two voices.
+- `results_file`, `tts`, `voice`, `seconds_valid`
+- `purpose`: `time_check` or `demo`
+- `text_id`, `syllables`
+- `take_s`: the clean takes' seconds; null for the calibrated test, whose per-take seconds are not in its
+  durations file.
+- `median_s`: the median take, which is the duration used.
+- `english_slot_s`: the trimmed English FLEURS recording.
+- `ratio`: median ÷ slot. For the calibrated test it is computed here, rounded to 3 places.
+- `fits_slot`: within ±10 % of the slot.
+- `calibrated_target`, `hits_calibrated_target`, `kept_plain`: the calibrated test's (c) only.
+
 **`metadata`:** `instance_id`, `split`, `lang`, `fleurs_id`, `license`, `source` (FLEURS repository,
-revision, configs and split), `note`, `used_in` (`step2`, `step4`, `judge_controls`).
+revision, configs and split), `note`, `used_in` (`step2`, `step4`, `judge_controls`, `native_check`,
+`timing`).
 
 **`runs`:**
 - `run`, `step`, `split`, `split_role`, `date`, `git_commit` (the commit the run was made from)
@@ -628,6 +795,10 @@ revision, configs and split), `note`, `used_in` (`step2`, `step4`, `judge_contro
   - Step 2: every German (347) and French (332) FLEURS test sentence × levels 90/80/70/60 × seeds 0–2.
   - Step 4: the same sentences × seeds 0–2 × both budgets × all systems.
   - Apertus 1.5 8B in BF16 under vLLM, one H100 per language; judge Qwen3-14B in BF16.
+  - `native_check` and `timing` hold step 4 test outputs (German, syllable budget, seed 0), with two
+    exceptions. The calibrated timing test generated (c) again under its own budget (run
+    `hpc_8b_step4_test_calibrated`). The voice's rate was set on 30 dev texts, which are not in this
+    dataset.
 - **controls.** The planted control pairs, built from FLEURS train sentences.
 
 ## Dataset Creation
@@ -642,7 +813,7 @@ and so that the reported numbers can be recomputed independently of the project'
 
 | Source | Role | Revision | Licence |
 |---|---|---|---|
-| FLEURS (Conneau et al., 2022), configs `en_us`, `de_de`, `fr_fr` | Sentences and reference translations: `validation` (our dev), `test`, and `train` for the controls | `google/fleurs` @ `70bb2e84b976b7e960aa89f1c648e09c59f894dd` | CC BY 4.0 |
+| FLEURS (Conneau et al., 2022), configs `en_us`, `de_de`, `fr_fr` | Sentences and reference translations: `validation` (our dev), `test`, and `train` for the controls. The English recordings' trimmed durations are `timing`'s slots (no audio included) | `google/fleurs` @ `70bb2e84b976b7e960aa89f1c648e09c59f894dd` | CC BY 4.0 |
 | FLoRes-101 (Goyal et al., 2022) | Origin of the FLEURS text | Meta's public archive | CC BY-SA 4.0 |
 | Apertus 1.5 8B (Swiss AI Initiative) | Generates every output: BF16 on dev and test | `swiss-ai/Apertus-v1.5-8B` @ `a411d838600baf0e3635a3daf66fb7c55fc97bb6` | Apache-2.0, plus the Apertus 1.5 Acceptable Use Policy |
 | apertus-v1.5-8b-text Q4_K_M GGUF | Generates the step 2 dev pilot | `Colby/apertus-v1.5-8b-text-Q4_K_M-GGUF` @ `248ec68a63e219e3f061e4c946fc8a20d63b9975` (from `andreasmartin/apertus-v1.5-8b-text` @ `c0e7eeb`) | Apache-2.0, Apertus 1.5 AUP |
@@ -650,6 +821,9 @@ and so that the reported numbers can be recomputed independently of the project'
 | Qwen3-8B Q4_K_M GGUF (Qwen team) | Judge of the step 2 dev pilot (evaluation only) | `Qwen/Qwen3-8B-GGUF` @ `7c41481f57cb95916b40956ab2f0b139b296d974` | Apache-2.0 |
 | mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (Laurer) | Main NLI: inside the repair loop and in the evaluation | `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` @ `b5113eb38ab63efdd7f280f8c144ea8b13f978ce` | MIT |
 | bge-m3-zeroshot-v2.0-c (Laurer) | Second NLI, post-hoc, never used by the loop | `MoritzLaurer/bge-m3-zeroshot-v2.0-c` @ `705510dfe0f35d223a4bf6f5d2695ec5fd162341` | MIT |
+| Qwen3-TTS-12Hz-1.7B-CustomVoice (Qwen team), with qwen-tts 0.1.1 | Synthetic German speech for `timing` (voices Aiden and Serena) | `Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice` @ `0c0e305` | Apache-2.0 (as recorded in `results/time_check_qwen.md`) |
+| Chatterbox multilingual (Resemble AI), chatterbox-tts 0.1.7 | Synthetic German speech for the failed first timing test | `ResembleAI/chatterbox` @ `5bb1f6ee58e50c3b8d408bc82a6d3740c2db6e18` | MIT |
+| Whisper small (OpenAI), openai-whisper 20250625 | Rejects TTS takes that do not say their text | — | MIT |
 | eSpeak NG 1.52.0 | Syllable counts (from phonemes) | 1.52.0 | GPL-3.0-or-later (program only; nothing redistributed) |
 | py3langid 0.4.0 | Language check | 0.4.0 | BSD-3-Clause |
 
@@ -723,7 +897,8 @@ machine-generated by Apertus 1.5. The controls' edited copies were written by Cl
 #### Ownership and Consent Management
 
 All source text is openly licensed (CC BY 4.0, CC BY-SA 4.0). The models used are openly licensed
-(Apache-2.0 or MIT). No personal data was collected.
+(Apache-2.0 or MIT). No personal data was collected. The native speaker's marks and comments are given
+without the rater's name.
 
 #### Data Processing and Quality Control
 
@@ -734,7 +909,7 @@ report code (`isochron.pilot_report`, `isochron.step4_report`, `isochron.meaning
 - Step 4 dev's NLI scores were never cached, so they were scored again with the same model at the same
   revision (on Apple MPS; the dev report ran on CUDA). Every dev cell still matches.
 - `isochron.hf_export check` recomputes the results tables from these files alone and compares them cell
-  by cell with the committed results files. At export, all 1,206 cells were identical:
+  by cell with the committed results files. At export, all 1,303 cells were identical:
 
   | Results file | Cells |
   |---|---:|
@@ -744,10 +919,13 @@ report code (`isochron.pilot_report`, `isochron.step4_report`, `isochron.meaning
   | `step2_test.md` | 260 |
   | `phase2_pilot.md` | 312 |
   | the four Qwen3-14B validation reports | 44 |
+  | `native_check_step4_agreement.md` | 69 |
+  | `time_check.md`, `time_check_qwen.md`, `time_check_calibrated.md` | 8, 8, 12 |
 
   The cells cover counts, means, the bootstrap intervals and the paired differences.
 
-The export stores no audio, no model weights, no local paths, and no endpoints beyond "loopback".
+The export stores no audio, no model weights, no local paths, and no endpoints beyond "loopback". The
+timing tests' manifests (each take's file, SHA-256 and licence) stay in the project's `results/time_check/`.
 
 **The raw generation logs are excluded.** They hold every prompt, every raw model answer and every
 candidate of every round. They stay in the project's `results/raw/` directory, which is not in git.
@@ -767,8 +945,15 @@ Apertus 1.5's Acceptable Use Policy applies to its use, not to its outputs' lice
 
 #### Annotation Process
 
-There are no human annotations yet. Every label is machine-made: the NLI models, the LLM judge, the
-eSpeak NG syllable counter and the language identifier. The planted controls' types are known by
+The only human annotation is the native-speaker check (`native_check`). The rater saw an English
+source and one German line per row, in shuffled order, without the system. For each line they marked:
+- meaning: kept, minor loss or wrong;
+- added information: yes or no;
+- natural German: yes or no;
+- an optional comment.
+
+Every other label is machine-made: the NLI models, the LLM judge, the eSpeak NG syllable counter, the
+language identifier, and Whisper for the TTS takes. The planted controls' types are known by
 construction.
 
 #### Annotator Details
@@ -777,6 +962,13 @@ construction.
   Apertus, never feeds generation, and runs after it.
 - The controls' edits were written by Claude (an AI assistant) and have not been reviewed by a native
   speaker.
+- `native_check`: one German native speaker, named nowhere in this dataset.
+  - They rated one line per English source, and marked the other line of the pair "duplicate".
+  - Where both lines are identical (5 pairs), the rating applies to both.
+  - In the other 20 pairs only one version is rated. So the per-system rates (14 lines of (a), 16 of
+    (c)) come from different sentences: they describe, and do not compare the systems.
+  - On six lines the rater noted that a line "looks longer", having seen both lines of a pair. So the
+    blinding was partial.
 
 ## Risks, Bias, and Limitations
 
@@ -794,11 +986,17 @@ construction.
     changes within German, so neither model settles the question.
   - Kept vs source is cross-lingual and weaker: on `nli_xl`, the main NLI keeps only 29 of 40 identity
     pairs.
-- **The human check is pending.** A native-speaker rating of 25 step 4 test sources ((a) against (c),
-  German, syllable budget) is under way. Its sheet and key are not in this dataset and will be added
-  when the ratings are in. Until then, no meaning figure here is human-validated.
-- **Fit is in text units, not seconds.** No speech was synthesised, and syllables come from eSpeak NG
-  phonemes. FLEURS's timing fields are not used, because silence trimming fails on noisy recordings.
+- **The human check is small and descriptive.** One rater rated 30 lines (14 (a), 16 (c)), from
+  different sentences, with partial blinding. Meaning kept: (a) 12 of 14, (c) 12 of 16. Per line, it
+  agrees with the automatic checks at κ −0.15 to 0.44 (`results/native_check_step4_agreement.md`).
+- **Fit is in text units, and seconds depend on the voice.** Step 2 and step 4 count characters and
+  eSpeak NG syllables.
+  - In `timing`, with one Qwen3-TTS voice, (c) under the step 4 syllable budget fits the English slot in
+    6 of 21 sources, against 8 for (a).
+  - Under a budget calibrated to that voice, (c) fits in 47 of 99, against 25 for (a)
+    (`results/time_check_calibrated.md`).
+  - Both are exploratory and post-hoc. The English slots are trimmed FLEURS recordings, and noisy
+    recordings are left out.
 - **Broken JSON counts as a miss, as frozen.** In French with the character budget, (b) lost 83 of
   996 items this way. `b_tolerant` shows the effect of reading `\'` as `'`.
 - **Coverage.** Two target languages (German and French), one domain (encyclopaedic and news-like
