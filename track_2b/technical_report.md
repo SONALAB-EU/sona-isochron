@@ -359,14 +359,14 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 - **Seeds:** generation 0, 1 and 2, plus 1000 × the round. Judge: temperature 0, seed 0. Bootstrap:
   seed 0.
 - **Records:** every results file records its date, commit, model and quantisation, endpoint, TTS (only
-  `results/time_check.md`: Chatterbox; `results/time_check_qwen.md`: Qwen3-TTS), seeds and n. Raw runs
-  keep every prompt and answer.
+  `time_check.md`: Chatterbox; `time_check_qwen.md`, `time_check_calibrated.md`: Qwen3-TTS), seeds and n.
+  Raw runs keep every prompt and answer.
 - **Rebuild:** `docs/local_llm.md` (Mac) and `docs/hpc.md` (exact `sbatch` lines); `make figures` (from
   committed results only); `uv run scripts/report_pdf.py` (this report); `make run` (the demo).
 
 ## 8. Next steps
 
-- Budgets calibrated to each target voice, checked with dubbing actors.
+- Calibrate the syllable budget to the target voice and check the fit with that voice (done for one TTS).
 - The native-speaker check, and a meaning check aimed at qualifiers.
 - Apertus 1.5 70B, Italian, and step 3 (exact targets).
 - Subtitle formats (SRT, TTML), and a "cannot fit without losing meaning" flag instead of a long line.
