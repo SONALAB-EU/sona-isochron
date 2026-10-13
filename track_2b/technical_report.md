@@ -10,12 +10,12 @@ Every number is labelled with its split, model, quantisation and n. Dev numbers 
 numbers are final. Analyses added after the test outputs existed are marked "post-hoc, added after test
 outputs existed" (here, for short, "post-hoc").
 
-**Why.** A dubbed line must fit the time the original actor speaks (isochrony), and running long is the
-costly error, as it overlaps the next line. Translations run long: on FLEURS test, the human German and
-French references have a median 1.18 × the English characters (without spaces), and 75 % of them are
-more than 10 % longer (post-hoc; `results/expansion_en_de_fr.md`): the same direction as IBM's guidance,
-cited by the W3C, that European translations of English run to about 130 %, though smaller. Apertus's
-plain translations behave the same (1.16 and 1.19).
+**Why.** Translations run long. On FLEURS test, the human German and French references have a median
+1.18 × the English characters (without spaces), and 75 % are more than 10 % longer (post-hoc;
+`results/expansion_en_de_fr.md`): the same direction as IBM's guidance, cited by the W3C, that European
+translations of English run to about 130 %, though smaller. Apertus's plain translations behave the same
+(1.16 and 1.19). In dubbing, a line must fit the time the original actor speaks (isochrony), and running
+long is the costly error, as it overlaps the next line.
 
 **What we did.** Apertus 1.5 translates an English line into German or French within a length budget,
 in characters or in syllables, aiming to drop or add no information. Ours translates first, then
@@ -37,7 +37,8 @@ seeds, 4 settings = 2 languages × 2 budgets; ranges over the settings):
 | Native speaker: meaning kept (descriptive; different sentences per system) | 12 of 14 | – | 12 of 16 |
 
 - **Fit:** ours fits most often in three of the four settings; with a German syllable budget, one step
-  ties. One step is less often too long, because it tends to come out short.
+  ties. One step overruns least because it over-shortens, but it keeps meaning less often than ours (all
+  four settings, both NLIs) and fits less often (apart from that tie).
 - **Meaning:** by the pre-registered NLI, ours keeps meaning as often as plain translation; a second NLI
   that the loop never sees finds ours 0.5–5.3 points below plain translation (post-hoc).
 - **Timing:** syllables predict seconds for one voice (r = 0.98), not across human readers (κ ≈ 0): the
@@ -238,9 +239,9 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   timing files: `time_check.md` Chatterbox; `time_check_qwen.md`, `time_check_calibrated.md` Qwen3-TTS),
   seeds and n. Judge: temperature 0, seed 0. Rebuild: `docs/hpc.md`, `docs/local_llm.md`, `make figures`,
   `uv run scripts/report_pdf.py`, `make run`.
-- **Next steps:** calibrate the syllable budget to the target voice and check the fit with that voice
-  (done for one TTS); a "cannot fit" flag for human review; a meaning check aimed at qualifiers; 70B,
-  Italian, step 3; subtitle formats.
+- **Next steps:** calibrate the syllable budget to the target voice and check the fit with that voice (done
+  for one TTS); an asymmetric target that aims slightly short; a "cannot fit" flag for human review; a meaning
+  check aimed at qualifiers; 70B, Italian, step 3; subtitle formats.
 
 **License:** CC BY 4.0 (CC-BY-4.0); all HackApertus projects are open source. Code Apache-2.0, data files
 CC BY-SA 4.0 (`docs/licences.md`).
