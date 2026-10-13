@@ -655,6 +655,43 @@ and so that the reported numbers can be recomputed independently of the project'
 
 The repository's `docs/licences.md` gives full attribution for each source.
 
+**References for the sources.** Cite these when you use the text, models or tools above.
+
+- Conneau, A., Ma, M., Khanuja, S., Zhang, Y., Axelrod, V., Dalmia, S., Riesa, J., Rivera, C., & Bapna, A.
+  (2022). FLEURS: Few-shot learning evaluation of universal representations of speech. *arXiv preprint
+  arXiv:2205.12446*.
+- Goyal, N., Gao, C., Chaudhary, V., Chen, P.-J., Wenzek, G., Ju, D., Krishnan, S., Ranzato, M.,
+  Guzmán, F., & Fan, A. (2022). The Flores-101 evaluation benchmark for low-resource and multilingual
+  machine translation. *Transactions of the Association for Computational Linguistics, 10*.
+  arXiv:2106.03193.
+- Swiss AI Initiative. (2025). Apertus 1.5 model cards. huggingface.co/swiss-ai/Apertus-v1.5-8B.
+- Qwen Team. (2025). Qwen3 technical report. arXiv:2505.09388.
+- Laurer, M., et al. (2024). Less annotating, more classifying. *Political Analysis, 32*(1). (The NLI models.)
+- He, P., Gao, J., & Chen, W. (2021). DeBERTaV3. arXiv:2111.09543.
+- Lui, M., & Baldwin, T. (2012). langid.py: An off-the-shelf language identification tool. *ACL 2012 Demos*.
+
+BibTeX for the two text sources:
+
+```bibtex
+@article{conneau2022fleurs,
+  title   = {{FLEURS}: Few-Shot Learning Evaluation of Universal Representations of Speech},
+  author  = {Conneau, Alexis and Ma, Min and Khanuja, Simran and Zhang, Yu and Axelrod, Vera and
+             Dalmia, Siddharth and Riesa, Jason and Rivera, Clara and Bapna, Ankur},
+  journal = {arXiv preprint arXiv:2205.12446},
+  year    = {2022}
+}
+
+@article{goyal2022flores,
+  title   = {The {Flores-101} Evaluation Benchmark for Low-Resource and Multilingual Machine Translation},
+  author  = {Goyal, Naman and Gao, Cynthia and Chaudhary, Vishrav and Chen, Peng-Jen and Wenzek, Guillaume and
+             Ju, Da and Krishnan, Sanjana and Ranzato, Marc'Aurelio and Guzm{\'a}n, Francisco and Fan, Angela},
+  journal = {Transactions of the Association for Computational Linguistics},
+  volume  = {10},
+  year    = {2022},
+  note    = {arXiv:2106.03193}
+}
+```
+
 #### Data Collection
 
 - **Protocol:** `docs/eval_protocol.md`, version 2.23 at export. Step 2 was frozen for test in v2.12 and
@@ -784,39 +821,23 @@ None beyond what the FLoRes source sentences contain (news and travel topics).
 
 ## Citations [optional]
 
-This dataset has no paper of its own. Please cite the sources of its text.
+If you use this dataset, please cite it as below, and cite its sources (listed under
+[Source Data](#source-data)).
 
 **BibTeX:**
 
 ```bibtex
-@article{conneau2022fleurs,
-  title   = {{FLEURS}: Few-Shot Learning Evaluation of Universal Representations of Speech},
-  author  = {Conneau, Alexis and Ma, Min and Khanuja, Simran and Zhang, Yu and Axelrod, Vera and
-             Dalmia, Siddharth and Riesa, Jason and Rivera, Clara and Bapna, Ankur},
-  journal = {arXiv preprint arXiv:2205.12446},
-  year    = {2022}
-}
-
-@article{goyal2022flores,
-  title   = {The {Flores-101} Evaluation Benchmark for Low-Resource and Multilingual Machine Translation},
-  author  = {Goyal, Naman and Gao, Cynthia and Chaudhary, Vishrav and Chen, Peng-Jen and Wenzek, Guillaume and
-             Ju, Da and Krishnan, Sanjana and Ranzato, Marc'Aurelio and Guzm{\'a}n, Francisco and Fan, Angela},
-  journal = {Transactions of the Association for Computational Linguistics},
-  volume  = {10},
-  year    = {2022},
-  note    = {arXiv:2106.03193}
+@misc{sonalab2026isochron,
+  title  = {Isochron: Dubbing lines that fit their slot},
+  author = {{SONALAB}},
+  year   = {2026},
+  note   = {Dataset: inputs, outputs and per-line scores of steps 2 and 4, Hack Apertus 2026, Track 2B}
 }
 ```
 
 **APA:**
 
-- Conneau, A., Ma, M., Khanuja, S., Zhang, Y., Axelrod, V., Dalmia, S., Riesa, J., Rivera, C., & Bapna, A.
-  (2022). FLEURS: Few-shot learning evaluation of universal representations of speech. *arXiv preprint
-  arXiv:2205.12446*.
-- Goyal, N., Gao, C., Chaudhary, V., Chen, P.-J., Wenzek, G., Ju, D., Krishnan, S., Ranzato, M.,
-  Guzmán, F., & Fan, A. (2022). The Flores-101 evaluation benchmark for low-resource and multilingual
-  machine translation. *Transactions of the Association for Computational Linguistics, 10*.
-  arXiv:2106.03193.
+SONALAB. (2026). *Isochron: Dubbing lines that fit their slot* [Data set]. Hack Apertus 2026, Track 2B.
 
 ## Glossary [optional]
 
