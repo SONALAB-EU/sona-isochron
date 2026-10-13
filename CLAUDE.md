@@ -35,7 +35,7 @@ Character-count (isometric) prompting is a baseline, not our method.
 ## Provenance
 
 - New code only. Never read, copy or reuse anything from `~/sonalab` or any
-  SonaLab repo.
+  SONALAB repo.
 
 ## Results and honesty
 
