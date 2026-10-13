@@ -83,3 +83,21 @@ def test_extra_words_counts_speech_after_the_text() -> None:
     assert tc.extra_words(text, "Soziale Löwen leben in Wurden zusammen und sind Katzen.") == 0  # a misheard word
     assert tc.extra_words(text, "Soziale Löwen leben in Rudeln zusammen und sind Katzen. That I've Deconstued Your En.") == 6  # I've counts as two words
     assert tc.extra_words(text, "Tourist D. S.") == 3  # nothing in common: every word is extra
+
+
+def test_the_qwen_job_uses_the_same_rules_as_the_package() -> None:
+    import importlib.util
+    from pathlib import Path
+
+    from isochron.native_check import full_stop
+
+    path = Path(__file__).resolve().parents[1] / "hpc" / "tts_qwen_synth.py"
+    spec = importlib.util.spec_from_file_location("tts_qwen_synth", path)
+    job = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(job)
+    for text, heard in (("Ein Land", "Ein Land. Und mehr Worte hier"), ("Luxusstrandresorts.", "Luxus Strand Resorts."),
+                        ("Er sagte \"ja.\"", "Er sagte ja.")):
+        assert job.full_stop(text) == full_stop(text)
+        assert job.extra_words(text, heard) == tc.extra_words(text, heard)
+    assert job.extra_words("Luxusstrandresorts.", "Luxus Strand Resorts.") == 3  # a split compound counts as extra
+    assert job.MAX_EXTRA == 1 and job.TAKES == 3 and job.ROUNDS == 10 and job.VOICE == "Aiden"

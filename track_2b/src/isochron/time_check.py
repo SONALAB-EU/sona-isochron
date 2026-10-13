@@ -444,9 +444,13 @@ def settings_view(settings: dict[str, Any]) -> dict[str, Any]:
 
 def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[str, str], str],
          seconds: dict[str, float], takes: dict[str, list[float]], slots: dict[str, float],
-         fleurs: dict[str, dict[str, Any]]) -> dict[str, str]:
+         fleurs: dict[str, dict[str, Any]], paths: dict[str, list[Path]] | None = None, source: str = "",
+         voice: str = "") -> dict[str, str]:
     """For each demo line: the English recording and the median take of (a) and (c), trimmed, in
-    audio/demo/<id>/, and a timeline figure in docs/figures/demo/."""
+    audio/demo/<id>/, and a timeline figure in docs/figures/demo/. paths: each text's takes, in take order
+    (default: Chatterbox's audio/tts/<text_id>_take<k>.wav)."""
+    if paths is None:
+        paths = {tid: [AUDIO / "tts" / f"{tid}_take{k}.wav" for k in range(TAKES)] for tid in takes}
     import matplotlib
 
     matplotlib.use("Agg")
@@ -463,7 +467,7 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
         folder = AUDIO / "demo" / sid
         folder.mkdir(parents=True, exist_ok=True)
         for name, path in (("english", AUDIO / "english" / f"{sid}.wav"),
-                           *((name, AUDIO / "tts" / f"{by[(sid, s)]}_take{median_take(takes[by[(sid, s)]])}.wav")
+                           *((name, paths[by[(sid, s)]][median_take(takes[by[(sid, s)]])])
                              for name, s in (("plain", "a"), ("ours", "c")))):
             y, sr = load(path)
             import librosa
@@ -476,7 +480,7 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
         slot = slots[sid]
         bars = [("English\n(FLEURS speaker)", slot, "#000000"), ("plain\ntranslation", seconds[by[(sid, "a")]], PLAIN),
                 ("ours", seconds[by[(sid, "c")]], LOOP)]
-        fig, ax = plt.subplots(figsize=(WIDTH, 1.6))
+        fig, ax = plt.subplots(figsize=(WIDTH, 2.0 if voice else 1.8))
         ax.axvspan(0.9 * slot, 1.1 * slot, color="#E5E5E5", zorder=0)
         for y_, (label, s, colour) in enumerate(reversed(bars)):
             ax.barh(y_, s, color=colour, height=0.55, zorder=2)
@@ -486,7 +490,8 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
         ax.set_xlim(0, 1.25 * max(b[1] for b in bars))
         ax.tick_params(axis="x", labelsize=7)
         kind = "by syllables, plain misses, ours fits" if sid in selection["demo_fit"] else "by syllables, the loop missed"
-        ax.set_title(f"FLEURS test sentence {sid}: {kind}", fontsize=7, loc="left")
+        ax.set_title(f"FLEURS test sentence {sid}\n{kind[0].upper()}{kind[1:]}" + (f"\nGerman speech: {voice}" if voice else ""),
+                     fontsize=7, loc="left")
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
         fig.tight_layout()
@@ -495,8 +500,8 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
         fig.savefig(f"{stem}.pdf", metadata={"CreationDate": None, "ModDate": None, "Producer": None, "Creator": None})
         plt.close(fig)
         with open(f"{stem}.csv", "w", encoding="utf-8", newline="") as f:
-            f.write(f"# drawn by isochron.time_check from {OUT / 'durations.csv'}; seconds are trimmed, the median of "
-                    f"{TAKES} takes for the speech\n")
+            f.write(f"# drawn by isochron.time_check from {source or OUT / 'durations.csv'}; seconds are trimmed, the "
+                    f"median of {TAKES} takes for the speech{'; ' + voice if voice else ''}\n")
             w = csv.writer(f)
             w.writerow(["track", "seconds", "text"])
             w.writerow(["english", f"{slot:.3f}", fleurs[sid]["src_text"]])
@@ -506,6 +511,171 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
     return made
 
 
+QWEN = AUDIO / "qwen"
+QWEN_ENGINE = ("Qwen3-TTS: Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice @ 0c0e305 (Apache-2.0), qwen-tts 0.1.1 (Apache-2.0)")
+QWEN_LICENCE = "synthetic speech (Qwen3-TTS, Apache-2.0); text CC BY-SA 4.0 (Apertus output from FLoRes-101)"
+
+
+def report_qwen() -> None:
+    """The time check and the demo with Qwen3-TTS (protocol v2.28): only clean takes count."""
+    from isochron.metrics.length import counter_description, length
+    from isochron.native_check import full_stop
+
+    commit = git_commit()
+    selection = json.loads((OUT / "selection.json").read_text(encoding="utf-8"))
+    texts = [json.loads(line) for line in (OUT / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    settings = json.loads((QWEN / "settings.json").read_text(encoding="utf-8"))
+    log = [json.loads(line) for line in (QWEN / "log.jsonl").read_text(encoding="utf-8").splitlines()]
+    by = {(u["id"], u["system"]): e["text_id"] for e in texts for u in e["uses"]}
+    timed = selection["timed_sources"]
+    manifest, problems = [], []
+    slots: dict[str, float] = {}
+    for sid in timed + selection["demo_fit"] + selection["demo_miss"]:
+        path = AUDIO / "english" / f"{sid}.wav"
+        t = measure(*load(path))
+        slots[sid] = t.trimmed_s
+        manifest.append({"file": path.as_posix(), "kind": "english", "id": sid, "text_id": "", "round": "", "seed": "",
+                         "clean": "", "take": "", "trimmed_s": f"{t.trimmed_s:.3f}", "peak": f"{t.peak:.4f}",
+                         "sha256": sha256(path), "licence": FLEURS_LICENCE})
+    takes: dict[str, list[float]] = {e["text_id"]: [] for e in texts}
+    paths: dict[str, list[Path]] = {e["text_id"]: [] for e in texts}
+    for e in sorted(log, key=lambda e: (e["text_id"], e["round"])):
+        path = QWEN / e["file"]
+        try:
+            t = measure(*load(path))
+        except ValueError as err:
+            problems.append(f"{e['file']}: {err}")
+            continue
+        if e["clean"] and e["take"] is not None:
+            takes[e["text_id"]].append(t.trimmed_s)
+            paths[e["text_id"]].append(path)
+        manifest.append({"file": path.as_posix(), "kind": "tts", "id": " ".join(sorted({u["id"] for u in next(
+            x for x in texts if x["text_id"] == e["text_id"])["uses"]})), "text_id": e["text_id"], "round": e["round"],
+            "seed": e["seed"], "clean": int(e["clean"]), "take": "" if e["take"] is None else e["take"],
+            "trimmed_s": f"{t.trimmed_s:.3f}", "peak": f"{t.peak:.4f}", "sha256": sha256(path), "licence": QWEN_LICENCE})
+    short = {tid: len(v) for tid, v in takes.items() if len(v) < TAKES}
+    # a shortfall is reported and its source left out (protocol v2.28); only problems with the audio fail the check
+    short_note = (f"{len(short)} text(s) short of {TAKES} clean takes after {settings['rounds']} rounds, reported and "
+                  "left out: " + "; ".join(
+                      f"{tid} ({n} clean; {', '.join(u['id'] + ' ' + u['system'] for u in next(x for x in texts if x['text_id'] == tid)['uses'])})"
+                      for tid, n in sorted(short.items()))) if short else ""
+    seconds = {tid: statistics.median(v) for tid, v in takes.items() if len(v) == TAKES}
+    syll = {e["text_id"]: length(full_stop(e["text"]), "syllables", "de") for e in texts}
+    per_syll = {tid: seconds[tid] / syll[tid] for tid in seconds}
+    slow = {tid: v for tid, v in per_syll.items() if not 0.10 <= v <= 0.40}
+    if slow:
+        problems.append(f"{len(slow)} texts outside 0.10–0.40 s per syllable: "
+                        + ", ".join(f"{tid} {v:.3f}" for tid, v in sorted(slow.items())))
+    loud = [e for e in log if e["peak"] > 1.0]
+    failed = bool(problems)
+
+    def attempts(tids: set[str]) -> str:
+        rows = [e for e in log if e["text_id"] in tids]
+        return f"{sum(not e['clean'] for e in rows)}/{len(rows)}"
+
+    groups = [(f"({s_}) on the timed sources", {by[(sid, s_)] for sid in timed}) for s_ in "ac"]
+    groups.append(("demo texts", {by[(sid, s_)] for sid in selection["demo_fit"] + selection["demo_miss"] for s_ in "ac"}))
+    table = []
+    for sid in timed:
+        a, c = by[(sid, "a")], by[(sid, "c")]
+        if a in seconds and c in seconds:
+            table.append({"id": sid, "slot": slots[sid], "a": seconds[a], "c": seconds[c],
+                          "a_fit": fits(seconds[a], slots[sid]), "c_fit": fits(seconds[c], slots[sid]), "same": a == c})
+    n = len(table)
+    only_c = sum(r["c_fit"] and not r["a_fit"] for r in table)
+    only_a = sum(r["a_fit"] and not r["c_fit"] for r in table)
+    ratio = {x: [r[x] / r["slot"] for r in table] for x in "ac"}
+    timed_tids = sorted({by[(sid, x)] for sid in timed for x in "ac"} & seconds.keys())
+    line = fit_line([syll[t] for t in timed_tids], [seconds[t] for t in timed_tids])
+    spread = [(max(takes[t]) - min(takes[t])) / seconds[t] for t in timed_tids]
+    with open(OUT / "manifest_qwen.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(manifest[0]))
+        w.writeheader()
+        w.writerows(manifest)
+    with open(OUT / "durations_qwen.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "system", "purpose", "text_id", "syllables", "clean_take_s", "median_s", "english_slot_s",
+                    "ratio", "fits_slot"])
+        for e in texts:
+            for u in e["uses"]:
+                tid, sid = e["text_id"], u["id"]
+                if tid in seconds:
+                    w.writerow([sid, u["system"], u["purpose"], tid, syll[tid], " ".join(f"{x:.3f}" for x in takes[tid]),
+                                f"{seconds[tid]:.3f}", f"{slots[sid]:.3f}", f"{seconds[tid] / slots[sid]:.3f}",
+                                int(fits(seconds[tid], slots[sid]))])
+    voice = f"Qwen3-TTS, voice {settings['voice']}"
+    figures = {} if failed else demo(selection, texts, by, seconds, takes, slots, fleurs, paths,
+                                     source=OUT / "durations_qwen.csv", voice=voice)
+    pct = lambda k: f"{k}/{n} ({100 * k / n:.0f} %)"  # noqa: E731
+    md = [
+        "# Time check with Qwen3-TTS: German speech against the English slot (exploratory, post-hoc)", "",
+        "Post-hoc, added after test outputs existed; rules fixed before generation (protocol v2.28). Secondary to "
+        "the human-speech check (`results/human_speech.md`). The earlier Chatterbox run failed its checks and is "
+        "kept as it was (`results/time_check.md`, protocol v2.25).", "",
+        ("**Status: every check of the audio passed.**" if not failed else "**Status: the check failed:** "
+         + "; ".join(problems) + ".") + (f" {short_note[0].upper()}{short_note[1:]}." if short_note else ""),
+        "",
+        f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC; git commit {commit}",
+        f"- Texts: step 4 test, run `{selection['run']}` (Apertus 1.5 8B, BF16; vLLM on the cluster, its endpoint in "
+        f"`results/step4_test.md`), German, syllable budget, generation seed {GEN_SEED}; each read with a full stop "
+        "at the end (`native_check.full_stop`)",
+        f"- TTS engine: {QWEN_ENGINE}; voice: the preset {settings['voice']} (chosen before generation), no instruction, "
+        "no reference audio, no cloning; endpoint: none (local inference)",
+        f"- TTS settings: language {settings['language']}, " + ", ".join(
+            f"{k}={settings[k]}" for k in ("temperature", "top_k", "top_p", "repetition_penalty", "subtalker_temperature",
+                                           "subtalker_top_k", "subtalker_top_p", "max_new_tokens", "dtype",
+                                           "attn_implementation", "sample_rate"))
+        + f"; versions: {', '.join(f'{k} {v}' for k, v in settings['versions'].items())}; {settings['gpu']}, one job, "
+        f"{settings['wall_s']:.0f} s wall time",
+        f"- Rounds and seeds: round r seeds torch with r and reads every text still short of {TAKES} clean takes "
+        f"(at most {settings['rounds']} rounds); a take is clean when Whisper small (German, temperature 0) hears at "
+        f"most {settings['max_extra_words']} word after the text's last word. Float WAV. Duration = the median clean take.",
+        "- English slot and fit: as in `results/time_check.md` (FLEURS recording, trimmed at 16 kHz with "
+        f"`build_fleurs.TRIM`; within ±{100 * TOLERANCE:.0f} %). Syllables: {counter_description('espeak')}.",
+        f"- n: {n} of the sheet's {selection['sheet_sources']} sources ({len(selection['sheet_noisy'])} skipped as noisy); "
+        f"{len(texts)} distinct texts; {len(log)} takes generated", "",
+        "## Rejected takes", "",
+        "| Texts | n | Takes rejected / generated | Texts short of 3 clean takes |", "|---|---:|---:|---:|",
+        *(f"| {name} | {len(t)} | {attempts(t)} | {sum(x in short for x in t)} |" for name, t in groups), "",
+        "## Fit in seconds", "",
+        "| System | Fits the English slot | Median speech ÷ slot | Range |", "|---|---|---:|---|",
+        *(f"| {label} | {pct(sum(r[x + '_fit'] for r in table))} | {statistics.median(ratio[x]):.2f} | "
+          f"{min(ratio[x]):.2f}–{max(ratio[x]):.2f} |" for x, label in (("a", "(a) plain translation"), ("c", "(c) ours"))),
+        "",
+        f"Paired, per source: (c) fits and (a) does not in {only_c}, the reverse in {only_a}; exact McNemar "
+        f"p = {mcnemar_exact(only_c, only_a):.3f}. In {sum(r['same'] for r in table)} sources (c) kept (a)'s text. "
+        + ("Not a result: see the status above." if failed else "Absolute shares depend on the voice's speaking rate; "
+           "the comparison of (a) with (c) is what counts."), "",
+        "## Do syllables predict seconds?", "",
+        f"- Qwen3-TTS speech, {line['n']} distinct texts: r = {line['r']:.2f}; {line['per_unit']:.3f} s per syllable "
+        f"overall; least squares: {line['slope']:.3f} s per syllable + {line['intercept']:.2f} s.",
+        f"- Clean takes of the same text differ by a median of {100 * statistics.median(spread):.0f} % of its duration "
+        f"(largest {100 * max(spread):.0f} %).", "",
+        "## Per source", "",
+        "| Source | English slot (s) | (a) s | (c) s | (a) fits | (c) fits |", "|---|---:|---:|---:|---|---|",
+        *(f"| {r['id']} | {r['slot']:.2f} | {r['a']:.2f} | {r['c']:.2f} | {'yes' if r['a_fit'] else 'no'} | "
+          f"{'yes' if r['c_fit'] else 'no'} |" for r in table), "",
+        "## Demo lines", "",
+        f"The rule in `results/time_check/selection.json`; speech: the median clean take.", "",
+        "| Source | Kind | English slot (s) | (a) s | (c) s | Figure |", "|---|---|---:|---:|---:|---|",
+        *(f"| {sid} | {kind} | {slots[sid]:.2f} | {seconds.get(by[(sid, 'a')], float('nan')):.2f} | "
+          f"{seconds.get(by[(sid, 'c')], float('nan')):.2f} | "
+          f"{'`' + figures[sid] + '`' if sid in figures else 'not drawn (the check failed)'} |"
+          for kind, ids in (("fit", selection["demo_fit"]), ("loop missed", selection["demo_miss"])) for sid in ids), "",
+        "## Checks", "",
+        f"- Files: {len(manifest)} (`{OUT / 'manifest_qwen.csv'}`: every take, clean or not, and the English recordings, "
+        "with SHA-256 and licence; the audio stays in `audio/`, git-ignored). None empty or silent"
+        + (f" except: {'; '.join(p_ for p_ in problems if 'silent' in p_ or 'empty' in p_)}" if any(
+            'silent' in p_ or 'empty' in p_ for p_ in problems) else "") + ".",
+        f"- Float WAV, so nothing is clipped in the files; {len(loud)} of {len(log)} takes peak above 1.0 "
+        f"(max {max((e['peak'] for e in log), default=0):.3f}) and would clip only if written as 16-bit.",
+        f"- Seconds per syllable per text (median clean take): {min(per_syll.values()):.3f}–{max(per_syll.values()):.3f}.",
+        ""]
+    (Path("results") / "time_check_qwen.md").write_text("\n".join(md), encoding="utf-8")
+    print("\n".join(md))
+
+
 def median_take(values: list[float]) -> int:
     """The take whose duration is the median (the middle of three)."""
     return sorted(range(len(values)), key=lambda k: values[k])[len(values) // 2]
@@ -513,9 +683,9 @@ def median_take(values: list[float]) -> int:
 
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("cmd", choices=("plan", "english", "report"))
+    ap.add_argument("cmd", choices=("plan", "english", "report", "report-qwen"))
     args = ap.parse_args(argv)
-    {"plan": plan, "english": english, "report": report}[args.cmd]()
+    {"plan": plan, "english": english, "report": report, "report-qwen": report_qwen}[args.cmd]()
 
 
 if __name__ == "__main__":
