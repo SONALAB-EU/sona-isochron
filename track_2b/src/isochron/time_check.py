@@ -976,6 +976,45 @@ def demo_voices() -> None:
     print(f"{len(log)} takes, {rejected} rejected; figures: {sorted(made.values())}")
 
 
+def timing_slide() -> None:
+    """A 16:9 slide of the voice-calibrated result, from results/time_check/calibrated/durations.csv."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    from isochron.figures import PLAIN, WITH as LOOP
+
+    rows = read_csv_rows(CAL / "durations.csv")
+    n = len(rows)
+    a = sum(r["a_fits"] == "1" for r in rows)
+    c = sum(r["c_fits"] == "1" for r in rows)
+    only_c = sum(r["c_fits"] == "1" and r["a_fits"] == "0" for r in rows)
+    only_a = sum(r["a_fits"] == "1" and r["c_fits"] == "0" for r in rows)
+    p = mcnemar_exact(only_c, only_a)
+    fig, ax = plt.subplots(figsize=(10, 5.625))
+    ax.barh([1, 0], [a, c], color=[PLAIN, LOOP], height=0.55)
+    for y, v in ((1, a), (0, c)):
+        ax.text(v + 1, y, f"{v} of {n}", va="center", fontsize=20)
+    ax.set_yticks([1, 0], ["plain translation", "ours"], fontsize=18)
+    ax.set_xlim(0, n)
+    ax.set_xlabel("German lines spoken within ±10 % of the English speaker's time", fontsize=14)
+    ax.tick_params(axis="x", labelsize=12)
+    for side in ("top", "right"):
+        ax.spines[side].set_visible(False)
+    fig.suptitle("Timed with one synthetic voice, budget calibrated to it", fontsize=22, x=0.06, ha="left", y=0.95)
+    fig.text(0.06, 0.80, f"{n} German FLEURS test lines, read by Qwen3-TTS (preset Aiden).\nSyllable budget = the English "
+             "speaker's time ÷ 0.231 s per syllable (the voice's rate on dev lines).", fontsize=13)
+    fig.text(0.06, 0.03, f"Paired: ours fits where plain does not in {only_c} lines, the reverse in {only_a} "
+             f"(exact McNemar p = {p:.2g}).\nExploratory, added after the test outputs existed.", fontsize=12)
+    fig.subplots_adjust(left=0.24, right=0.95, top=0.72, bottom=0.24)
+    out = Path("docs/figures/demo_voices/timing_slide")
+    fig.savefig(f"{out}.png", dpi=200, metadata={"Software": None})
+    fig.savefig(f"{out}.pdf", metadata={"CreationDate": None, "ModDate": None, "Producer": None, "Creator": None})
+    plt.close(fig)
+    print(f"{out}.png: ours {c}, plain {a} of {n}; {only_c} vs {only_a}; p = {p:.2g}")
+
+
 def median_take(values: list[float]) -> int:
     """The take whose duration is the median (the middle of three)."""
     return sorted(range(len(values)), key=lambda k: values[k])[len(values) // 2]
@@ -984,11 +1023,11 @@ def median_take(values: list[float]) -> int:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("cmd", choices=("plan", "english", "report", "report-qwen", "cal-plan", "cal-targets", "cal-tts-plan",
-                                    "report-cal", "demo-voices-plan", "demo-voices"))
+                                    "report-cal", "demo-voices-plan", "demo-voices", "timing-slide"))
     args = ap.parse_args(argv)
     {"plan": plan, "english": english, "report": report, "report-qwen": report_qwen, "cal-plan": cal_plan,
      "cal-targets": cal_targets, "cal-tts-plan": cal_tts_plan, "report-cal": report_cal,
-     "demo-voices-plan": demo_voices_plan, "demo-voices": demo_voices}[args.cmd]()
+     "demo-voices-plan": demo_voices_plan, "demo-voices": demo_voices, "timing-slide": timing_slide}[args.cmd]()
 
 
 if __name__ == "__main__":
