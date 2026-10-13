@@ -8,8 +8,9 @@ budget, aiming to keep its meaning, guided by a repair loop.
 - **Team:** **[PLACEHOLDER: team name]** — **[PLACEHOLDER: members]**
 - **Demo:** **[PLACEHOLDER: link to the 2-minute demo video]**
 
-Every number is labelled with its split, model, quantisation and n. Dev numbers are exploratory; test numbers are final. Analyses added after the test
-outputs existed are marked "post-hoc, added after test outputs existed".
+Every number is labelled with its split, model, quantisation and n. Dev numbers are exploratory; test
+numbers are final. Analyses added after the test outputs existed are marked "post-hoc, added after test
+outputs existed".
 
 ## 1. Summary
 
@@ -353,7 +354,7 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 - **Commits:** the step 2 test runs used `68492f2`, and the step 4 test runs `7b22d93` (its step 4 code
   unchanged since `68492f2`). **[PLACEHOLDER: the commit of the final reports]**
 - **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All isochron jobs used
-  6.89 H100-hours of a budget of 12 (sacct, 2026-10-13): 6.48 for setup and experiments, 0.42 for
+  6.44 H100-hours of a budget of 12 (sacct, 2026-10-13): 6.03 for setup and experiments, 0.42 for
   text-to-speech.
 - **Seeds:** generation 0, 1 and 2, plus 1000 × the round. Judge: temperature 0, seed 0. Bootstrap:
   seed 0.
