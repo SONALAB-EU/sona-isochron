@@ -805,3 +805,15 @@ used.
   only; fit & complete stays in the report's table. The step 2 histogram and
   the judges figure are linked from the report, not inserted. The method, the
   systems and the metrics are unchanged.
+- 2026-10-13, v2.23: the step 4 native-speaker sheet is also an XLSX for the
+  checker (`results/native_check/rater/german_lines.xlsx`, written by
+  `isochron.native_check xlsx`): the same 50 rows in the same order, drop-down
+  lists for the three marks, an optional comment, and an instructions tab with
+  three worked examples that Claude made up (not among the 50 lines). Before
+  any mark was seen, the instructions gained notes: a missing qualifier or
+  linking word is a minor loss, a replaced detail is a minor loss or wrong by
+  whether the main point holds, a dropped qualifier is not added information,
+  formal style is fine, punctuation is ignored (4 of (c)'s 25 lines lack the
+  final full stop, none of (a)'s), and the texts are not to be edited. The
+  rows, their order, the key and the metrics are unchanged; the scorer reads
+  the XLSX too.

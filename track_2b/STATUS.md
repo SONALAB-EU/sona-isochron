@@ -1,5 +1,26 @@
 # Status
 
+## Native-speaker sheet as XLSX (from 2026-10-12, 17:21 UTC; decision log)
+
+- **Files.** For the rater: `results/native_check/rater/german_lines.xlsx` (alone in its folder). Key:
+  `results/native_check/step4_key_de.csv` (never sent; the XLSX has the same line numbers as the CSV sheet).
+- **What it holds.** Tab "Instructions" (shown first): the definitions, notes and three made-up worked
+  examples (kept/no/yes, minor loss/no/yes, wrong/yes/no). Tab "Lines": line, English, German, then
+  drop-downs for Meaning (kept / minor loss / wrong), Added info and Natural German (yes / no), and an
+  optional comment. No system, run, model or project word anywhere; no hidden tab; no document properties.
+- **Code.** `isochron.xlsx` (standard library only, so pyproject.toml and uv.lock are unchanged) and
+  `native_check xlsx`; the scorer reads the filled XLSX and stops if a line's text moved, a mark is off
+  the lists, or a marked row lost its line number. Same bytes on every run.
+- **Checks.** Three of five planned review agents finished before the session ended (blinding, a simulated
+  rater, code); their fixes are in: a neutral file name, notes on punctuation, qualifiers, replaced details
+  and formal style, "do not edit the texts", "send back as .xlsx", fit-to-width printing, atomic writes.
+  Found by the blinding review: (c) drops the final full stop in 4 of its 25 lines, (a) in none; the
+  instructions now say to ignore punctuation. Blinding also requires that the rater not see this
+  repository until the marks are back (the key is committed).
+- **Verified.** openpyxl 3.1.5 opens it (two tabs, three validations on rows 2–51); a copy filled and
+  saved by openpyxl scores all 50 lines; 152 tests pass. Not tested in Excel, LibreOffice or Numbers.
+- Protocol v2.23.
+
 ## Figures (from 2026-10-12, 16:48 UTC; decision log)
 
 Your instruction: list every figure in the report (number, what it shows, source data, whether `make figures`

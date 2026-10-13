@@ -17,13 +17,20 @@ controls: review sheets for the control pairs that Claude wrote. The checker con
 does what its type says (the identity pairs are left out). German: the hard controls and the German NLI
 pairs. French: the French NLI pairs.
 
-score: for the step 4 sheet, rates per system with 95 % Wilson intervals, and agreement (share of lines,
-Cohen's kappa) with each automatic check; for the step 2 sheet, agreement on "added" and "dropped".
+xlsx: the step 4 sheet as the file to send to the checker, in a folder of its own that must not hold the
+key. The same rows in the same order, with drop-down lists for the three marks, and an instructions tab
+with three worked examples (made up by Claude, not among the lines). Nothing in it tells the system.
+
+score: for the step 4 sheet (CSV or XLSX), rates per system with 95 % Wilson intervals, and agreement
+(share of lines, Cohen's kappa) with each automatic check; for the step 2 sheet, agreement on "added" and
+"dropped". It first checks that every marked line still has its own English and German text, so rows
+that were sorted apart from their line numbers cannot be scored against the wrong key.
 
     uv run python -m isochron.native_check build-step4 RUN_DIR --nli-cache FILE [--nli2-cache FILE]
     uv run python -m isochron.native_check build RUN_DIR [--out results/native_check]
     uv run python -m isochron.native_check controls [--out results/native_check]
-    uv run python -m isochron.native_check score SHEET.csv [--key KEY.csv] [--out FILE]
+    uv run python -m isochron.native_check xlsx [--sheet results/native_check/step4_sheet_de.csv] [--out FILE]
+    uv run python -m isochron.native_check score SHEET.csv|SHEET.xlsx [--key KEY.csv] [--out FILE]
 """
 
 from __future__ import annotations
@@ -33,10 +40,15 @@ import csv
 import json
 import math
 import random
+import re
+import textwrap
+import unicodedata
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from isochron import xlsx
 from isochron.language import check as check_language
 from isochron.metrics.length import hit, length
 from isochron.provenance import git_commit
@@ -56,6 +68,55 @@ STEP4_KEY = ("line", "run", "id", "seed", "system", "budget", "kept_plain", "sam
              "judge_recall", "judge_dropped_or_changed", "judge_added", "judge_complete")
 MEANING = {"kept": "kept", "erhalten": "kept", "minor loss": "minor loss", "kleiner verlust": "minor loss",
            "geringer verlust": "minor loss", "wrong": "wrong", "falsch": "wrong"}
+
+# The XLSX for the checker (docs/native_check.md). Its instructions repeat the CSV sheet's, word for word
+# where they can; the worked examples are made up and are not among the lines.
+XLSX_SHEET = "Lines"
+XLSX_COLUMNS = (  # field, header on the sheet, width in characters
+    ("line", "Line", 6), ("english_source", "English source", 50), ("german_output", "German translation", 50),
+    ("meaning", "Meaning", 13), ("added_info", "Added info", 11), ("natural_german", "Natural German", 17),
+    ("comment", "Comment (optional)", 40))
+XLSX_DROP_DOWNS = (  # field, options, prompt shown when a cell is selected
+    ("meaning", ("kept", "minor loss", "wrong"), "Does the German say what the English says?"),
+    ("added_info", ("yes", "no"), "yes if the German says something the English does not."),
+    ("natural_german", ("yes", "no"), "yes if it is correct, natural German you would accept in a dubbed film. "
+                                      "Ignore punctuation."))
+INSTRUCTIONS_TITLE = "Native-speaker check: English → German"
+INSTRUCTIONS_INTRO = (
+    'The tab "Lines" has {n} rows. Each row has an English sentence and a German translation of it, which may '
+    "be shorter than a full translation. Read both, then fill in the row: Meaning, Added info and Natural German "
+    "from the drop-down lists (click the cell, then its arrow), and a comment if you like.")
+INSTRUCTIONS_COLUMNS = (
+    ("Meaning", "kept: the German says everything the English says.\n"
+                "minor loss: a detail is missing or weaker, such as a number, a name, a time, a condition, or words "
+                "such as almost, very, local, according to the police.\n"
+                "wrong: the German says something else, or misses the main point.\n"
+                "A missing qualifier or linking word (mostly, some, however, of course) is a minor loss. A detail "
+                "replaced by another one is a minor loss if the main point still holds, and wrong if it does not."),
+    ("Added info", "yes if the German says something the English does not: a new fact, a detail, or a stronger "
+                   "claim. Otherwise no. A dropped qualifier counts under Meaning, not here."),
+    ("Natural German", "yes if it is correct, natural German that you would accept in a dubbed film. Otherwise no. "
+                       "A formal, written style is fine. Ignore punctuation and quotation marks (a missing full "
+                       "stop, ' or \" instead of „ “): judge the words as they would be spoken."),
+    ("Comment", "Optional: what was lost, added or unnatural, in a few words."))
+WORKED_EXAMPLES = (  # English, German, meaning, added info, natural German, why
+    ("The museum, which opened in 1998, now attracts around two million visitors every year.",
+     "Das 1998 eröffnete Museum zieht heute jährlich rund zwei Millionen Besucher an.",
+     "kept", "no", "yes",
+     "Shorter, but nothing is missing: opened in 1998, now, around two million, every year. Nothing is added, "
+     "and it reads naturally."),
+    ("The new library, which cost 12 million euros, will open in the city centre next month.",
+     "Die neue Bibliothek im Stadtzentrum wird nächsten Monat eröffnet.",
+     "minor loss", "no", "yes",
+     "The cost, 12 million euros, is missing: a detail is lost, but the main point is kept. Nothing is added, "
+     "and it reads naturally."),
+    ("The mayor said the bridge would stay closed until next spring.",
+     "Der Bürgermeister hat die Entscheidung genommen, die Brücke wegen Bauarbeiten im Frühling zu schließen.",
+     "wrong", "yes", "no",
+     "Meaning: in the English the bridge stays closed until spring; in the German it will be closed in spring. "
+     'Added: "wegen Bauarbeiten" (because of construction work) is not in the English, and a decision is a '
+     'stronger claim than "said". Natural: "die Entscheidung genommen" copies the English "took the decision"; '
+     'German says "getroffen".'))
 CONTROL_TYPES = {
     "paraphrase": "same meaning, other words",
     "same_meaning": "same meaning, one small edit",
@@ -178,6 +239,76 @@ def build_step4(run: Path, out: Path, nli_cache: Path, nli2_cache: Path | None =
           f"sources; in {same} of them (c) kept the plain translation, so both lines read the same)")
 
 
+def row_height(texts: list[tuple[str, float]]) -> float:
+    """Points for a row whose cells wrap: 15 per line of the tallest cell, from its text and column width."""
+    lines = max(sum(len(textwrap.wrap(part, max(1, int(0.8 * width)))) or 1 for part in value.split("\n"))
+                for value, width in texts)  # 0.8: room for a wider font than Calibri
+    return min(409.0, 15.0 * lines + 3)
+
+
+def step4_xlsx(sheet: Path, out: Path) -> None:
+    """The step 4 sheet as an XLSX for the checker: the same rows, drop-down lists, and instructions."""
+    with open(sheet, encoding="utf-8-sig") as f:
+        rows = list(csv.DictReader(f))
+    if not rows or list(rows[0]) != list(STEP4_FIELDS):
+        raise SystemExit(f"{sheet} is not a step 4 sheet (columns {', '.join(STEP4_FIELDS)})")
+    if [r["line"] for r in rows] != [str(n) for n in range(1, len(rows) + 1)]:
+        raise SystemExit(f"{sheet}: the lines are not numbered 1 to {len(rows)} in order")
+    keys = sorted(p.name for p in out.parent.glob("*key*")) if out.parent.is_dir() else []
+    if keys:
+        raise SystemExit(f"{out.parent} holds {', '.join(keys)}: the checker's file goes in a folder without the key")
+    by_source = Counter(r["english_source"] for r in rows)
+    twice = set(by_source.values()) == {2}
+    same = sum(len({r["german_output"] for r in rows if r["english_source"] == s}) == 1 for s in by_source)
+    notes = ["Shorter wording is fine as long as nothing is lost. A shorter line is not a minor loss by itself.",
+             ("Each English sentence appears twice, each time with its own German translation"
+              + ("; sometimes the two are the same" if same else "") + ". Judge each row on its own, and mark both.")
+             if twice else "Judge each row on its own. Two rows can read the same; mark both.",
+             "If two options seem to fit, choose the closer one and say why in the comment.",
+             "Please do not change the English or German text; write corrections in the comment.",
+             "If a cell shows no arrow, type exactly kept, minor loss, wrong, yes or no.",
+             "Please do not use a dictionary, a translator or a chatbot, and do not look the sentences up online.",
+             "It takes about 30–45 minutes. Send the file back as .xlsx, under any name (Numbers: File > Export "
+             "To > Excel; Google Sheets: File > Download > Microsoft Excel)."]
+    wide = 95
+    guide: list[list[xlsx.Cell]] = [[xlsx.Cell(INSTRUCTIONS_TITLE, xlsx.TITLE)], []]
+    heights = {1: 22.0}
+
+    def add(label: str, body: str, style: int = xlsx.BODY) -> None:
+        guide.append([xlsx.Cell(label, xlsx.LABEL), xlsx.Cell(body, style)])
+        heights[len(guide)] = row_height([(body, wide), (label, 18)])
+
+    add("What to do", INSTRUCTIONS_INTRO.format(n=len(rows)))
+    for label, body in INSTRUCTIONS_COLUMNS:
+        add(label, body)
+    add("Please note", "\n".join(f"• {note}" for note in notes))
+    guide += [[], [xlsx.Cell("Three worked examples (made up; they are not among the lines)", xlsx.BOLD)]]
+    for n, (english, german, meaning, added, natural, why) in enumerate(WORKED_EXAMPLES, 1):
+        guide.append([xlsx.Cell(f"Example {n}", xlsx.BOLD)])
+        add("English", english)
+        add("German", german)
+        add("Marks", f"Meaning: {meaning}   ·   Added info: {added}   ·   Natural German: {natural}")
+        add("Why", why, xlsx.NOTE)
+        guide.append([])
+    guide.append([xlsx.Cell("Thank you!", xlsx.BOLD)])
+    widths = [w for _, _, w in XLSX_COLUMNS]
+    table = [[xlsx.Cell(label, xlsx.HEADER) for _, label, _ in XLSX_COLUMNS]]
+    lines = {1: 20.0}
+    for r in rows:
+        table.append([xlsx.Cell(int(r["line"]), xlsx.NUMBER), xlsx.Cell(r["english_source"], xlsx.TEXT),
+                      xlsx.Cell(r["german_output"], xlsx.TEXT),
+                      *(xlsx.Cell(None, xlsx.INPUT) for _ in ("meaning", "added_info", "natural_german", "comment"))])
+        lines[len(table)] = row_height([(r["english_source"], widths[1]), (r["german_output"], widths[2])])
+    fields = [f for f, _, _ in XLSX_COLUMNS]
+    drop_downs = [xlsx.DropDown(f"{xlsx.column(fields.index(f))}2:{xlsx.column(fields.index(f))}{len(rows) + 1}",
+                                options, dict((f, label) for f, label, _ in XLSX_COLUMNS)[f], prompt)
+                  for f, options, prompt in XLSX_DROP_DOWNS]
+    xlsx.write(out, [xlsx.Sheet("Instructions", guide, [18, wide], heights, gridlines=False, fit_width=True),
+                     xlsx.Sheet(XLSX_SHEET, table, widths, lines, freeze_header=True, drop_downs=drop_downs,
+                                landscape=True, fit_width=True, repeat_header=True)])
+    print(f"wrote {out} ({len(rows)} lines from {sheet}; send only this file; the key is not in it)")
+
+
 def controls(out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     sources = {"de": [Path("data/judge_controls_de.jsonl"), Path("data/nli_controls.jsonl")],
@@ -232,11 +363,83 @@ STEP4_CHECKS = (  # name, the key's columns for: meaning kept and nothing added,
 )
 
 
-def score_step4(sheet: Path, key: Path, out: Path) -> None:
-    with open(sheet, encoding="utf-8-sig") as f:
-        marks = {r["line"]: r for r in csv.DictReader(f)}
+def read_marks(sheet: Path) -> dict[str, dict[str, str]]:
+    """The checker's step 4 rows by line number, from the CSV sheet or the XLSX (its "Lines" tab)."""
+    if sheet.suffix.lower() == ".xlsx":
+        cells = xlsx.read(sheet, XLSX_SHEET)
+        names = {label.lower(): f for f, label, _ in XLSX_COLUMNS} | {f: f for f in STEP4_FIELDS}
+        fields = [names.get(h.strip().lower(), "") for h in cells[0]] if cells else []
+        records = [{f: v for f, v in zip(fields, row) if f} for row in cells[1:]]
+    else:
+        with open(sheet, encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            fields, records = list(reader.fieldnames or []), list(reader)
+    if "line" not in fields:
+        raise SystemExit(f"{sheet}: no line column")
+    marks: dict[str, dict[str, str]] = {}
+    for r in records:
+        line = (r.get("line") or "").strip()
+        try:  # a spreadsheet may save 7 as 7.0 or 7.000000000000001
+            number = float(line)
+        except ValueError:
+            pass
+        else:
+            if abs(number - round(number)) < 1e-6:
+                line = str(round(number))
+        if not line:
+            if any((v or "").strip() for v in r.values()):
+                raise SystemExit(f"{sheet}: a row without a line number has text or marks: "
+                                 f"{next(v for v in r.values() if (v or '').strip())[:40]!r}")
+            continue
+        if line in marks:
+            raise SystemExit(f"{sheet}: line {line} appears twice")
+        marks[line] = r
+    return marks
+
+
+def check_texts(marks: dict[str, dict[str, str]], sheet: Path, original: Path) -> None:
+    """Stop if a marked line's English or German text is not the one the sheet gave it (rows sorted apart from
+    their line numbers would otherwise be scored against the wrong key)."""
+    with open(original, encoding="utf-8-sig") as f:
+        given = {r["line"]: r for r in csv.DictReader(f)}
+
+    def norm(value: str | None) -> str:
+        return " ".join(unicodedata.normalize("NFC", value or "").split())
+
+    moved = [line for line, m in marks.items() if line in given and any(
+        column in m and norm(m[column]) != norm(given[line][column]) for column in ("english_source", "german_output"))]
+    unknown = [line for line in marks if line not in given]
+    if marks and not any("english_source" in m or "german_output" in m for m in marks.values()):
+        raise SystemExit(f"{sheet}: cannot check the texts, it has no English or German column (renamed headers?); "
+                         "check by eye and score with --no-text-check")
+    if moved or unknown:
+        raise SystemExit(f"{sheet} does not match {original}: "
+                         + (f"lines {', '.join(moved[:10])} have another text than the sheet gave them; " if moved else "")
+                         + (f"lines {', '.join(unknown[:10])} are not on the sheet; " if unknown else "")
+                         + "were rows sorted without their line numbers? If only the text was edited or re-encoded, "
+                           "check by eye and score with --no-text-check")
+
+
+def score_step4(sheet: Path, key: Path, out: Path, text_check: bool = True) -> None:
+    marks = read_marks(sheet)
+    original = key.parent / "step4_sheet_de.csv"
+    if text_check and original.is_file():
+        check_texts(marks, sheet, original)
+    elif text_check:
+        print(f"note: {original} not found, so the lines' texts were not checked")
     with open(key, encoding="utf-8") as f:
         rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    bad = [(line, column, m[column]) for line, m in marks.items() for column, ok in (
+        ("meaning", lambda v: v.strip().lower() in MEANING), ("added_info", lambda v: yes_no(v) is not None),
+        ("natural_german", lambda v: yes_no(v) is not None)) if (m.get(column) or "").strip() and not ok(m[column])]
+    if bad:
+        raise SystemExit(f"{sheet}: marks that are not on the lists: "
+                         + "; ".join(f"line {line} {column} {value!r}" for line, column, value in bad[:10]))
+    partial = sorted((line for line, m in marks.items()
+                      if 0 < sum(bool((m.get(c) or "").strip()) for c in ("meaning", "added_info", "natural_german")) < 3),
+                     key=int)
+    if partial:
+        print(f"note: lines {', '.join(partial)} are only partly marked; a line counts once Meaning and Added info are")
     lines = []
     for r in rows:
         m = marks.get(r["line"])
@@ -275,12 +478,17 @@ def score_step4(sheet: Path, key: Path, out: Path) -> None:
     print("\n".join(md))
 
 
-def score(sheet: Path, key: Path | None, out: Path | None) -> None:
-    with open(sheet, encoding="utf-8-sig") as f:
-        fields = csv.DictReader(f).fieldnames or []
+def score(sheet: Path, key: Path | None, out: Path | None, text_check: bool = True) -> None:
+    if sheet.suffix.lower() not in (".xlsx", ".csv"):
+        raise SystemExit(f"{sheet}: send or convert it as .xlsx or .csv")
+    if sheet.suffix.lower() == ".xlsx":
+        fields: list[str] = ["english_source"]  # only the step 4 sheet comes as an XLSX
+    else:
+        with open(sheet, encoding="utf-8-sig") as f:
+            fields = list(csv.DictReader(f).fieldnames or [])
     if "english_source" in fields:
         score_step4(sheet, key or Path("results/native_check/step4_key_de.csv"),
-                    out or Path("results/native_check_step4_agreement.md"))
+                    out or Path("results/native_check_step4_agreement.md"), text_check)
     else:
         score_step2(sheet, key or Path("results/native_check/step2_key_de.csv"),
                     out or Path("results/native_check_agreement.md"))
@@ -329,11 +537,17 @@ def main(argv: list[str] | None = None) -> None:
     b.add_argument("--out", type=Path, default=Path("results/native_check"))
     c = sub.add_parser("controls")
     c.add_argument("--out", type=Path, default=Path("results/native_check"))
+    x = sub.add_parser("xlsx", help="the step 4 sheet as the XLSX to send to the checker")
+    x.add_argument("--sheet", type=Path, default=Path("results/native_check/step4_sheet_de.csv"))
+    x.add_argument("--out", type=Path, default=Path("results/native_check/rater/german_lines.xlsx"),
+                   help="in a folder without the key")
     s = sub.add_parser("score")
-    s.add_argument("sheet", type=Path)
+    s.add_argument("sheet", type=Path, help="the filled sheet: CSV, or the XLSX for step 4")
     s.add_argument("--key", type=Path, help="default: the key that matches the sheet")
     s.add_argument("--out", type=Path, help="default: results/native_check_step4_agreement.md (step 4), "
                                              "results/native_check_agreement.md (step 2)")
+    s.add_argument("--no-text-check", action="store_true",
+                   help="score step 4 even if a line's text differs from the sheet's (check by eye first)")
     args = ap.parse_args(argv)
     if args.cmd == "build-step4":
         build_step4(args.run, args.out, args.nli_cache, args.nli2_cache, args.budget)
@@ -341,8 +555,10 @@ def main(argv: list[str] | None = None) -> None:
         build(args.run, args.out)
     elif args.cmd == "controls":
         controls(args.out)
+    elif args.cmd == "xlsx":
+        step4_xlsx(args.sheet, args.out)
     else:
-        score(args.sheet, args.key, args.out)
+        score(args.sheet, args.key, args.out, not args.no_text_check)
 
 
 if __name__ == "__main__":
