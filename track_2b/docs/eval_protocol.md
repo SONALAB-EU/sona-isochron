@@ -982,3 +982,18 @@ used.
   from different sentences and are reported descriptively, with no test of
   the difference. Results: `results/human_check.md`, led by the rater's
   findings.
+- 2026-10-13, v2.35: how much longer German and French are than English
+  (post-hoc, added after test outputs existed; descriptive; planned here
+  before computing; `isochron.expansion`, `results/expansion_en_de_fr.md`).
+  FLEURS test, per language: target ÷ English for characters without spaces,
+  words and syllables (eSpeak NG), for the human reference and for Apertus's
+  plain translation (a) at generation seed 0 (`hpc_8b_step4_test`,
+  `hpc_8b_step4_test_fr`; sentences without a usable (a) are left out of the
+  (a) rows); the share of sentences longer than the English and longer by
+  more than 10 %; and, where neither recording is flagged noisy, the human
+  readings' duration ratio. Medians with 95 % bootstrap intervals (10,000
+  resamples over sentences, seed 0), shares with Wilson intervals. Context:
+  W3C, "Text size in translation", citing IBM's guidance that European
+  translations of English text over 70 characters run to about 130 % of its
+  length; so the rows are also given for English sources over 70 characters
+  (with spaces, as that guidance counts them).
