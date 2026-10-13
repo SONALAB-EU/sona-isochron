@@ -869,7 +869,7 @@ def report_cal() -> None:
          + "; ".join(problems) + ".") + (f" {len(short)} text(s) short of {TAKES} clean takes, left out with their "
                                          f"source(s): {', '.join(missing) or '–'}." if short else ""), "",
         f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC; git commit {commit}",
-        f"- Voice rate: {rate['seconds_per_syllable']:.4f} s per syllable, from {rate['texts']} German dev plain "
+        f"- Voice rate: {rate['seconds']:.3f} s ÷ {rate['syllables']} syllables = {rate['seconds_per_syllable']:.5f} s per syllable, from {rate['texts']} German dev plain "
         f"translations (`{CAL / 'rate.json'}`); dev only, never test lines.",
         f"- Budget: round half up (English slot ÷ rate) syllables, ±10 % ({min(targets.values())}–{max(targets.values())} "
         "syllables). Step 4's (c) otherwise unchanged; (a) reused from `hpc_8b_step4_test`, (b) not run.",
@@ -890,7 +890,7 @@ def report_cal() -> None:
           f"{direction[x][0]} | {direction[x][1]} | {statistics.median(ratio[x]):.2f} | {rejected(x)} |"
           for x, label in (("a", "(a) plain translation"), ("c", "(c) ours, calibrated budget"))), "",
         f"Paired: (c) fits and (a) does not in {only_c}, the reverse in {only_a}; exact McNemar "
-        f"p = {mcnemar_exact(only_c, only_a):.4f}. (c) kept (a) in {sum(r['kept'] for r in rows)} sources.", "",
+        f"p = {mcnemar_exact(only_c, only_a):.2g}. (c) kept (a) in {sum(r['kept'] for r in rows)} sources.", "",
         f"(c) hits its calibrated syllable budget (±10 %) in {sum(r['c_hits'] for r in rows)}/{n}; of those, "
         f"{sum(r['c_hits'] and r['c_fit'] for r in rows)} also fit the English slot in seconds.", "",
         f"Seconds per syllable of the speech (median clean take): {min(per_syll.values()):.3f}–{max(per_syll.values()):.3f}.",
