@@ -260,3 +260,10 @@ def test_step4_scorer_refuses_marks_off_the_lists_and_rows_without_a_line(tmp_pa
             native_check.score(filled, out / "step4_key_de.csv", report)
     with pytest.raises(SystemExit, match="xlsx or .csv"):
         native_check.score(tmp_path / "filled.numbers", out / "step4_key_de.csv", report)
+
+
+def test_full_stop_is_the_same_rule_for_every_line() -> None:
+    assert native_check.full_stop("Ein Land") == "Ein Land."
+    assert native_check.full_stop("Ein Land.") == native_check.full_stop("Ein Land. ") == "Ein Land."
+    assert native_check.full_stop('Er sagte "ja."') == 'Er sagte "ja."'
+    assert native_check.full_stop("Wirklich?") == "Wirklich?" and native_check.full_stop("(29¾\" x 24½\")") == '(29¾" x 24½").'

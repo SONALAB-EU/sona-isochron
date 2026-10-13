@@ -179,6 +179,13 @@ def build(run: Path, out: Path) -> None:
           f"{sum(x['system'] == 'without' for x in lines)} without the loop, {sum(x['system'] == 'with' for x in lines)} with it)")
 
 
+def full_stop(text: str) -> str:
+    """The sheet's punctuation rule, the same for both systems (protocol v2.26): a line that does not end in
+    . ! ? or … (before any closing quote or bracket) gets a full stop."""
+    stripped = text.rstrip()
+    return stripped if stripped.rstrip("\"'”“’»)]").endswith((".", "!", "?", "…")) else stripped + "."
+
+
 def build_step4(run: Path, out: Path, nli_cache: Path, nli2_cache: Path | None = None,
                 budget: str = "isosyllabic", seed: int = 0) -> None:
     from isochron.meaning_check import key, read_cache
@@ -223,7 +230,7 @@ def build_step4(run: Path, out: Path, nli_cache: Path, nli2_cache: Path | None =
         w = csv.DictWriter(f, fieldnames=STEP4_FIELDS)
         w.writeheader()
         for n, row in enumerate(rows, 1):
-            w.writerow({"line": n, "english_source": row["english_source"], "german_output": row["german_output"],
+            w.writerow({"line": n, "english_source": row["english_source"], "german_output": full_stop(row["german_output"]),
                         "meaning": "", "added_info": "", "natural_german": "", "comment": ""})
     with open(out / "step4_key_de.csv", "w", encoding="utf-8", newline="") as f:
         f.write(f"# The key to step4_sheet_de.csv: never show it to the checker. Written by isochron.native_check on "

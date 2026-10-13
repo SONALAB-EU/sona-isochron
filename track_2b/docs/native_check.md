@@ -41,8 +41,10 @@ How the 50 step 4 lines are chosen (`build-step4`):
 - In 5 of the 25, (c) kept the plain translation, because it already fitted the budget, so both lines
   read the same. They stay in, because the rule chose them.
 - The 50 rows are shuffled, and the sheet shows nothing that tells the system, beyond the texts
-  themselves: (c) is often shorter, and in 4 of its 25 lines it drops the final full stop (the
-  instructions say to ignore punctuation).
+  themselves: (c) is often shorter. In 4 of its 25 lines (c) had no final full stop; since v2.26 the sheet
+  adds one to every line without terminal punctuation (`native_check.full_stop`, the same rule for both
+  systems), so every line ends with a full stop. One difference is left: 3 of (a)'s lines put a phrase in
+  quotation marks ('Anarchie', 'Hausmarken', "nicht schwerwiegend"); none of (c)'s lines does.
 - **Until the marks are back, the checker must not see this repository:** the key is committed, and the
   seeded draw can be rerun from the code. Send only the XLSX, to someone without access to the repo.
 

@@ -843,3 +843,10 @@ used.
   stay in `results/time_check.md`, marked as not valid; nothing goes into the
   report, and no demo figures were drawn. The transcript check was added
   after the speech was heard.
+- 2026-10-13, v2.26: before the sheet was sent, every German line on it that
+  does not end in . ! ? or … (before a closing quote or bracket) gets a full
+  stop, the same rule for both systems (`native_check.full_stop`). It changed
+  4 lines, all (c). Afterwards every line ends with a full stop and starts
+  with a capital, and no line has double, leading or trailing spaces. Left as
+  they are: 3 (a) lines quote a phrase, no (c) line does. The key, the rows
+  and their order are unchanged.
