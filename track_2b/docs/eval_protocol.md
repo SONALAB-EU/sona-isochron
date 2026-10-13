@@ -817,3 +817,19 @@ used.
   final full stop, none of (a)'s), and the texts are not to be edited. The
   rows, their order, the key and the metrics are unchanged; the scorer reads
   the XLSX too.
+- 2026-10-13, v2.24: a time check, exploratory and post-hoc, added after test
+  outputs existed, written down before any speech was synthesised
+  (`isochron.time_check`, `hpc/tts.sbatch`). The 25 English sources of the
+  native-speaker sheet (step 4 test, German, syllable budget, seed 0), minus
+  those whose English recording is flagged noisy (`noisy_src`; 3 of 25), each
+  with (a) and (c). Speech: Chatterbox multilingual (chatterbox-tts 0.1.7,
+  MIT) with its default voice, every distinct text read 3 times (seeds 0, 1,
+  2), duration = the median take. Both the speech and the English FLEURS
+  recording are trimmed as `slot_s` was (16 kHz, `librosa.effects.trim`,
+  top_db 30). A line fits when its speech is within ±10 % of the English
+  slot. Reported: fit counts for (a) and (c), the paired comparison (exact
+  McNemar), and how syllables predict seconds (r, seconds per syllable). No
+  threshold or decision depends on it. Demo lines for a video, drawn by a
+  seeded rule from the test sources not on the sheet: 3 where (a) misses and
+  (c) fits with its meaning kept by both NLI models, 1 where the loop ran and
+  missed (`results/time_check/selection.json`).

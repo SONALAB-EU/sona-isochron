@@ -1,0 +1,51 @@
+{
+ "written": "2026-10-13 09:06 UTC",
+ "commit": "0130000563adae9caac9f08dfd8b520eb1f08c39",
+ "seed": 0,
+ "run": "hpc_8b_step4_test",
+ "generation_seed": 0,
+ "budget": "isosyllabic",
+ "sheet_sources": 25,
+ "sheet_noisy": [
+  "1710",
+  "1936",
+  "1972"
+ ],
+ "timed_sources": [
+  "1682",
+  "1699",
+  "1712",
+  "1733",
+  "1737",
+  "1773",
+  "1790",
+  "1794",
+  "1806",
+  "1817",
+  "1820",
+  "1831",
+  "1846",
+  "1861",
+  "1871",
+  "1879",
+  "1908",
+  "1912",
+  "1922",
+  "1925",
+  "1962",
+  "1980"
+ ],
+ "demo_fit": [
+  "1891",
+  "1903",
+  "1679"
+ ],
+ "demo_miss": [
+  "2002"
+ ],
+ "pool": 211,
+ "eligible_fit": 77,
+ "eligible_miss": 59,
+ "rule": "pool: step 4 test sources (German, syllable budget, seed 0) not on the native-speaker sheet, English recording not noisy, both outputs usable; fit: (a) misses, (c) fits, (c) kept vs the reference by both NLI models; miss: (c) not kept plain (the loop ran) and misses; each drawn with random.Random(0).sample from the eligible ids in numeric order",
+ "texts": 47
+}

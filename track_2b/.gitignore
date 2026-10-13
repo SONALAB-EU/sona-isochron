@@ -62,3 +62,6 @@ hpc/gates/
 
 # make run writes here
 output/
+
+# Audio for the time check and the demo (isochron.time_check): never committed
+/audio/

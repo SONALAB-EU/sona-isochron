@@ -1,0 +1,20 @@
+# The TTS environment for the time check (hpc/tts.sbatch): its own venv on the cluster, never the
+# project's (pyproject.toml and uv.lock stay as they are). chatterbox-tts is installed with --no-deps,
+# because its gradio demo, Chinese and Japanese extras are not needed; these are its runtime imports, at
+# its own pins.
+torch==2.6.0
+torchaudio==2.6.0
+transformers==5.2.0
+diffusers==0.29.0
+safetensors==0.5.3
+conformer==0.3.2
+librosa==0.11.0
+numpy<2
+s3tokenizer
+resemble-perth
+pyloudnorm
+omegaconf
+einops
+scipy
+soundfile
+huggingface-hub
