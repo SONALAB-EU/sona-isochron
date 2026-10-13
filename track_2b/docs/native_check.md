@@ -43,7 +43,8 @@ How the 50 step 4 lines are chosen (`build-step4`):
 - The 50 rows are shuffled, and the sheet shows nothing that tells the system, beyond the texts
   themselves: (c) is often shorter. In 4 of its 25 lines (c) had no final full stop; since v2.26 the sheet
   adds one to every line without terminal punctuation (`native_check.full_stop`, the same rule for both
-  systems), so every line ends with a full stop. One difference is left: 3 of (a)'s lines put a phrase in
+  systems), so every line ends with a full stop. The rater, however, received the version before this
+  rule (`results/native_check/returned/step4_sheet_de_as_rated.csv`). One difference is left: 3 of (a)'s lines put a phrase in
   quotation marks ('Anarchie', 'Hausmarken', "nicht schwerwiegend"); none of (c)'s lines does.
 - **Until the marks are back, the checker must not see this repository:** the key is committed, and the
   seeded draw can be rerun from the code. Send only the XLSX, to someone without access to the repo.
@@ -101,6 +102,11 @@ has that property, no otherwise. Add a comment when it is no. Examples:
 - A "qualifier changed" variant whose change makes no difference to the meaning is no.
 
 ## Scoring
+
+As returned (protocol v2.34): `uv run python -m isochron.native_check score
+results/native_check/returned/german_lines_rated_part1.xlsx --as-rated
+results/native_check/returned/step4_sheet_de_as_rated.csv`. In pairs whose German is identical, the rated
+copy's marks apply to both lines. Findings and rates: `results/human_check.md`.
 
 ```
 uv run python -m isochron.native_check score FILLED_SHEET.xlsx

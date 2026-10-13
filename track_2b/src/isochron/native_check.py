@@ -427,21 +427,49 @@ def check_texts(marks: dict[str, dict[str, str]], sheet: Path, original: Path) -
                            "check by eye and score with --no-text-check")
 
 
-def score_step4(sheet: Path, key: Path, out: Path, text_check: bool = True) -> None:
-    marks = read_marks(sheet)
-    original = key.parent / "step4_sheet_de.csv"
+def marked(m: dict[str, str] | None) -> tuple | None:
+    """A line's marks, normalised, or None when its meaning is not marked."""
+    meaning = MEANING.get(((m or {}).get("meaning") or "").strip().lower())
+    return (meaning, yes_no((m or {}).get("added_info", "")), yes_no((m or {}).get("natural_german", ""))) \
+        if meaning else None
+
+
+def with_identical_pairs(marks: dict[str, dict[str, str]], rows: list[dict[str, str]],
+                         original: Path) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
+    """Protocol v2.34: where both systems' German is identical in the sheet as rated, the rated copy's marks
+    apply to both lines. Returns the marks and, per line, where they came from."""
+    merged = {line: m for line, m in marks.items() if marked(m) is not None}
+    origin = {line: "rated" for line in merged}
+    with open(original, encoding="utf-8-sig") as f:
+        text = {r["line"]: r["german_output"] for r in csv.DictReader(f)}
+    by_id: dict[str, list[str]] = {}
+    for r in rows:
+        by_id.setdefault(r["id"], []).append(r["line"])
+    for lines in by_id.values():
+        if len(lines) == 2 and text[lines[0]] == text[lines[1]]:
+            for x, y in (lines, lines[::-1]):
+                if x not in merged and origin.get(y) == "rated":
+                    merged[x], origin[x] = merged[y], f"copied from line {y} (identical German)"
+    return merged, origin
+
+
+def score_step4(sheet: Path, key: Path, out: Path, text_check: bool = True, original: Path | None = None) -> None:
+    original = original or key.parent / "step4_sheet_de.csv"  # the sheet as the rater saw it
+    raw = read_marks(sheet)
     if text_check and original.is_file():
-        check_texts(marks, sheet, original)
+        check_texts(raw, sheet, original)
     elif text_check:
         print(f"note: {original} not found, so the lines' texts were not checked")
     with open(key, encoding="utf-8") as f:
         rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
-    bad = [(line, column, m[column]) for line, m in marks.items() for column, ok in (
+    bad = [(line, column, m[column]) for line, m in raw.items() for column, ok in (
         ("meaning", lambda v: v.strip().lower() in MEANING), ("added_info", lambda v: yes_no(v) is not None),
         ("natural_german", lambda v: yes_no(v) is not None)) if (m.get(column) or "").strip() and not ok(m[column])]
     if bad:
         raise SystemExit(f"{sheet}: marks that are not on the lists: "
                          + "; ".join(f"line {line} {column} {value!r}" for line, column, value in bad[:10]))
+    marks, origin = with_identical_pairs(raw, rows, original) if original.is_file() else (
+        {line: m for line, m in raw.items() if marked(m) is not None}, {})
     partial = sorted((line for line, m in marks.items()
                       if 0 < sum(bool((m.get(c) or "").strip()) for c in ("meaning", "added_info", "natural_german")) < 3),
                      key=int)
@@ -476,16 +504,26 @@ def score_step4(sheet: Path, key: Path, out: Path, text_check: bool = True) -> N
             k = kappa([p[0] for p in pairs], [p[1] for p in pairs])
             agree.append(f"| {name} | {on} | {len(pairs)} | {100 * sum(a == b for a, b in pairs) / len(pairs):.0f} % "
                          f"| {'–' if k is None else f'{k:.2f}'} |")
-    md = ["# Native-speaker check on step 4: rates and agreement", "",
+    copied = sum(origin.get(r["line"], "").startswith("copied") for r in rows if r["line"] in marks)
+    unmarked = sorted((r["line"] for r in rows if r["line"] not in marks), key=int)
+    status = (f"Descriptive. {len(unmarked)} of {len(rows)} lines have no rating: where a pair's two German "
+              "lines differ, the rater rated one and marked the other a duplicate. So the per-system rates come "
+              "from different sentences, not from pairs, and the systems are not compared by a test."
+              if unmarked else "All lines are rated.")
+    md = ["# Native-speaker check on step 4: rates and agreement", "", status, "",
           f"- Date: {datetime.now(timezone.utc):%Y-%m-%d %H:%M} UTC; git commit {git_commit()}",
-          f"- Sheet: `{sheet}`; key: `{key}`; {len(lines)} of {len(rows)} lines marked (meaning and added information)",
+          f"- Sheet: `{sheet}`; key: `{key}`; {len(lines)} of {len(rows)} lines marked (meaning and added "
+          f"information), {copied} of them copied from an identical pair (protocol v2.34); texts checked against "
+          f"`{original}`",
+          "- Rater: one German native speaker.",
           "- The checker saw the English source and one German output per line, not the system. TTS: none.",
           "- 95 % Wilson intervals. Lines left empty are skipped.", "", *table, "", *agree, ""]
     out.write_text("\n".join(md), encoding="utf-8")
     print("\n".join(md))
 
 
-def score(sheet: Path, key: Path | None, out: Path | None, text_check: bool = True) -> None:
+def score(sheet: Path, key: Path | None, out: Path | None, text_check: bool = True,
+          original: Path | None = None) -> None:
     if sheet.suffix.lower() not in (".xlsx", ".csv"):
         raise SystemExit(f"{sheet}: send or convert it as .xlsx or .csv")
     if sheet.suffix.lower() == ".xlsx":
@@ -495,7 +533,7 @@ def score(sheet: Path, key: Path | None, out: Path | None, text_check: bool = Tr
             fields = list(csv.DictReader(f).fieldnames or [])
     if "english_source" in fields:
         score_step4(sheet, key or Path("results/native_check/step4_key_de.csv"),
-                    out or Path("results/native_check_step4_agreement.md"), text_check)
+                    out or Path("results/native_check_step4_agreement.md"), text_check, original)
     else:
         score_step2(sheet, key or Path("results/native_check/step2_key_de.csv"),
                     out or Path("results/native_check_agreement.md"))
@@ -550,6 +588,8 @@ def main(argv: list[str] | None = None) -> None:
                    help="in a folder without the key")
     s = sub.add_parser("score")
     s.add_argument("sheet", type=Path, help="the filled sheet: CSV, or the XLSX for step 4")
+    s.add_argument("--as-rated", type=Path, help="step 4: the sheet as the rater saw it (default: step4_sheet_de.csv "
+                                                  "next to the key); its texts are checked and its identical pairs share marks")
     s.add_argument("--key", type=Path, help="default: the key that matches the sheet")
     s.add_argument("--out", type=Path, help="default: results/native_check_step4_agreement.md (step 4), "
                                              "results/native_check_agreement.md (step 2)")
@@ -565,7 +605,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.cmd == "xlsx":
         step4_xlsx(args.sheet, args.out)
     else:
-        score(args.sheet, args.key, args.out, not args.no_text_check)
+        score(args.sheet, args.key, args.out, not args.no_text_check, args.as_rated)
 
 
 if __name__ == "__main__":

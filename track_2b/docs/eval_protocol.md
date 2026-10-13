@@ -969,3 +969,16 @@ used.
   takes, at most 10 rounds, float WAV, the same settings and round seeds);
   the figures use the median clean take. The timing-check results stay as
   they are, with Aiden.
+- 2026-10-13, v2.34: the native-speaker check, scored as returned
+  (`results/native_check/returned/german_lines_rated_part1.xlsx`; only the
+  .xlsx is in git, as the .numbers original's metadata may carry the rater's
+  name). One German native speaker rated one line per English source and
+  marked the other 25 "duplicate"; no second part follows. The sheet as rated
+  is the version before v2.26 (`step4_sheet_de_as_rated.csv`): v2.26's full
+  stops never reached the rater, so 4 of ours' lines had none, and 5 pairs
+  are identical. Rule, fixed before scoring: in the 5 identical pairs the
+  rated copy's marks apply to both lines; in the other 20 pairs only one
+  version is rated, so per-system rates (with Wilson intervals and n) come
+  from different sentences and are reported descriptively, with no test of
+  the difference. Results: `results/human_check.md`, led by the rater's
+  findings.

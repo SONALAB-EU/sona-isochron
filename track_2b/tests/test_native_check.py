@@ -267,3 +267,31 @@ def test_full_stop_is_the_same_rule_for_every_line() -> None:
     assert native_check.full_stop("Ein Land.") == native_check.full_stop("Ein Land. ") == "Ein Land."
     assert native_check.full_stop('Er sagte "ja."') == 'Er sagte "ja."'
     assert native_check.full_stop("Wirklich?") == "Wirklich?" and native_check.full_stop("(29¾\" x 24½\")") == '(29¾" x 24½").'
+
+
+def test_step4_identical_pairs_share_the_rated_copy(tmp_path: Path) -> None:
+    run, cache = fake_step4_run(tmp_path)
+    out = tmp_path / "check"
+    native_check.build_step4(run, out, cache)
+    with open(out / "step4_sheet_de.csv", encoding="utf-8-sig") as f:
+        sheet = list(csv.DictReader(f))
+    with open(out / "step4_key_de.csv", encoding="utf-8") as f:
+        key = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    text = {r["line"]: r["german_output"] for r in sheet}
+    pairs: dict[str, list[str]] = {}
+    for k in key:
+        pairs.setdefault(k["id"], []).append(k["line"])
+    first = {min(v, key=int) for v in pairs.values()}  # one line per source, the rest marked "duplicate"
+    n_same = sum(text[v[0]] == text[v[1]] for v in pairs.values())
+    assert n_same  # the fake run has identical pairs
+    filled = tmp_path / "rated.csv"
+    with open(filled, "w", encoding="utf-8-sig", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=native_check.STEP4_FIELDS)
+        w.writeheader()
+        w.writerows(dict(r, meaning="kept", added_info="no", natural_german="yes") if r["line"] in first
+                    else dict(r, comment="duplicate") for r in sheet)
+    report = tmp_path / "agreement.md"
+    native_check.score(filled, out / "step4_key_de.csv", report)
+    got = report.read_text(encoding="utf-8")
+    assert f"{25 + n_same} of 50 lines marked" in got and f"{n_same} of them copied from an identical pair" in got
+    assert "Descriptive" in got and "not compared by a test" in got
