@@ -872,3 +872,27 @@ used.
   (share of sentences, and Cohen's kappa), and Pearson and Spearman r of its
   length ÷ budget with seconds ÷ slot; 95 % bootstrap intervals, and paired
   bootstrap differences syllables − characters. No decision depends on it.
+- 2026-10-13, v2.28: the TTS becomes Qwen3-TTS, with these rules fixed before
+  any speech is generated (`hpc/tts_qwen.sbatch`, `hpc/tts_qwen_synth.py`):
+  - Model: Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice at revision `0c0e305`
+    (Apache-2.0), package qwen-tts 0.1.1 (Apache-2.0), in a venv of its own on
+    the cluster. One preset voice for everything, chosen now: Aiden ("sunny
+    American male voice with a clear midrange"); none of the 9 presets is a
+    native German voice, and of the two native in a European language, Aiden
+    is the one described without a rhythmic style. No instruction text, no
+    reference audio, so no cloning. language="German"; the checkpoint's own
+    sampling settings (temperature 0.9, top_k 50, top_p 1.0, repetition
+    penalty 1.05, the same for the sub-talker), max_new_tokens 2048, BF16.
+  - Every text ends with a full stop, for both systems (`native_check.full_stop`).
+  - Rounds: round r (r = 0 … 9) seeds torch with r and reads, in one batch,
+    every text that still has fewer than 3 clean takes. Every take is
+    transcribed with Whisper small (openai-whisper 20250625, German,
+    temperature 0); it is rejected when its transcript has more than one word
+    after the last word it shares with the text (`extra_words` > 1). A text's
+    takes are its first 3 clean ones; after 10 rounds a text with fewer is a
+    shortfall and is reported, not filled.
+  - Audio is saved as 32-bit float WAV. The analysis is v2.24's, on the clean
+    takes; the demo figures use each demo text's median clean take.
+  - GPU cap: 0.3 H100-hours (one job of at most 18 min). This time check is
+    secondary to the human-speech check (v2.27); the Chatterbox run (v2.25)
+    stays documented as failed.
