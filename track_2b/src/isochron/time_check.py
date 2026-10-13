@@ -638,6 +638,9 @@ def report_qwen() -> None:
         "## Rejected takes", "",
         "| Texts | n | Takes rejected / generated | Texts short of 3 clean takes |", "|---|---:|---:|---:|",
         *(f"| {name} | {len(t)} | {attempts(t)} | {sum(x in short for x in t)} |" for name, t in groups), "",
+        "Every rejected take, as Whisper heard its end (extra words in brackets):", "",
+        *(f"- {e['text_id']} ({', '.join(sorted({u['system'] for u in next(x for x in texts if x['text_id'] == e['text_id'])['uses']}))}), "
+          f"round {e['round']} [{e['extra_words']}]: …{e['transcript'][-70:]}" for e in log if not e["clean"]), "",
         "## Fit in seconds", "",
         "| System | Fits the English slot | Median speech ÷ slot | Range |", "|---|---|---:|---|",
         *(f"| {label} | {pct(sum(r[x + '_fit'] for r in table))} | {statistics.median(ratio[x]):.2f} | "
