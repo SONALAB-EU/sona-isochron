@@ -253,6 +253,18 @@ or by worker time.
 Where the loop runs most, (c) needs 2.60–2.78 calls and 0.53–0.82 H100-s per line; in French with
 syllables, where it keeps (a) in 79 % of lines, 1.47 calls and 0.21–0.25.
 
+**Timing in seconds** (exploratory; post-hoc, added after test outputs existed). For one fixed voice,
+syllables predict seconds: Qwen3-TTS (preset voice Aiden) gives r = 0.98, 0.231 s per syllable. Across
+human readers, reading speed dominates: in FLEURS test readings syllables track seconds within a language
+(r = 0.77–0.93), but neither ruler predicts whether a German or French reading fits the English slot within
+±10 % (κ −0.16 to +0.02), and these readers speak 1.13 (DE) and 1.35 (FR) times as many syllables per
+second as the English ones, not the 0.96 and 1.16 our budget assumes (`results/human_speech.md`). So
+budgets must be calibrated to the target voice. With the syllable budget and this voice, ours fits the
+English slot in 6 of 21 sheet sources and plain translation in 8; ours runs short (11 of its 15 misses;
+median 0.89 × the slot; the voice takes 0.231 s per syllable, the English readers 0.257). With a budget
+calibrated to the voice (slot ÷ 0.231 s, measured on 30 dev lines), ours fits 47 of 99 test sources and
+plain translation 25 (paired 22 to 0, McNemar p < 10⁻⁶; `results/time_check_calibrated.md`).
+
 **Step 2: the engine** (`results/step2_test.md`; test, final). Shorten a sentence in its own language to
 90, 80, 70 or 60 % of its syllables (347 German and 332 French test sentences × 4 levels × seeds 0, 1, 2),
 without the loop (the closest of 4 candidates) and with it. The metrics are step 4's, with the source
@@ -302,13 +314,7 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 ## 6. Limitations
 
-- **The budget must be calibrated to the target voice** (post-hoc, added after test outputs existed).
-  Within a language, syllables track seconds (r = 0.77–0.93 over FLEURS test readings; 0.98 for one TTS
-  voice), but readers' speeds vary so much that neither ruler predicts a ±10 % fit to the English reading
-  (κ −0.16 to +0.02), and they speak faster than our preset rates assume (German 1.13 vs 0.964, French 1.35
-  vs 1.160; `results/human_speech.md`). With Qwen3-TTS, ours fits the English slot in 6 of 21 sources,
-  plain in 8 (`results/time_check_qwen.md`); 11 of ours' 15 misses are too short: the voice takes 0.231 s
-  per syllable, the English readers 0.257 (protocol v2.30).
+- **Timing uses one TTS voice** (Section 5), not dubbing actors; the budget must be calibrated to the voice.
 - **The meaning checks miss small changes.** Caught, of the planted German changes (the source in German,
   or in English as for step 4; `results/judge_validation_*` and `results/step4_test_nli2.md`; the second
   NLI's columns are post-hoc, added after test outputs existed):
@@ -330,6 +336,7 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 - **No human judgement yet.** No native speaker has reviewed the control pairs or the outputs. The blind
   sheet is ready (`docs/native_check.md`): 25 English → German test sources, each with (a) and (c) under the
   syllable budget, generation seed 0. With 25 lines per system it can show only large differences.
+  Blinding is partial: both lines of a source are on the sheet, and the shorter one is visible.
 - **Tight targets give long lines:** with the loop, misses run long (Section 5).
 - **Strict JSON.** Answers that are not valid JSON count as failures, as frozen: in step 4, one step lost
   114 of 4,074 answers, (a) 9 of 2,037, and (c) 28 of 4,074 lines (Section 5).
@@ -345,7 +352,7 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 - **Commits:** the step 2 test runs used `68492f2`, and the step 4 test runs `7b22d93` (its step 4 code
   unchanged since `68492f2`). **[PLACEHOLDER: the commit of the final reports]**
 - **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All isochron jobs used
-  6.34 H100-hours of a budget of 12 (sacct, 2026-10-13): 6.03 for setup and experiments, 0.31 for
+  6.89 H100-hours of a budget of 12 (sacct, 2026-10-13): 6.48 for setup and experiments, 0.42 for
   text-to-speech.
 - **Seeds:** generation 0, 1 and 2, plus 1000 × the round. Judge: temperature 0, seed 0. Bootstrap:
   seed 0.
@@ -357,7 +364,7 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 ## 8. Next steps
 
-- Calibrate the syllable budget to the target voice, and check the fit with that voice.
+- Budgets calibrated to each target voice, checked with dubbing actors.
 - The native-speaker check, and a meaning check aimed at qualifiers.
 - Apertus 1.5 70B, Italian, and step 3 (exact targets).
 - Subtitle formats (SRT, TTML), and a "cannot fit without losing meaning" flag instead of a long line.

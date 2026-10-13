@@ -947,3 +947,12 @@ used.
   used). It is rerun from round 0 into a new folder with at most 48 texts per
   generate call, torch seeded with the round before each call; nothing else
   changes. The failed job's takes are not used.
+- 2026-10-13, v2.32: the voice-calibrated test's result, recorded as computed
+  (`results/time_check_calibrated.md`). Rate 0.23105 s per syllable (30 dev
+  texts, all with 3 clean takes). Of the 100 test sources, 99 have 3 clean
+  takes for both systems (source 1827 left out). Ours fits the English slot
+  in 47 of 99, plain translation in 25 (paired 22 to 0, exact McNemar
+  p = 4.8e-07); (c) hits its calibrated syllable budget in 61 and keeps (a)
+  in 59. Misses: (a) 23 too short, 51 too long; (c) 28 too short, 24 too
+  long. GPU: 0.29 H100-hours for the four jobs, one of which (2662394) ran
+  out of memory.

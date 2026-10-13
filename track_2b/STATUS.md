@@ -1,5 +1,28 @@
 # Status
 
+## TTS diagnosis and voice-calibrated budgets (2026-10-13; decision log)
+
+Your decisions: leave the sheet's quotation marks (sent); limit blinding in the report; diagnose the TTS fit;
+a voice-calibrated test if most of (c)'s misses are short; the report's timing paragraph. No sub-agents.
+
+- **Diagnosis** (protocol v2.30, analysis only): over the 21 sources, TTS ÷ slot median 0.98 (a), 0.89 (c);
+  (c) misses 11 short, 4 long; (a) 6 short, 7 long. Voice 0.231 s per syllable, English readers 0.257.
+- **Calibrated test** (plan v2.30 before generating; v2.31 the out-of-memory rerun; result v2.32):
+  - rate 0.23105 s per syllable from 30 dev plain translations (job 2662354);
+  - step 4 (c) with budget = round(slot ÷ rate) on 100 seeded test sources (not noisy, not on the sheet),
+    (a) reused, (b) not run (job 2662369, `hpc_8b_step4_test_calibrated`): (c) kept (a) in 59;
+  - speech with the chars10 Whisper rule, batches of at most 48 (job 2662399; 2662394 ran out of memory);
+    1 shortfall (1827);
+  - **ours fits the English slot in 47/99, plain 25/99, paired 22 to 0, McNemar p = 4.8e-07**; (c) hits its
+    calibrated budget in 61/99.
+  - GPU 0.29 H100-hours (cap 0.6). All isochron jobs: 6.89 H100-hours (sacct), 0.42 of it TTS.
+- **Code:** step4 gains `--budgets calibrated --calibrated-targets`, `--plain-from`, `--systems` (defaults are
+  the frozen step 4); pipeline.sh `STEP4_EXTRA`; tts_qwen_synth `--rule chars10`, `--batch`.
+- **Report:** Section 5 timing paragraph (one voice r = 0.98; readers κ ≈ 0; preset rates off; calibrate;
+  TTS fit with the diagnosis; calibrated result). Section 6: timing uses one voice; blinding is partial.
+  Section 7: GPU split. Section 8: next step reworded. The French characters-vs-syllables finding stays
+  text-level. Built on the other session's f3cdbd4 (coordinated by message); 6 pages.
+
 ## Rater sheet punctuation, human speech, Qwen3-TTS (2026-10-13; decision log)
 
 Your decisions: (1) a full stop on every sheet line without terminal punctuation, same rule for both
