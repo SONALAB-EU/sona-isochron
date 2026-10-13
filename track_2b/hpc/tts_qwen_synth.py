@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+from collections import Counter
 import json
 import platform
 import random
@@ -79,6 +80,7 @@ def main() -> None:
     rounds = 1 if args.limit else ROUNDS
     cuda = args.device == "cuda"
     spoken = {t["text_id"]: full_stop(t["text"]) for t in texts}
+    voice = {t["text_id"]: t.get("voice", VOICE) for t in texts}  # a plan may name a preset per text (v2.33)
     model = Qwen3TTSModel.from_pretrained(str(args.model), device_map="cuda:0" if cuda else "cpu", dtype=torch.bfloat16,
                                           attn_implementation="sdpa")
     asr = whisper.load_model(WHISPER["model"], device=args.device, download_root=str(args.whisper))
@@ -105,7 +107,7 @@ def main() -> None:
                 if cuda:
                     torch.cuda.manual_seed_all(r)
                 out, sr = model.generate_custom_voice(text=[spoken[t] for t in chunk], language=[LANGUAGE] * len(chunk),
-                                                      speaker=[VOICE] * len(chunk), **SETTINGS)
+                                                      speaker=[voice[t] for t in chunk], **SETTINGS)
                 wavs += list(out)
             gen_s = time.time() - t0
             for tid, wav in zip(todo, wavs):
@@ -121,7 +123,7 @@ def main() -> None:
                     extra <= MAX_EXTRA if args.rule == "extra-words" else longer <= MAX_LONGER)
                 if ok:
                     clean[tid].append(name)
-                log.write(json.dumps({"text_id": tid, "round": r, "seed": r, "file": name, "samples": len(audio),
+                log.write(json.dumps({"text_id": tid, "round": r, "seed": r, "file": name, "voice": voice[tid], "samples": len(audio),
                                       "peak": round(float(np.abs(audio).max()), 4) if len(audio) else 0.0,
                                       "transcript": heard, "extra_words": extra,
                                       "longer": round(longer, 4), "clean": ok,
@@ -130,7 +132,8 @@ def main() -> None:
             log.flush()
             print(f"round {r}: {len(todo)} texts in {gen_s:.0f} s; "
                   f"{sum(len(c) >= TAKES for c in clean.values())}/{len(clean)} texts have {TAKES} clean takes", flush=True)
-    settings = {"model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "voice": VOICE, "language": LANGUAGE, **SETTINGS,
+    settings = {"model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "voice": VOICE,
+                "voices": dict(sorted(Counter(voice.values()).items())), "language": LANGUAGE, **SETTINGS,
                 "dtype": "bfloat16", "attn_implementation": "sdpa", "sample_rate": sr if texts else None,
                 "takes": TAKES, "rounds": ROUNDS, "rule": args.rule, "batch": args.batch,
                 "max_extra_words": MAX_EXTRA, "max_longer": MAX_LONGER, "whisper": WHISPER,

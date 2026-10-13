@@ -447,7 +447,7 @@ def settings_view(settings: dict[str, Any]) -> dict[str, Any]:
 def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[str, str], str],
          seconds: dict[str, float], takes: dict[str, list[float]], slots: dict[str, float],
          fleurs: dict[str, dict[str, Any]], paths: dict[str, list[Path]] | None = None, source: str = "",
-         voice: str = "") -> dict[str, str]:
+         voice: str = "", out: Path = Path("docs/figures/demo"), audio_out: Path = AUDIO / "demo") -> dict[str, str]:
     """For each demo line: the English recording and the median take of (a) and (c), trimmed, in
     audio/demo/<id>/, and a timeline figure in docs/figures/demo/. paths: each text's takes, in take order
     (default: Chatterbox's audio/tts/<text_id>_take<k>.wav)."""
@@ -461,12 +461,11 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
 
     from isochron.figures import PLAIN, WIDTH, WITH as LOOP
 
-    out = Path("docs/figures/demo")
     out.mkdir(parents=True, exist_ok=True)
     text_of = {e["text_id"]: e["text"] for e in texts}
     made = {}
     for sid in selection["demo_fit"] + selection["demo_miss"]:
-        folder = AUDIO / "demo" / sid
+        folder = audio_out / sid
         folder.mkdir(parents=True, exist_ok=True)
         for name, path in (("english", AUDIO / "english" / f"{sid}.wav"),
                            *((name, paths[by[(sid, s)]][median_take(takes[by[(sid, s)]])])
@@ -900,6 +899,83 @@ def report_cal() -> None:
     print("\n".join(md))
 
 
+DEMO_VOICES = OUT / "demo_voices"
+FEMALE_PRESETS = ("serena", "vivian", "ono_anna", "sohee")  # the model card's female voices
+PRESET_ORDER = ("serena", "vivian", "uncle_fu", "ryan", "aiden", "ono_anna", "sohee", "eric", "dylan")  # spk_id order
+
+
+def reader_genders(ids: list[str]) -> dict[str, int]:
+    """FLEURS's gender (0 male, 1 female, 2 other) of the English recording each source uses."""
+    import pyarrow.parquet as pq
+
+    from isochron.data.build_fleurs import SPLITS, recording_id
+    from isochron.data.fleurs import fetch
+
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    wanted = {fleurs[sid]["src_recording_id"]: sid for sid in ids}
+    table = pq.ParquetFile(fetch(f"parquet-data/en_us/{SPLITS['test']}-00000-of-00001.parquet")).read(columns=["path", "gender"])
+    return {wanted[recording_id(p)]: g for p, g in zip(table.column("path").to_pylist(), table.column("gender").to_pylist())
+            if recording_id(p) in wanted}
+
+
+def demo_voices_plan() -> None:
+    """The demo texts with a preset per text: Aiden for a male reader, the first female preset otherwise (v2.33)."""
+    selection = json.loads((OUT / "selection.json").read_text(encoding="utf-8"))
+    ids = selection["demo_fit"] + selection["demo_miss"]
+    genders = reader_genders(ids)
+    female = next(v for v in PRESET_ORDER if v in FEMALE_PRESETS).capitalize()
+    plan = [json.loads(line) for line in (OUT / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    entries = {}
+    for e in plan:
+        demo_uses = [u for u in e["uses"] if u["purpose"] == "demo"]
+        if demo_uses:
+            sid = demo_uses[0]["id"]
+            entries[e["text_id"]] = {**e, "uses": demo_uses, "voice": "Aiden" if genders[sid] == 0 else female,
+                                     "reader_gender": genders[sid]}
+    write_plan(DEMO_VOICES / "plan.jsonl", entries)
+    RAW.mkdir(parents=True, exist_ok=True)
+    (RAW / "demo_voices_plan.jsonl").write_bytes((DEMO_VOICES / "plan.jsonl").read_bytes())
+    print({sid: ("female" if genders[sid] == 1 else "male" if genders[sid] == 0 else "other") for sid in ids},
+          f"female preset: {female}", f"{len(entries)} texts")
+
+
+def demo_voices() -> None:
+    """The 4 demo timeline figures with the gender-matched voices, from the median clean take."""
+    selection = json.loads((OUT / "selection.json").read_text(encoding="utf-8"))
+    texts = [json.loads(line) for line in (DEMO_VOICES / "plan.jsonl").read_text(encoding="utf-8").splitlines()]
+    fleurs = {r["id"]: r for r in map(json.loads, FLEURS.read_text(encoding="utf-8").splitlines())}
+    takes, files, log = clean_takes(AUDIO / "qwen_demo_voices")
+    short = [t for t, v in takes.items() if len(v) < TAKES]
+    if short:
+        raise SystemExit(f"texts short of {TAKES} clean takes: {short}")
+    by = {(u["id"], u["system"]): e["text_id"] for e in texts for u in e["uses"]}
+    voice_of = {e["uses"][0]["id"]: e["voice"] for e in texts}
+    seconds = {t: statistics.median(v) for t, v in takes.items()}
+    slots = {sid: measure(*load(AUDIO / "english" / f"{sid}.wav")).trimmed_s for sid in voice_of}
+    made = {}
+    for sid in selection["demo_fit"] + selection["demo_miss"]:
+        one = {**selection, "demo_fit": [sid] if sid in selection["demo_fit"] else [],
+               "demo_miss": [sid] if sid in selection["demo_miss"] else []}
+        made |= demo(one, texts, by, seconds, takes, slots, fleurs, files, source=DEMO_VOICES / "durations.csv",
+                     voice=f"Qwen3-TTS, voice {voice_of[sid]}", out=Path("docs/figures/demo_voices"),
+                     audio_out=AUDIO / "demo_voices")
+    with open(DEMO_VOICES / "durations.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["id", "system", "voice", "text_id", "clean_take_s", "median_s", "english_slot_s"])
+        for (sid, system), tid in sorted(by.items()):
+            w.writerow([sid, system, voice_of[sid], tid, " ".join(f"{x:.3f}" for x in takes[tid]),
+                        f"{seconds[tid]:.3f}", f"{slots[sid]:.3f}"])
+    with open(DEMO_VOICES / "manifest.csv", "w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["file", "voice", "text_id", "round", "seed", "clean", "sha256", "licence"])
+        for e in log:
+            path = AUDIO / "qwen_demo_voices" / e["file"]
+            w.writerow([path.as_posix(), e.get("voice", ""), e["text_id"], e["round"], e["seed"], int(e["clean"]),
+                        sha256(path), QWEN_LICENCE])
+    rejected = sum(not e["clean"] for e in log)
+    print(f"{len(log)} takes, {rejected} rejected; figures: {sorted(made.values())}")
+
+
 def median_take(values: list[float]) -> int:
     """The take whose duration is the median (the middle of three)."""
     return sorted(range(len(values)), key=lambda k: values[k])[len(values) // 2]
@@ -908,10 +984,11 @@ def median_take(values: list[float]) -> int:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("cmd", choices=("plan", "english", "report", "report-qwen", "cal-plan", "cal-targets", "cal-tts-plan",
-                                    "report-cal"))
+                                    "report-cal", "demo-voices-plan", "demo-voices"))
     args = ap.parse_args(argv)
     {"plan": plan, "english": english, "report": report, "report-qwen": report_qwen, "cal-plan": cal_plan,
-     "cal-targets": cal_targets, "cal-tts-plan": cal_tts_plan, "report-cal": report_cal}[args.cmd]()
+     "cal-targets": cal_targets, "cal-tts-plan": cal_tts_plan, "report-cal": report_cal,
+     "demo-voices-plan": demo_voices_plan, "demo-voices": demo_voices}[args.cmd]()
 
 
 if __name__ == "__main__":
