@@ -1,5 +1,17 @@
 # Status
 
+## Demo voices matched to the reader (2026-10-13; decision log)
+
+- Rule fixed before generating (protocol v2.33): FLEURS `gender` of the English recording; male → Aiden,
+  female → the first female preset in the model's own list (`talker_config.spk_id` order), Serena. Readers:
+  1891 male; 1903, 2002, 1679 female.
+- Job 2662618: 2 min 24 s, 0.04 H100-hours; 28 takes, 4 rejected (all 1891 (c), the name "Raju
+  Khandelwal"); every text has 3 clean takes; peaks below 1.
+- New figures, voice in the title: `docs/figures/demo_voices/demo_{1891,1903,1679,2002}.{png,pdf,csv}`;
+  durations and manifest in `results/time_check/demo_voices/`. Paired audio for the video (git-ignored):
+  `audio/demo_voices/<id>/{english,plain,ours}.wav`. The timing-check results and `docs/figures/demo/`
+  (Aiden) are unchanged.
+
 ## TTS diagnosis and voice-calibrated budgets (2026-10-13; decision log)
 
 Your decisions: leave the sheet's quotation marks (sent); limit blinding in the report; diagnose the TTS fit;

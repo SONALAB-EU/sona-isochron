@@ -1,0 +1,5 @@
+# drawn by isochron.time_check from results/time_check/demo_voices/durations.csv; seconds are trimmed, the median of 3 takes for the speech; Qwen3-TTS, voice Serena
+track,seconds,text
+english,8.384,"When all available resources are effectively used across the functional departments of an organization, creativity and ingenuity can transpire."
+plain,12.416,"Wenn alle verfügbaren Ressourcen effektiv in den funktionalen Abteilungen einer Organisation eingesetzt werden, kann Kreativität und Erfindungsgabe entstehen."
+ours,9.216,Durch die effiziente Nutzung aller Ressourcen in den funktionalen Abteilungen einer Organisation entstehen Kreativität und Erfindungsgabe.

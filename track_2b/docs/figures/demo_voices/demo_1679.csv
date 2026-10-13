@@ -1,0 +1,5 @@
+# drawn by isochron.time_check from results/time_check/demo_voices/durations.csv; seconds are trimmed, the median of 3 takes for the speech; Qwen3-TTS, voice Serena
+track,seconds,text
+english,3.168,Aerosmith have cancelled their remaining concerts on their tour.
+plain,5.456,Aerosmith haben ihre verbleibenden Konzerte auf ihrer Tour abgesagt.
+ours,3.328,Aerosmith letzte Konzerte der Tour gestrichen
