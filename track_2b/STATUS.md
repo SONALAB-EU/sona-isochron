@@ -15,7 +15,9 @@ a voice-calibrated test if most of (c)'s misses are short; the report's timing p
     1 shortfall (1827);
   - **ours fits the English slot in 47/99, plain 25/99, paired 22 to 0, McNemar p = 4.8e-07**; (c) hits its
     calibrated budget in 61/99.
-  - GPU 0.29 H100-hours (cap 0.6). All isochron jobs: 6.89 H100-hours (sacct), 0.42 of it TTS.
+  - GPU 0.29 H100-hours (cap 0.6). All isochron jobs: 6.44 H100-hours (sacct, isochron-* jobs only: 6.03
+    setup and experiments + 0.42 TTS). An earlier 6.89 here and in commit 57ac741's message wrongly included
+    three jobs of another project from 2026-10-05 (1,609 H100-seconds); the report was corrected in 094483a.
 - **Code:** step4 gains `--budgets calibrated --calibrated-targets`, `--plain-from`, `--systems` (defaults are
   the frozen step 4); pipeline.sh `STEP4_EXTRA`; tts_qwen_synth `--rule chars10`, `--batch`.
 - **Report:** Section 5 timing paragraph (one voice r = 0.98; readers κ ≈ 0; preset rates off; calibrate;
