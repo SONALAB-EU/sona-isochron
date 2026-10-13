@@ -65,3 +65,7 @@ output/
 
 # Audio for the time check and the demo (isochron.time_check): never committed
 /audio/
+
+# Ratings returned by the native speaker: only the .xlsx is committed; the original .numbers file can carry
+# the rater's name in its metadata
+/results/native_check/returned/*.numbers
