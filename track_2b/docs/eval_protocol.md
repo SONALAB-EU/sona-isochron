@@ -997,3 +997,16 @@ used.
   translations of English text over 70 characters run to about 130 % of its
   length; so the rows are also given for English sources over 70 characters
   (with spaces, as that guidance counts them).
+- 2026-10-13, v2.36: "too long" and "not too long" (post-hoc, added after
+  test outputs existed; planned here before computing; `isochron.too_long`,
+  `results/step4_too_long.md`). Running long can overlap the next speech
+  segment; running short is tolerable. Per output: too long = a usable output
+  (an answer, in the target language) over 1.10 × the budget; not too long =
+  a usable output at most 1.10 × the budget; a missing or wrong-language
+  output is neither (reported apart). For (a), (b) and (c) in all four step 4
+  settings, from `results/step4_test_lengths.csv`, as shares of all outputs
+  with 95 % bootstrap intervals over sentences, and paired differences
+  (c) − (a) and (c) − (b) with paired bootstrap intervals (10,000 resamples,
+  seed 0), as in v2.12. For the timing tests (seconds against the English
+  slot): counts of too long and not too long for (a) and (c), with exact
+  McNemar on too long. The pre-registered fit stays the main metric.
