@@ -1,5 +1,24 @@
 # Status
 
+## Sören's review: native check, expansion, too long, 4-page report (2026-10-13; decision log)
+
+- **Native check** (protocol v2.34; `results/human_check.md`): returned with one line per source rated.
+  The rater received the sheet *before* the full-stop rule (v2.26; `step4_sheet_de_as_rated.csv`), so 5
+  pairs are identical, 4 of ours' lines lacked a full stop. Identical pairs share the rated copy; 30 lines
+  rated (a 14, c 16), rates from different sentences, descriptive, no test. Findings: ours' `"` for "Zoll"
+  (eSpeak counts 0 syllables; line 8: 48 written, 53 spoken), a one-word fragment, broken grammar, a
+  dropped "some"; both: "Spitze", "Hirschziegen". Only the .xlsx is in git; .numbers ignored.
+- **Expansion** (v2.35; `results/expansion_en_de_fr.md`): references 1.18 × the English characters (DE and
+  FR), 75 % over +10 %; plain (a) 1.16 / 1.19; human readings 0.98 (DE) and 0.85 (FR) of the English time.
+- **Too long** (v2.36; `results/step4_too_long.md`): ours 4.1–20.4 %, plain 20.5–79.1 %, one step 1.4–14.8 %
+  (one step comes out short); calibrated timing: too long plain 51, ours 24 of 99 (checked).
+- **Report:** restructured to 4 pages (A4, two columns): page 1 summary with a key-results table and the
+  expansion motivation; page 2 method (Figure 1 at 72 % width), Apertus, target architecture; page 3 step 4,
+  timing, native-check, step 2 and cost tables; page 4 learned, limitations, data and reproducibility,
+  references, appendix (planted-control catch rates). Only Figure 1 stays; figures 2–6 and the extra_
+  figures, JSON sensitivity, second-NLI detail, trade-off, rounds, compression and length distributions are
+  linked one line each. No pre-registered result or caveat dropped.
+
 ## Demo voices matched to the reader (2026-10-13; decision log)
 
 - Rule fixed before generating (protocol v2.33): FLEURS `gender` of the English recording; male → Aiden,
