@@ -3,8 +3,8 @@
 Dubbing lines that fit their slot: Apertus 1.5 translates a line from English and shortens it to a length
 budget, aiming to keep its meaning, guided by a repair loop.
 
-- **Track:** Track 2B — Isochron · **Event:** Online · **Team:** **[PLACEHOLDER: team name]** —
-  **[PLACEHOLDER: members]** · **Demo:** **[PLACEHOLDER: link to the 2-minute demo video]**
+- **Track:** Track 2B — Isochron · **Event:** Online · **Team:** SONALAB — Kaushik Mukherjee, Sören
+  Hübner · **Demo:** **[PLACEHOLDER: link to the 2-minute demo video]**
 
 Every number is labelled with its split, model, quantisation and n. Dev numbers are exploratory; test
 numbers are final. Analyses added after the test outputs existed are marked "post-hoc, added after test
@@ -233,8 +233,8 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   all 963 references alike on Mac and cluster; the language check flags none of 1,956 German sentences.
 - **Commits:** step 2 test runs `68492f2`, step 4 test runs `7b22d93`. **[PLACEHOLDER: the commit of the
   final reports]**
-- **Hardware:** Apple M3 (16 GB); one H100 80 GB per HPC job; 6.44 H100-hours of a budget of 12 (sacct):
-  6.03 setup and experiments, 0.42 text-to-speech.
+- **Hardware:** Apple M3 (16 GB); one H100 80 GB per HPC job; 6.48 H100-hours of a budget of 12 (sacct,
+  2026-10-13): 6.03 setup and experiments, 0.46 text-to-speech (rounded).
 - **Records:** every results file gives date, commit, model and quantisation, endpoint, TTS (only the
   timing files: `time_check.md` Chatterbox; `time_check_qwen.md`, `time_check_calibrated.md` Qwen3-TTS),
   seeds and n. Judge: temperature 0, seed 0. Rebuild: `docs/hpc.md`, `docs/local_llm.md`, `make figures`,

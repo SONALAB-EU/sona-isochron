@@ -1,5 +1,13 @@
 # Status
 
+## Team, a second-NLI check, GPU total (2026-10-13)
+
+- Report team line: SONALAB — Kaushik Mukherjee, Sören Hübner.
+- Plain translation's second-NLI 88.2 in German and in French is not a copied value: recomputed from the
+  cache, 918 of 1,041 (88.18 %) and 878 of 996 (88.15 %), with their own intervals.
+- GPU from sacct after the last job (24 isochron GPU jobs): 6.48 H100-hours, 6.03 setup and experiments,
+  0.46 text-to-speech (the demo-voice job added 144 s). Earlier entries' 6.44 predate that job.
+
 ## Sören's review: native check, expansion, too long, 4-page report (2026-10-13; decision log)
 
 - **Native check** (protocol v2.34; `results/human_check.md`): returned with one line per source rated.
