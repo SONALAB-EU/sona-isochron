@@ -333,7 +333,7 @@ def report() -> None:
         f"- English slot: the FLEURS recording named in `data/fleurs_de_test.jsonl` (google/fleurs, CC BY 4.0), "
         "trimmed like the speech: 16 kHz, `librosa.effects.trim(top_db=30, frame 2048, hop 512)`; sources whose "
         "English recording is flagged noisy are skipped",
-        f"- Fit: speech within ±{TOLERANCE:.0%} of the English slot. Syllables: {counter_description('espeak')}",
+        f"- Fit: speech within ±{100 * TOLERANCE:.0f} % of the English slot. Syllables: {counter_description('espeak')}",
         f"- n: {n} of the sheet's {selection['sheet_sources']} sources ({len(selection['sheet_noisy'])} skipped as noisy: "
         f"{', '.join(selection['sheet_noisy'])}); {len(texts)} distinct texts × {TAKES} takes", "",
         "## Fit in seconds", "",
@@ -413,16 +413,16 @@ def demo(selection: dict[str, Any], texts: list[dict[str, Any]], by: dict[tuple[
         bars = [("English\n(FLEURS speaker)", slot, "#000000"), ("plain\ntranslation", seconds[by[(sid, "a")]], PLAIN),
                 ("ours", seconds[by[(sid, "c")]], LOOP)]
         fig, ax = plt.subplots(figsize=(WIDTH, 1.6))
-        ax.axvspan(0.9 * slot, 1.1 * slot, color="#E5E5E5", zorder=0, label="±10 % of the English slot")
+        ax.axvspan(0.9 * slot, 1.1 * slot, color="#E5E5E5", zorder=0)
         for y_, (label, s, colour) in enumerate(reversed(bars)):
             ax.barh(y_, s, color=colour, height=0.55, zorder=2)
             ax.text(s + 0.05, y_, f"{s:.2f} s", va="center", fontsize=7)
         ax.set_yticks(range(3), [b[0] for b in reversed(bars)], fontsize=7)
-        ax.set_xlabel("Seconds (speech, trimmed)", fontsize=7)
+        ax.set_xlabel("Seconds (trimmed); grey: ±10 % of the English slot", fontsize=7)
         ax.set_xlim(0, 1.25 * max(b[1] for b in bars))
         ax.tick_params(axis="x", labelsize=7)
-        ax.set_title(f"FLEURS test {sid}: {fleurs[sid]['src_text'][:60]}…", fontsize=7, loc="left")
-        ax.legend(fontsize=6, loc="lower right", frameon=False)
+        kind = "by syllables, plain misses, ours fits" if sid in selection["demo_fit"] else "by syllables, the loop missed"
+        ax.set_title(f"FLEURS test sentence {sid}: {kind}", fontsize=7, loc="left")
         for side in ("top", "right"):
             ax.spines[side].set_visible(False)
         fig.tight_layout()

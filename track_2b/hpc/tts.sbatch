@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=isochron-tts
 #SBATCH --account=aisc
-#SBATCH --partition=pot-hpi-aisc-shortrun
+#SBATCH --partition=pot-hpi-aisc-batch
 #SBATCH --gres=gpu:h100:1
 #SBATCH --exclude=ga03
 #SBATCH --nodes=1
