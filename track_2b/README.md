@@ -1,3 +1,5 @@
+[![CI](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml)
+
 # Isochron: dubbing lines that fit their slot, with Apertus
 
 Hack Apertus 2026, Track 2B (own project). Built with Apertus 1.5.
