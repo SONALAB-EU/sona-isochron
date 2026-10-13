@@ -261,7 +261,8 @@ human readers, reading speed dominates: in FLEURS test readings syllables track 
 second as the English ones, not the 0.96 and 1.16 our budget assumes (`results/human_speech.md`). So
 budgets must be calibrated to the target voice. With the syllable budget and this voice, ours fits the
 English slot in 6 of 21 sheet sources and plain translation in 8; ours runs short (11 of its 15 misses;
-median 0.89 × the slot; the voice takes 0.231 s per syllable, the English readers 0.257). With a budget
+median 0.89 × the slot; the voice takes 0.231 s per syllable, the English readers 0.257;
+`results/time_check_qwen.md`). With a budget
 calibrated to the voice (slot ÷ 0.231 s, measured on 30 dev lines), ours fits 47 of 99 test sources and
 plain translation 25 (paired 22 to 0, McNemar p < 10⁻⁶; `results/time_check_calibrated.md`).
 
