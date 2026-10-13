@@ -31,5 +31,5 @@ PLAN=${PLAN:-results/raw/time_check/plan.jsonl}
 export HF_HUB_OFFLINE=1
 log "job $SLURM_JOB_ID: Qwen3-TTS on $PLAN, rule ${RULE:-extra-words} ($(cat .git_commit 2> /dev/null || echo 'no .git_commit'))"
 "$Q/venv/bin/python" hpc/tts_qwen_synth.py "$PLAN" --model "$Q/model" --whisper "$Q/whisper" \
-    --out "${OUT_DIR:-results/raw/time_check/qwen}" --budget-min "${BUDGET_MIN:-13}" --rule "${RULE:-extra-words}"
+    --out "${OUT_DIR:-results/raw/time_check/qwen}" --budget-min "${BUDGET_MIN:-13}" --rule "${RULE:-extra-words}" ${BATCH:+--batch $BATCH}
 log "done"

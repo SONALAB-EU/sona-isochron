@@ -63,6 +63,7 @@ def main() -> None:
     ap.add_argument("--budget-min", type=float, default=13.0)
     ap.add_argument("--device", default="cuda", help="cpu only for a smoke test")
     ap.add_argument("--limit", type=int, help="only the first N texts and 1 round (a smoke test)")
+    ap.add_argument("--batch", type=int, help="at most this many texts per generate call (default: all in one)")
     ap.add_argument("--rule", choices=("extra-words", "chars10"), default="extra-words",
                     help="extra-words: at most 1 word after the text (v2.28); chars10: transcript at most 10 %% longer (v2.30)")
     args = ap.parse_args()
@@ -93,14 +94,19 @@ def main() -> None:
             if time.time() - started > 60 * args.budget_min:
                 stopped = f"stopped before round {r}: {args.budget_min} min budget"
                 break
-            random.seed(r)
-            np.random.seed(r)
-            torch.manual_seed(r)
-            if cuda:
-                torch.cuda.manual_seed_all(r)
             t0 = time.time()
-            wavs, sr = model.generate_custom_voice(text=[spoken[t] for t in todo], language=[LANGUAGE] * len(todo),
-                                                   speaker=[VOICE] * len(todo), **SETTINGS)
+            wavs = []
+            size = args.batch or len(todo)
+            for start in range(0, len(todo), size):  # each chunk seeded with the round (protocol v2.31)
+                chunk = todo[start:start + size]
+                random.seed(r)
+                np.random.seed(r)
+                torch.manual_seed(r)
+                if cuda:
+                    torch.cuda.manual_seed_all(r)
+                out, sr = model.generate_custom_voice(text=[spoken[t] for t in chunk], language=[LANGUAGE] * len(chunk),
+                                                      speaker=[VOICE] * len(chunk), **SETTINGS)
+                wavs += list(out)
             gen_s = time.time() - t0
             for tid, wav in zip(todo, wavs):
                 audio = np.asarray(wav, dtype=np.float32).reshape(-1)
@@ -126,7 +132,7 @@ def main() -> None:
                   f"{sum(len(c) >= TAKES for c in clean.values())}/{len(clean)} texts have {TAKES} clean takes", flush=True)
     settings = {"model": "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice", "voice": VOICE, "language": LANGUAGE, **SETTINGS,
                 "dtype": "bfloat16", "attn_implementation": "sdpa", "sample_rate": sr if texts else None,
-                "takes": TAKES, "rounds": ROUNDS, "rule": args.rule,
+                "takes": TAKES, "rounds": ROUNDS, "rule": args.rule, "batch": args.batch,
                 "max_extra_words": MAX_EXTRA, "max_longer": MAX_LONGER, "whisper": WHISPER,
                 "gpu": torch.cuda.get_device_name(0) if cuda else "none (cpu)", "load_s": round(loaded, 1), "wall_s": round(time.time() - started, 1),
                 "stopped": stopped, "python": platform.python_version(),

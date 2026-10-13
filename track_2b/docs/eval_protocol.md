@@ -942,3 +942,8 @@ used.
     McNemar, how many (c) hit their calibrated syllable budget, rejections
     per system. GPU cap 0.6 H100-hours: three jobs of at most 8 (rate), 16
     (loop) and 12 (speech) minutes on one H100.
+- 2026-10-13, v2.31: the calibrated speech job (2662394) ran out of GPU
+  memory in its second round with all 138 texts in one batch (2 min 17 s
+  used). It is rerun from round 0 into a new folder with at most 48 texts per
+  generate call, torch seeded with the round before each call; nothing else
+  changes. The failed job's takes are not used.
