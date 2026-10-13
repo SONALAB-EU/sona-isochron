@@ -8,8 +8,7 @@ budget, aiming to keep its meaning, guided by a repair loop.
 - **Team:** **[PLACEHOLDER: team name]** — **[PLACEHOLDER: members]**
 - **Demo:** **[PLACEHOLDER: link to the 2-minute demo video]**
 
-Placeholders are marked **[PLACEHOLDER: …]**. Every number is labelled with its split, model,
-quantisation and n. Dev numbers are exploratory; test numbers are final. Analyses added after the test
+Every number is labelled with its split, model, quantisation and n. Dev numbers are exploratory; test numbers are final. Analyses added after the test
 outputs existed are marked "post-hoc, added after test outputs existed".
 
 ## 1. Summary
@@ -120,10 +119,12 @@ budget, with T = the budget and the NLI against that translation. Diagrams in `d
 ## 4. Data
 
 - **FLEURS** (Conneau et al., 2022; CC BY 4.0), revision `70bb2e8`.
-  - The English sentences and their German and French reference translations.
-  - Dev: 147 German and 137 French. Test: 347 German and 332 French.
+  - English sentences with German and French references: dev 147 and 137, test 347 and 332.
   - Its text comes from FLoRes-101 (CC BY-SA 4.0), so our data files are CC BY-SA 4.0. The sentences are
-    from public Wikimedia articles and contain no personal data. No audio is stored or used.
+    from public Wikimedia articles and contain no personal data. No audio is stored in the repo.
+  - Post-hoc, added after test outputs existed: the FLEURS recordings (CC BY 4.0) were used only for the
+    timing check, and synthetic speech (Qwen3-TTS, Apache-2.0; a failed Chatterbox run, MIT) only for the
+    timing check and the demo.
 - **Splits.** Prompts are tuned on dev only, outside the 50 go/no-go sentences. Test is used only for the
   final numbers and the analyses marked post-hoc.
 - **Control pairs,** written by Claude (an AI assistant). No native speaker has reviewed them yet.
@@ -135,8 +136,7 @@ budget, with T = the budget and the NLI against that translation. Diagrams in `d
 ## 5. Evaluation
 
 The tasks, metrics and thresholds of the main results were pre-registered in `docs/eval_protocol.md`,
-which also logs every later change. The analyses added later are marked "post-hoc, added after test outputs
-existed".
+which also logs every later change.
 
 **Step 4: translate from English to a length budget** (`results/step4_test.md`; test, final).
 - **Systems:** (a) plain translation; (b) one step to the budget: Apertus writes 4 candidates and the one
@@ -302,10 +302,13 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 ## 6. Limitations
 
-- **Syllables are a weak proxy for time** (post-hoc, added after test outputs existed): in FLEURS test
-  recordings, neither ruler predicts whether a German or French reading fits the English slot (kappa −0.16
-  to +0.02; `results/human_speech.md`). With Qwen3-TTS, ours fits it in 6 of 21 sources, plain in 8
-  (`results/time_check_qwen.md`).
+- **The budget must be calibrated to the target voice** (post-hoc, added after test outputs existed).
+  Within a language, syllables track seconds (r = 0.77–0.93 over FLEURS test readings; 0.98 for one TTS
+  voice), but readers' speeds vary so much that neither ruler predicts a ±10 % fit to the English reading
+  (κ −0.16 to +0.02), and they speak faster than our preset rates assume (German 1.13 vs 0.964, French 1.35
+  vs 1.160; `results/human_speech.md`). With Qwen3-TTS, ours fits the English slot in 6 of 21 sources,
+  plain in 8 (`results/time_check_qwen.md`); 11 of ours' 15 misses are too short: the voice takes 0.231 s
+  per syllable, the English readers 0.257 (protocol v2.30).
 - **The meaning checks miss small changes.** Caught, of the planted German changes (the source in German,
   or in English as for step 4; `results/judge_validation_*` and `results/step4_test_nli2.md`; the second
   NLI's columns are post-hoc, added after test outputs existed):
@@ -341,21 +344,20 @@ candidate the judge never scored counts as incomplete; counting it as complete a
 
 - **Commits:** the step 2 test runs used `68492f2`, and the step 4 test runs `7b22d93` (its step 4 code
   unchanged since `68492f2`). **[PLACEHOLDER: the commit of the final reports]**
-- **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All jobs together used
-  5.91 H100-hours (sacct), of a budget of 12; the second NLI's job took 105 s.
+- **Hardware:** an Apple M3 with 16 GB, and one NVIDIA H100 80 GB per HPC job. All isochron jobs used
+  6.34 H100-hours of a budget of 12 (sacct, 2026-10-13): 6.03 for setup and experiments, 0.31 for
+  text-to-speech.
 - **Seeds:** generation 0, 1 and 2, plus 1000 × the round. Judge: temperature 0, seed 0. Bootstrap:
   seed 0.
-- **Records:** every results file records its date, commit, model and quantisation, endpoint, TTS
-  (none), seeds and n. Raw runs keep every prompt and answer.
-- **Rebuild:**
-  - `docs/local_llm.md` (Mac) and `docs/hpc.md` (exact `sbatch` lines).
-  - `make figures` redraws every figure from committed results only.
-  - `uv run scripts/report_pdf.py` renders this report (A4, two columns).
-  - `make run` runs the demo.
+- **Records:** every results file records its date, commit, model and quantisation, endpoint, TTS (only
+  `results/time_check.md`: Chatterbox; `results/time_check_qwen.md`: Qwen3-TTS), seeds and n. Raw runs
+  keep every prompt and answer.
+- **Rebuild:** `docs/local_llm.md` (Mac) and `docs/hpc.md` (exact `sbatch` lines); `make figures` (from
+  committed results only); `uv run scripts/report_pdf.py` (this report); `make run` (the demo).
 
 ## 8. Next steps
 
-- Seconds instead of syllables: synthesise each output and fit it to the source's trimmed slot.
+- Calibrate the syllable budget to the target voice, and check the fit with that voice.
 - The native-speaker check, and a meaning check aimed at qualifiers.
 - Apertus 1.5 70B, Italian, and step 3 (exact targets).
 - Subtitle formats (SRT, TTML), and a "cannot fit without losing meaning" flag instead of a long line.
