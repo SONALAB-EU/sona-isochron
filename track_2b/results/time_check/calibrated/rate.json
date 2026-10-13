@@ -1,0 +1,8 @@
+{
+ "seconds_per_syllable": 0.23105,
+ "texts": 30,
+ "short_of_3_clean_takes": 0,
+ "seconds": 288.576,
+ "syllables": 1249,
+ "rule": "\u03a3 median clean-take seconds \u00f7 \u03a3 eSpeak syllables, dev"
+}
