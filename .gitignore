@@ -49,3 +49,6 @@ build/
 .mypy_cache/
 .hf_cache/
 huggingface/
+
+# Local assistant instructions: kept on disk, not in the repository
+CLAUDE.md
