@@ -23,15 +23,15 @@ shortens with a **repair loop**: every candidate is checked for length, meaning 
 revises with specific feedback, at most twice. Baselines: (a) plain translation; (b) one step to the
 budget (isometric prompting, with characters).
 
-**Key results** (FLEURS test; Apertus 1.5 8B, BF16; step 4: 347 German and 332 French sentences × 3
+**Key results** (FLEURS test; Apertus 1.5 8B, BF16; translation task: 347 German and 332 French sentences × 3
 seeds, 4 settings = 2 languages × 2 budgets; ranges over the settings):
 
 | Result | (a) plain | (b) one step | (c) ours |
 |---|---|---|---|
-| Step 4: fit within ±10 % of the budget (%, pre-registered) | 19.6–55.6 | 44.7–71.6 | **69.9–80.2** |
-| Step 4: too long, over +10 % (%, post-hoc) | 20.5–79.1 | **1.4–14.8** | 4.1–20.4 |
-| Step 4: meaning kept vs reference, main NLI (%, pre-registered) | 79.5–79.7 | 69.7–76.8 | **80.6–81.6** |
-| Step 4: meaning kept vs reference, second NLI (%, post-hoc) | **88.2** | 75.4–81.6 | 82.9–87.7 |
+| Translation task: fit within ±10 % of the budget (%, pre-registered) | 19.6–55.6 | 44.7–71.6 | **69.9–80.2** |
+| Translation task: too long, over +10 % (%, post-hoc) | 20.5–79.1 | **1.4–14.8** | 4.1–20.4 |
+| Translation task: meaning kept vs reference, main NLI (%, pre-registered) | 79.5–79.7 | 69.7–76.8 | **80.6–81.6** |
+| Translation task: meaning kept vs reference, second NLI (%, post-hoc) | **88.2** | 75.4–81.6 | 82.9–87.7 |
 | Timing, budget calibrated to one TTS voice: fits the English slot ±10 % (of 99; exploratory) | 25 | – | **47** |
 | Timing, same run: too long (of 99) | 51 | – | **24** |
 | Native speaker: meaning kept (descriptive; different sentences per system) | 12 of 14 | – | 12 of 16 |
@@ -49,21 +49,23 @@ seeds, 4 settings = 2 languages × 2 budgets; ranges over the settings):
 ## 1. Method
 
 The app (`isochron.app`; `make run`, or `make run-offline` with a local model) runs the engine, the repair
-loop (Figure 1); step 4 runs it on Apertus's plain translation (`isochron.step4`). It reaches Apertus only
+loop (Figure 1); the translation task runs it on Apertus's plain translation (`isochron.step4`). It reaches Apertus only
 through `LLM_NAME`, `LLM_BASE_URL` and `LLM_API_KEY`. Each candidate gets three checks: **length**
 (syllables from eSpeak NG 1.52.0's phonemes, or characters without spaces), **meaning** (the NLI model
 `mDeBERTa-v3-base-xnli-multilingual-nli-2mil7` must find entailment both ways) and **language**
 (py3langid 0.4.0). The evaluation judge (Qwen3-14B) is not part of the method and never feeds it.
+Naming: the protocol, file names and run IDs call same-language shortening "step 2" and translation to
+a length budget "step 4".
 
 <img src="docs/figures/fig1_pipeline.png" style="width:72%; margin:3pt auto 0">
 
 *Figure 1. The engine in the offline deployment (`make run-offline`). Apertus is asked for 4 candidates
 per prompt; the app checks each and, if the best fails, sends a revision prompt with feedback, at most
 twice (blue; not drawn: while no candidate exists, the first prompt again). The two containers share only
-the loopback. In step 4, ours runs this loop on the plain translation when it is over 1.10 × the budget,
+the loopback. In the translation task, ours runs this loop on the plain translation when it is over 1.10 × the budget,
 with T = the budget and the NLI against that translation. Diagrams: `docs/architecture.md`.*
 
-**Step 4 systems and budgets.** (a) plain translation; (b) one step: 4 candidates, the closest to the
+**Translation task: systems and budgets.** (a) plain translation; (b) one step: 4 candidates, the closest to the
 budget chosen; (c) ours: (a), kept if at most 1.10 × the budget (also when shorter than the band),
 otherwise shortened with the loop. Budgets, ±10 %: the English characters without spaces (isometric;
 Anastasopoulos et al., 2022), or the English syllables × the target's speech rate ÷ English's (Pellegrino
@@ -93,7 +95,7 @@ packages, eSpeak NG source, NLI model, base images by digest); `make run` needs 
 
 ## 2. Results
 
-**Step 4 on test** (`results/step4_test.md`; final; % with 95 % intervals; 1,041 German and 996 French
+**Translation to a length budget, on test** (`results/step4_test.md`; final; % with 95 % intervals; 1,041 German and 996 French
 outputs per row). Too long and the second NLI are post-hoc (`results/step4_too_long.md`,
 `results/step4_test_nli2.md`).
 
@@ -140,7 +142,7 @@ alike. TTS: Qwen3-TTS, preset voice Aiden (Apache-2.0), 3 clean takes per line (
 | Test | n | Fits ±10 %: (a) / (c) | Too long: (a) / (c) | Paired |
 |---|---:|---|---|---|
 | Human readings: does a ruler predict a ±10 % fit to the English? | 209 DE, 221 FR | κ −0.16 to +0.02 (syllables and characters) | – | – |
-| TTS, step 4's syllable budget (sheet sources) | 21 | 8 / 6 | 7 / 4 | McNemar p = 0.73 |
+| TTS, the translation task's syllable budget (sheet sources) | 21 | 8 / 6 | 7 / 4 | McNemar p = 0.73 |
 | TTS, budget = English seconds ÷ the voice's 0.231 s per syllable (dev) | 99 | 25 / **47** | 51 / **24** | 22 to 0, p = 4.8e-07 |
 
 For one voice, syllables predict seconds (r = 0.98); across human readers, speed dominates (r = 0.77–0.93
@@ -150,7 +152,7 @@ ours ran short for this voice (11 of 15 misses). An earlier Chatterbox run faile
 (`results/time_check.md`).
 
 **Native speaker** (`results/human_check.md`; descriptive). One German native speaker rated, without system
-labels, one line per English source (25 of the 50 sheet lines, step 4 test, German, syllable budget,
+labels, one line per English source (25 of the 50 sheet lines, translation task on test, German, syllable budget,
 seed 0); in the 5 identical pairs the rating counts for both, so n differs per system and the rates come
 from different sentences (no test). The rater found, in ours: an inch symbol replacing "Zoll" (eSpeak
 counts it as 0 syllables: a way to game the count), a one-word fragment, broken grammar, a dropped "some";
@@ -161,7 +163,7 @@ in both: "sharpener" as "Spitze", "spotted deer" as "Hirschziegen".
 | (a) plain | 14 | 86 % [60, 96] | 1 | 1 | 0 | 71 % [45, 88] |
 | (c) ours | 16 | 75 % [51, 90] | 3 | 1 | 0 | 69 % [44, 86] |
 
-**Step 2, the engine** (`results/step2_test.md`; test, final): shorten a sentence in its own language to
+**Same-language shortening, the engine** (`results/step2_test.md`; test, final): shorten a sentence in its own language to
 90–60 % of its syllables (347 German and 332 French × 4 levels × 3 seeds), without the loop (closest of
 4 candidates) and with it; the loop's effect is a paired difference, pre-registered (v2.12).
 
@@ -189,8 +191,8 @@ estimate from the measured generation time):
 **More, one line each** (all post-hoc unless marked): fit by setting with dev (`docs/figures/fig2_step4.png`);
 where lengths fall (`docs/figures/fig3_step4_lengths.png`); fit gained vs meaning lost
 (`docs/figures/fig4_tradeoff.png`); second NLI in full (`results/step4_test_nli2.md`); JSON sensitivity
-(`results/step4_test.md`); step 2 by level, pre-registered (`docs/figures/fig5_compression.png`); rounds
-of the loop (`results/step2_test_rounds.md`, `docs/figures/fig6_rounds.png`); step 2 lengths
+(`results/step4_test.md`); shortening task by level, pre-registered (`docs/figures/fig5_compression.png`); rounds
+of the loop (`results/step2_test_rounds.md`, `docs/figures/fig6_rounds.png`); shortening-task lengths
 (`docs/figures/extra_step2_lengths.png`); judges on the controls (`docs/figures/extra_judges.png`);
 demo lines (`docs/demo_video.md`).
 
@@ -200,7 +202,7 @@ Measured, in the test runs: it **follows a length target loosely and over-shorte
 the syllables, its closest candidate gave 0.79 × the target in German, 0.78 × in French; one step to the
 French syllable budget gave 0.88 × and fit 44.7 %, below plain's 55.6 %). It **revises well with specific
 feedback**: the loop accepted 39–42 % of open lines after the first revision, 20–23 % after the second
-(post-hoc). It **stays in the target language** (2 of 10,185 step 4 outputs, none of 16,296 step 2
+(post-hoc). It **stays in the target language** (2 of 10,185 translation-task outputs, none of 16,296 shortening-task
 outputs, in another language). Its **JSON breaks in French** (`\'` in 3.5 % of French one-step answers,
 German 1 of 2,082). It **often returns fewer candidates than asked** (686 of 5,655 loop rounds not 4).
 It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirschziegen").
@@ -208,17 +210,17 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
 ## 4. Limitations
 
 - **Meaning checks miss small changes** (Appendix): the judge's fit & complete is an upper bound, looser
-  from English (step 4), where its near-zero added facts (0.0–0.1 %) mean little. **The main NLI is the
+  from English (translation task), where its near-zero added facts (0.0–0.1 %) mean little. **The main NLI is the
   loop's own model**; the second NLI rates ours 2.8–5.3 points below plain in three settings.
 - **Timing uses one TTS voice**, not dubbing actors; the budget must be calibrated to the voice.
 - **Native check:** one rater, 30 rated lines, rates from different sentences; blinding was partial
   (both lines of a source were on the sheet, the shorter visible; the rater noted "looks longer").
   The control pairs, written by Claude, are not reviewed by a native speaker.
 - **The loop can game the length count** with symbols eSpeak does not count (`"` for "Zoll").
-- **Tight targets give long lines** (step 2, with the loop). **Strict JSON** counts as a failure, as
-  frozen: in step 4, (b) lost 114 of 4,074 answers, (a) 9 of 2,037, (c) 28 of 4,074 lines.
+- **Tight targets give long lines** (shortening task, with the loop). **Strict JSON** counts as a failure, as
+  frozen: in the translation task, (b) lost 114 of 4,074 answers, (a) 9 of 2,037, (c) 28 of 4,074 lines.
   **No grammar check** (*"den 18. Jahrhundert Markt"*).
-- **Development model:** go/no-go, pilot and prompts used a 4-bit derivative; step 4 dev and all test runs
+- **Development model:** go/no-go, pilot and prompts used a 4-bit derivative; translation-task dev and all test runs
   used the official BF16 weights. **Not tested:** Italian, 70B. The Docker image builds on amd64 in
   CI (GitHub Actions run 38539895656: Docker job 5 min 46 s; test job 3 min 21 s, 176 tests passed);
   `make run` on amd64 ran only under emulation (`results/docker_check.md`). **Batching** 16 items on the HPC
@@ -233,7 +235,7 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   (CC BY 4.0) and synthetic speech (Qwen3-TTS; a failed Chatterbox run, MIT) were used only for the timing
   check and the demo (post-hoc). Measures checked: eSpeak matched hand counts on 46 of 50 items and counts
   all 963 references alike on Mac and cluster; the language check flags none of 1,956 German sentences.
-- **Commits:** step 2 test runs `68492f2`, step 4 test runs `7b22d93`. **[PLACEHOLDER: the commit of the
+- **Commits:** shortening-task test runs `68492f2`, translation-task test runs `7b22d93`. **[PLACEHOLDER: the commit of the
   final reports]**
 - **Hardware:** Apple M3 (16 GB); one H100 80 GB per HPC job; 6.48 H100-hours of a budget of 12 (sacct,
   2026-10-13): 6.03 setup and experiments, 0.46 text-to-speech (rounded).
@@ -243,7 +245,7 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   `uv run scripts/report_pdf.py`, `make run`.
 - **Next steps:** calibrate the syllable budget to the target voice and check the fit with that voice (done
   for one TTS); an asymmetric target that aims slightly short; a "cannot fit" flag for human review; a meaning
-  check aimed at qualifiers; 70B, Italian, step 3; subtitle formats.
+  check aimed at qualifiers; 70B, Italian, exact-length targets; subtitle formats.
 
 **License:** CC BY 4.0 (CC-BY-4.0); all HackApertus projects are open source. Code Apache-2.0, data files
 CC BY-SA 4.0 (`docs/licences.md`).
@@ -263,7 +265,7 @@ w3.org/International/articles/article-text-size. · eSpeak NG, llama.cpp, py3lan
 
 ## Appendix: planted-control catch rates
 
-Caught, of the planted German changes, with the source in German or in English as for step 4
+Caught, of the planted German changes, with the source in German or in English as for the translation task
 (`results/judge_validation_*`, `results/step4_test_nli2.md`; the second NLI's columns are post-hoc). The
 NLI and the judge were validated before use; a rule fixed before the result made Qwen3-14B the main judge
 (identity pairs 100 % complete; 90 % needed).

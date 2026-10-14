@@ -45,7 +45,7 @@ independent judge, Qwen3-14B):
 - The gain is largest for small cuts (90 % of the syllables) and small at 60 %, where the loop keeps the
   meaning rather than the length.
 - Details are in `technical_report.md` and `results/step2_test.md`.
-- When translating from English to a length budget (step 4, on test), translating first and then
+- When translating from English to a length budget (the translation task, on test), translating first and then
   shortening with the loop met the budget most often in three of four settings: 70–80 % within ±10 %. In
   German with a syllable budget, translating to the budget in one step did as well. Meaning held up as
   well as in plain translation (`results/step4_test.md`).
@@ -189,7 +189,7 @@ Other fields, such as `license` and `source` in the sample, are ignored.
 | `src/isochron/language.py` | The language check |
 | `src/isochron/prompts/` | Every prompt, versioned |
 | `src/isochron/judge.py`, `pilot_report.py`, `step2_report.py` | The evaluation-only judge, and the reports |
-| `src/isochron/step4.py` | Step 4: translating to a length budget |
+| `src/isochron/step4.py` | Translation to a length budget |
 | `data/` | FLEURS sentences, control pairs and the sample input (`data/README.md`) |
 | `docs/` | Protocol, licences, setups, architecture |
 | `hpc/` | Scripts for the H100 runs (`docs/hpc.md`) |
