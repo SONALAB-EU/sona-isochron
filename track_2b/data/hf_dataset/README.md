@@ -544,7 +544,7 @@ included:
 - **Step 4, translation to a length budget** (the main result). An English FLEURS sentence is translated
   into German or French so that it fits a budget in characters (isometric) or in syllables
   (isosyllabic). Three systems are compared: (a) plain translation, (b) one prompt asking for the budget,
-  and (c) translate, then shorten with a repair loop (ours).
+  and (c) translate, then shorten with a repair loop (the project's method).
 - **Step 2, shortening in the same language** (the engine). A German or French FLEURS sentence is
   shortened to 90, 80, 70 or 60 % of its syllables, without and with the repair loop.
 
@@ -813,7 +813,7 @@ and so that the reported numbers can be recomputed independently of the project'
 
 | Source | Role | Revision | Licence |
 |---|---|---|---|
-| FLEURS (Conneau et al., 2022), configs `en_us`, `de_de`, `fr_fr` | Sentences and reference translations: `validation` (our dev), `test`, and `train` for the controls. The English recordings' trimmed durations are `timing`'s slots (no audio included) | `google/fleurs` @ `70bb2e84b976b7e960aa89f1c648e09c59f894dd` | CC BY 4.0 |
+| FLEURS (Conneau et al., 2022), configs `en_us`, `de_de`, `fr_fr` | Sentences and reference translations: `validation` (the dev split here), `test`, and `train` for the controls. The English recordings' trimmed durations are `timing`'s slots (no audio included) | `google/fleurs` @ `70bb2e84b976b7e960aa89f1c648e09c59f894dd` | CC BY 4.0 |
 | FLoRes-101 (Goyal et al., 2022) | Origin of the FLEURS text | Meta's public archive | CC BY-SA 4.0 |
 | Apertus 1.5 8B (Swiss AI Initiative) | Generates every output: BF16 on dev and test | `swiss-ai/Apertus-v1.5-8B` @ `a411d838600baf0e3635a3daf66fb7c55fc97bb6` | Apache-2.0, plus the Apertus 1.5 Acceptable Use Policy |
 | apertus-v1.5-8b-text Q4_K_M GGUF | Generates the step 2 dev pilot | `Colby/apertus-v1.5-8b-text-Q4_K_M-GGUF` @ `248ec68a63e219e3f061e4c946fc8a20d63b9975` (from `andreasmartin/apertus-v1.5-8b-text` @ `c0e7eeb`) | Apache-2.0, Apertus 1.5 AUP |
