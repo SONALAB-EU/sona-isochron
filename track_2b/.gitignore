@@ -69,3 +69,7 @@ output/
 # Ratings returned by the native speaker: only the .xlsx is committed; the original .numbers file can carry
 # the rater's name in its metadata
 /results/native_check/returned/*.numbers
+
+# The demo video: the narration recordings and everything built from them (demo/build_video.py)
+/demo/narration/
+/demo/out/
