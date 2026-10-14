@@ -219,8 +219,10 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   frozen: in step 4, (b) lost 114 of 4,074 answers, (a) 9 of 2,037, (c) 28 of 4,074 lines.
   **No grammar check** (*"den 18. Jahrhundert Markt"*).
 - **Development model:** go/no-go, pilot and prompts used a 4-bit derivative; step 4 dev and all test runs
-  used the official BF16 weights. **Not tested:** Italian, 70B, Docker on an amd64 host (only under
-  emulation; `results/docker_check.md`). **Batching** 16 items on the HPC may change outputs slightly.
+  used the official BF16 weights. **Not tested:** Italian, 70B. The Docker image builds on amd64 in
+  CI (GitHub Actions run 38539895656: Docker job 5 min 46 s; test job 3 min 21 s, 176 tests passed);
+  `make run` on amd64 ran only under emulation (`results/docker_check.md`). **Batching** 16 items on the HPC
+  may change outputs slightly.
 
 ## 5. Data and reproducibility
 

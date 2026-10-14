@@ -1,5 +1,16 @@
 # Status
 
+## Reader-facing wording and CI on amd64 (2026-10-14)
+
+- README rewritten in neutral, reader-facing language (imperative instructions, no first person); facts,
+  commands and numbers unchanged, plus: the image builds for linux/amd64 in CI, and results files record
+  TTS only for the timing checks. Chat-style wording removed from `docs/native_check.md`,
+  `results/docker_check.md` and the pilot notes; in this file, the dated log stays, without direct address.
+  `docs/eval_protocol.md` keeps its pre-registered academic "we". `data/hf_dataset/` (another chat) untouched.
+- CI (GitHub Actions run 38539895656, commit 4ebb814): Docker image (linux/amd64) built in 5 min 46 s; the
+  test job took 3 min 21 s, 176 passed. The report's "Not tested" line now says the image builds on amd64
+  in CI and `make run` on amd64 ran only under emulation (4 pages).
+
 ## Team, a second-NLI check, GPU total (2026-10-13)
 
 - Report team line: SONALAB — Kaushik Mukherjee, Sören Hübner.
@@ -41,7 +52,7 @@
 
 ## TTS diagnosis and voice-calibrated budgets (2026-10-13; decision log)
 
-Your decisions: leave the sheet's quotation marks (sent); limit blinding in the report; diagnose the TTS fit;
+Decisions: leave the sheet's quotation marks (sent); limit blinding in the report; diagnose the TTS fit;
 a voice-calibrated test if most of (c)'s misses are short; the report's timing paragraph. No sub-agents.
 
 - **Diagnosis** (protocol v2.30, analysis only): over the 21 sources, TTS ÷ slot median 0.98 (a), 0.89 (c);
@@ -66,7 +77,7 @@ a voice-calibrated test if most of (c)'s misses are short; the report's timing p
 
 ## Rater sheet punctuation, human speech, Qwen3-TTS (2026-10-13; decision log)
 
-Your decisions: (1) a full stop on every sheet line without terminal punctuation, same rule for both
+Decisions: (1) a full stop on every sheet line without terminal punctuation, same rule for both
 systems; (2) a human-speech check on FLEURS, planned in the protocol first; (3) Qwen3-TTS CustomVoice with one
 preset voice and rules fixed before generating; (4) the report's TTS sentence replaced. No sub-agents.
 
@@ -91,7 +102,7 @@ preset voice and rules fixed before generating; (4) the report's TTS sentence re
 
 ## TTS time check and demo audio (2026-10-13; decision log)
 
-Your instruction: (0) the XLSX sheet; (1) an open TTS that speaks German, default voice, fixed settings and
+Task: (0) the XLSX sheet; (1) an open TTS that speaks German, default voice, fixed settings and
 seeds, one short cluster job under 0.5 H100-hours; (2) 3 demo lines where plain misses and ours fits with
 meaning kept by both NLIs, plus 1 the loop couldn't fit, with timeline figures; (3) a time check on the 25
 sheet sources, 3 takes, median, same trimming for TTS and English, skip noisy English recordings; (4) audio
@@ -120,7 +131,7 @@ git-ignored, scripts, manifest and results/time_check.md committed. No sub-agent
 - **What I did not do.** No demo timeline figures (their seconds are not valid), no regeneration and no
   take-rejection rule: both would be decisions made after hearing the outputs. Report: only the
   limitation sentence that said no speech was synthesised was corrected; still 6 pages.
-- **Options (your call):** a fix decided before rerunning, e.g. reject takes whose transcript runs past the
+- **Options (open decision):** a fix decided before rerunning, e.g. reject takes whose transcript runs past the
   text and synthesise until 3 clean takes exist (Whisper as the gate), write float WAVs to avoid clipping,
   or try another open German TTS; one rerun costs about 0.17 H100-hours.
 - Every number above was recomputed from the saved files by a separate script; 164 tests pass.
@@ -148,7 +159,7 @@ git-ignored, scripts, manifest and results/time_check.md committed. No sub-agent
 
 ## Figures (from 2026-10-12, 16:48 UTC; decision log)
 
-Your instruction: list every figure in the report (number, what it shows, source data, whether `make figures`
+Task: list every figure in the report (number, what it shows, source data, whether `make figures`
 rebuilds it), check each against the final numbers and fix any that are stale, then add a step 4 length
 distribution and a fit-against-meaning trade-off if they are missing, within 6 pages. Commit locally only.
 README.md, Makefile, docker-compose.yml and results/docker_check.md belong to the other session and were
@@ -222,7 +233,7 @@ not touched.
 
 ## Step 4 follow-ups (from 2026-10-12, 14:01 UTC; decision log)
 
-Your instruction: keep v2.18 and label the paired differences "post-hoc, added after test outputs existed"
+Task: keep v2.18 and label the paired differences "post-hoc, added after test outputs existed"
 everywhere; then (1) a JSON sensitivity analysis, (2) an independent meaning check, (3) the native-speaker
 sheet from step 4, (4) the report led by step 4. README.md and results/docker_check.md belong to the
 other session (isochron-b1) and were not touched. Commit locally only.
@@ -302,7 +313,7 @@ other session (isochron-b1) and were not touched. Commit locally only.
 
 ## Step 4 on test (from 2026-10-12, 11:16 UTC; decision log)
 
-Your instruction: freeze step 4 as it ran on dev, run it on test (German and French, both budgets, seeds
+Task: freeze step 4 as it ran on dev, run it on test (German and French, both budgets, seeds
 0–2, all three systems), score it as in step 2 (judge included), write `results/step4_test.md` and update
 the report. No workflows; commit locally only.
 
@@ -536,7 +547,7 @@ GPU: 4.46 H100-hours of the 12 used (sacct). No job is queued.
 **Blockers:** none on the cluster.
 - Docker is missing on this Mac, so `make run` is untested in Docker.
 
-**Next steps (your call)**
+**Next steps (open decisions)**
 1. Run `make run` and `make run-offline` on a machine with Docker (or install it here), then fill that
    placeholder in the report.
 2. Fill in the team, the demo link and the final commit. The report is about 3,800 words and probably
@@ -570,12 +581,12 @@ The earlier summary, written while the weights were missing, follows.
 **Decisions (reasons in the log below)**
 - Qwen3-14B is the main judge, by the rule fixed before its result. The NLI stays the loop's screen.
 - Time limits: 1.5 h for the smoke test and 8 h for step 2, which keeps the worst case under 12 H100-hours.
-- The local insurance run is not started. The HPC works and only the weights are missing. Your plan
+- The local insurance run is not started. The HPC works and only the weights are missing. The plan
   sends that case to step 6 (done), not to the insurance run.
 - Not started either: the 70B model.
 
 **Blockers**
-- The Apertus weights need your token, and your Hugging Face account must have accepted the terms of
+- The Apertus weights need a Hugging Face token, from an account that has accepted the terms of
   `swiss-ai/Apertus-v1.5-8B`. These lines start the download so that it survives a logout:
 
   ```
@@ -590,13 +601,13 @@ The earlier summary, written while the weights were missing, follows.
   Then detach with Ctrl-b d, and `exit`.
 
 **Next steps**
-1. You: start the download (above, or `docs/hpc.md`, step 4). Apertus 8B alone should take about 15
+1. Owner: start the download (above, or `docs/hpc.md`, step 4). Apertus 8B alone should take about 15
    minutes (an estimate).
 2. Smoke test: 5 German dev sentences, levels 90 and 80, seed 0. Then compare with the local Q4
    outputs (`isochron.compare_runs`).
 3. Step 2 on test, German and French: 4 levels × 3 seeds, 8,148 items. Then `results/step2_test.md`
    (`docs/hpc.md`, steps 5 and 9).
-4. Your call: the 70B run.
+4. Open decision: the 70B run.
 
 ## Autonomous run, 2026-10-10 evening to 2026-10-11 (decision log)
 
@@ -625,7 +636,7 @@ is not started. Nothing is pushed.
   - Versions and hashes stay exactly those of `uv.lock`; torch still comes from PyPI.
   - Why: uv cannot resume a download.
   - Checked locally: a preinstalled wheel is left alone by a hash-checked install ("Checked 1 package").
-- **16:00. Your model download** waits in your tmux session for `~/isochron_work/.env-ready`.
+- **16:00. The model download** waits in its tmux session for `~/isochron_work/.env-ready`.
   - `setup.sh prefetch` writes that marker when the environment is complete.
   - It runs through srun, not sbatch, because Slurm stores a batch job's environment, token included.
 - **The 70B weights** get their own location (`ISOCHRON_MODELS_70B`): home has a 200 GB quota. Unused
@@ -663,10 +674,10 @@ is not started. Nothing is pushed.
   - Not counted as a failure of the step: the cause was my sync.
   - The H100 run of `setup.sh` (job 2634300) finishes the rest.
 
-- **17:35. Your model download had not started** (no `hpc/logs/download.log`, no tmux session on lx01).
+- **17:35. The model download had not started** (no `hpc/logs/download.log`, no tmux session on lx01).
   - Decision: download what needs no token myself. `download_models.sh --open` fetches the judge Qwen3-14B
     and the NLI model (job 2634301, CPU-only, submitted with `HF_TOKEN` removed from the environment).
-  - Your command still fetches everything; files already present are skipped, and huggingface_hub locks
+  - The download command still fetches everything; files already present are skipped, and huggingface_hub locks
     each file if both run at once.
   - Why: the judge validation (plan step 4) needs no Apertus weights, so it can run before they arrive.
 
@@ -729,12 +740,12 @@ is not started. Nothing is pushed.
   - 1.22 before the judge validation, then 0.23 for it (13.6 min: 11 min server start, 2 min judging).
   - Plan: the smoke test runs with a 1.5 h limit and the full step 2 with 8 h. Even if both run to their
     limits, the total stays at or under 10.95.
-- **18:28. Your Apertus download has not started** (no `hpc/logs/download.log`, no Apertus files).
-  - The environment marker exists, so your command would start at once.
+- **18:28. The Apertus download has not started** (no `hpc/logs/download.log`, no Apertus files).
+  - The environment marker exists, so the download command would start at once.
   - Decision: check every 30 minutes until about 08:40 UTC. The smoke test and step 2 follow as soon as
     the weights are complete.
   - Decision: the local insurance run stays off. The HPC has not failed; only the weights are missing.
-    Your plan sends "the weights never arrive" to step 6, which is done. The insurance run would also
+    The plan sends "the weights never arrive" to step 6, which is done. The insurance run would also
     cover only a subset: German, levels 90 and 80, seed 0, Q4, about 5 h. The HPC job covers all of it
     in an estimated 3–4 h once the weights are there.
 - **18:36. Checked on a compute node** (CPU-only, 1 min, job 2634436): `setup.sh container` finds the
@@ -759,18 +770,18 @@ is not started. Nothing is pushed.
     a download job.
   - No GPU was used overnight. The total is still 1.45 H100-hours (sacct); the only job since 18:36 is a
     1-second CPU-only check.
-  - Decision: following your plan ("if the weights never arrive, skip to step 6"), nothing else ran on the
+  - Decision: following the plan ("if the weights never arrive, skip to step 6"), nothing else ran on the
     cluster. Step 6 was already done. The insurance run stays off, because the HPC has not failed.
-  - Decision: a new watcher checks every 15 minutes until about 20:40 UTC. If your download completes,
+  - Decision: a new watcher checks every 15 minutes until about 20:40 UTC. If the download completes,
     the smoke test runs first, and step 2 is submitted only if the smoke test is clean.
-  - Why keep watching: you are back today. Your plan already covers what follows the download, so it
+  - Why keep watching: the owner is back today. The plan already covers what follows the download, so it
     can start without another round trip.
 
 ## Second autonomous run, from 2026-10-11 11:08 UTC (decision log)
 
-Your instruction: the smoke test now, then step 2 on test (German, then French) only if the smoke test is
+Task: the smoke test now, then step 2 on test (German, then French) only if the smoke test is
 clean, then step 4 on dev. Same rules: at most 12 H100-hours in total, no 70B, commit locally only, no
-workflows. Ultracode mode was switched on in this session, but your rules say no workflows, so I run none.
+workflows. Ultracode mode was switched on, but the rules say no workflows, so none were run.
 
 - **11:08. The weights are verified.**
   - All 17 files of `swiss-ai/Apertus-v1.5-8B` carry the pinned revision a411d838 in their download
@@ -880,13 +891,13 @@ workflows. Ultracode mode was switched on in this session, but your rules say no
 - **14:50. Every planned job is done.** The total is 4.46 H100-hours (sacct), of a budget of 12. The 70B was
   not started.
 
-## Local work while the H100 jobs run (your second message on 11 October)
+## Local work while the H100 jobs run (second task, 11 October)
 
 Tasks: `make run` and `make run-offline`, `README.md` and `technical_report.md`. I did not touch the cluster
 jobs, apart from the gate, and synced nothing: the cluster stays at commit 68492f2.
 
 - **Docker is not installed on this Mac** (no `docker`, Docker Desktop, OrbStack, Colima or Podman). As
-  you asked, I wrote the files and did not build the images. Here is what I tested instead.
+  requested, I wrote the files and did not build the images. Here is what I tested instead.
   - Static checks:
     - Both compose files are valid against the official Compose schema (compose-spec commit 914ec15).
     - The Dockerfile passes hadolint 2.15.1, with two ignores whose reasons are in the file.
@@ -969,7 +980,7 @@ run on the cluster, and the local insurance run has not been started. No llama-s
 ## 2. Hard judge controls
 
 - **The file.** `data/judge_controls_de.jsonl` has 60 German FLEURS train sentences in a seeded order.
-  - 40 have one modal, number or qualifier change, as in your examples (*fünftes → fünf*, *soll → ist*,
+  - 40 have one modal, number or qualifier change, as in the given examples (*fünftes → fünf*, *soll → ist*,
     *fast alle → alle*, a dropped *zudem*).
   - 20 have one inserted fact.
 - **Additions of mine:**
@@ -1050,7 +1061,7 @@ run on the cluster, and the local insurance run has not been started. No llama-s
 - **Fallback.** The transformers fork is installed from GitHub's archive of the model card's commit, so no
   git is needed.
 
-## Next steps (your call)
+## Next steps (open decisions)
 
 1. Run the HPC kit (`docs/hpc.md`, steps 1–9); first check the GPU type name with `sinfo`.
 2. Read the Qwen3-14B hard-control result before trusting any meaning figure from the full runs.

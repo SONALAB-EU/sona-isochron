@@ -30,7 +30,7 @@ which the repair loop never sees. Figures are from the "Both levels" table unles
 1. **Main system: prompt v1 with the repair loop** (now decided).
    - The rule was fixed in code before any judge output was seen: recommend the condition with the highest
      fit & complete rate, and break near-ties (overlapping 95 % intervals) by time per output.
-   - The rule does not name a table. I apply it to the table pooled over both levels, which was already the
+   - The rule does not name a table. It is applied to the table pooled over both levels, which was already the
      report's first table when the rule was written.
    - There, v1 with the loop has the highest rate: 50.0 % [38.3, 61.7], at 15.6 s per output. Its near-ties
      are the three other variants with the loop, all slower (16.6 to 21.9 s). No condition without the loop
@@ -39,7 +39,7 @@ which the repair loop never sees. Figures are from the "Both levels" table unles
    - Level 80 alone does not. v2a and v2c with the loop tie at 36.7 % [20.0, 53.3], and v1 with the loop has
      33.3 %. At n = 30, six other intervals overlap the top one, so the time tie-break would pick v2b
      without the loop (13.3 %, 4.7 s). That pick is degenerate: overlapping intervals are too loose a test
-     of a near-tie at this n. I suggest a paired bootstrap of the difference for the full runs.
+     of a near-tie at this n. A paired bootstrap of the difference is suggested for the full runs.
 2. **Drop v2a** (now decided). It is the slowest (21.9 s), and it has the most unusable answers: 24 retries,
    and 6 outputs still missing after the loop.
 3. **Language check: done.**

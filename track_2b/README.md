@@ -16,8 +16,8 @@ proxy for spoken time, and it checks that nothing was dropped or added.
 
 ## How it works
 
-Our method is prompt v1 with a **repair loop**. Asking for a character count (isometric prompting) is the
-baseline we compare against, not our method.
+The method is prompt v1 with a **repair loop**. Asking for a character count (isometric prompting) is a
+baseline for comparison, not the method.
 
 1. **Round 0.** Apertus gets the line and the syllable target and writes 4 candidates.
 2. **Checks.** Each candidate is checked three ways:
@@ -54,7 +54,7 @@ independent judge, Qwen3-14B):
 
 ### `make run` (Docker)
 
-What you need:
+Requirements:
 - Docker with Compose v2 (the `docker compose` command).
 - An OpenAI-compatible endpoint that serves Apertus 1.5, given by three variables, either in the
   environment or in `.env` next to this file (copy `.env.example`):
@@ -71,12 +71,12 @@ What you need:
   chose.
   (Not with rootless Docker, whose host network is not the host's: there, give an address the
   container can reach.)
-  `LLM_QUANTISATION` is optional: if you set it, it is recorded in the summary.
+  `LLM_QUANTISATION` is optional: if set, it is recorded in the summary.
 - With Docker Desktop or Colima, the checkout must be in a folder Docker's VM can see (your home folder,
   by default). `make run` checks this once the image is built, before the method runs, and says so if
   not.
 
-Then, from this directory:
+Then run, from this directory:
 
 ```
 make run
@@ -89,15 +89,15 @@ What happens:
 - The NLI and the language check run on the CPU, inside the container.
 - Measured on an Apple M3 (Docker in Colima, arm64, 6 CPUs, 10 GiB): the first build took 40 min, a
   later rebuild 13 min, and the run 4–6 min against llama-server on the same Mac.
-- The image also builds and runs for `linux/amd64`, tested under emulation on the Mac: the same results
-  as arm64, line for line. Under that emulation (Rosetta), the build crashed at random and passed when
+- The image also builds for `linux/amd64` on a native amd64 runner in CI (GitHub Actions, on every push).
+  `make run` on amd64 was tested under emulation on the Mac: the same results as arm64, line for line. Under that emulation (Rosetta), the build crashed at random and passed when
   run again; a native amd64 host emulates nothing. `results/docker_check.md` has every timing, and the
   checks behind them.
 
 ### `make run-offline` (no network at all)
 
-The same run with no network connection. llama.cpp's server (build 11429, the build of all our local
-results) runs a GGUF file from your disk next to the app:
+The same run with no network connection. llama.cpp's server (build 11429, the build used for all local
+results) runs a GGUF file from local disk next to the app:
 
 ```
 make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
@@ -106,7 +106,7 @@ make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
 - The server's container has no network interfaces. The app joins its network namespace, so the two
   reach each other on 127.0.0.1 and nothing else.
 - The GGUF is mounted read-only. It is never copied into the image or the repository.
-- `docs/local_llm.md` explains which GGUF we use and its caveat: it is a text-only conversion of the
+- `docs/local_llm.md` explains which GGUF the experiments used and its caveat: it is a text-only conversion of the
   official weights.
 - Build the images once while online. After that, `make run-offline` needs no network.
 - Everything runs on the CPU here, so it is slower than with a GPU server. On the Apple M3 (6 CPUs for
@@ -115,7 +115,7 @@ make run-offline GGUF=/path/to/apertus.gguf LLM_QUANTISATION=Q4_K_M
 
 ### Without Docker
 
-You need Python 3.11 with [uv](https://docs.astral.sh/uv/), and eSpeak NG 1.52.0 (`brew install
+Install Python 3.11 with [uv](https://docs.astral.sh/uv/), and eSpeak NG 1.52.0 (`brew install
 espeak-ng` on a Mac). Set the three variables, then run:
 
 ```
@@ -123,7 +123,7 @@ uv sync
 uv run python -m isochron.app --input data/sample_input.jsonl --out output
 ```
 
-Add `--mock` for a dry run without an LLM. `uv run pytest` runs the tests.
+Add `--mock` for a dry run without an LLM. Run the tests with `uv run pytest`.
 
 ### The experiments
 
@@ -131,7 +131,7 @@ Add `--mock` for a dry run without an LLM. `uv run pytest` runs the tests.
 - `docs/local_llm.md`: Apertus on a Mac (llama.cpp).
 - `docs/hpc.md`: Apertus 1.5 in BF16 on H100s (vLLM).
 - `results/`: every report. Each one records its date, git commit, model and quantisation, endpoint,
-  TTS (none), seeds and n.
+  TTS engine and voice (none, except the timing checks), seeds and n.
 - `make figures` redraws the report's figures (`docs/figures/`: PDF, PNG and the CSV behind each) with
   matplotlib, from committed results files only.
 - `uv run scripts/report_pdf.py` renders `technical_report.md` to PDF (A4, two columns) with headless

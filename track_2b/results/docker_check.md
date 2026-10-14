@@ -83,8 +83,8 @@ What each passing run wrote (`output/summary.md`):
      `localhost`.
 3. **README.md was in the dependency layer.** The Dockerfile copied `README.md` with `pyproject.toml` and
    `uv.lock` before `uv pip install`, so any README edit invalidated that layer and downloaded every
-   package again. In 2a, BuildKit logged 685 s for that step; 2a had joined it while the step 4 session's
-   rebuild, started 9 min earlier, was running it, so the step did not take that long within 2a. `uv export --frozen` does not need it (checked), so it is no
+   package again. In 2a, BuildKit logged 685 s for that step; 2a had joined it while another rebuild
+   on the same Mac (for the step 4 runs), started 9 min earlier, was running it, so the step did not take that long within 2a. `uv export --frozen` does not need it (checked), so it is no
    longer copied, nor in the build context.
 
 ## amd64 under Rosetta: the eSpeak NG build crashes at random
@@ -102,8 +102,8 @@ again and again in the same VM:
 | arm64 (native) | `-j 6` | 10 | 0 |
 | arm64 (native) | the program at `-j 6`, then the data at `-j 1` | 1 | 0 |
 
-- Since gcc crashes too, the cause is the emulation, not eSpeak NG or our build. Neither our amd64
-  `espeak-ng` nor Debian's (`1.52.0+dfsg-5`, built on amd64 hardware) crashed in 90 parallel phoneme
+- Since gcc crashes too, the cause is the emulation, not eSpeak NG or this project's build. Neither
+  the project's amd64 `espeak-ng` nor Debian's (`1.52.0+dfsg-5`, built on amd64 hardware) crashed in 90 parallel phoneme
   runs or 30 parallel dictionary compiles each, outside ninja.
 - The Dockerfile is unchanged: on an amd64 or arm64 host, nothing is emulated. If you build for amd64 on
   an Apple Mac and the build fails like this, run it again: the layers that succeeded are cached.
@@ -114,8 +114,8 @@ again and again in the same VM:
 ## Also checked
 
 - The image runs as the calling user: every output file belongs to that user, on the Mac and on Linux.
-- Build times of the arm64 image at `0436ab3`: 40 min in the first build (earlier session); 802 s
-  (UV_NO_CACHE=1, image 3.14 GB) in a rebuild by the step 4 session today, which ran at the same time as
+- Build times of the arm64 image at `0436ab3`: 40 min in the first build (an earlier build); 802 s
+  (UV_NO_CACHE=1, image 3.14 GB) in a rebuild for the step 4 runs the same day, which ran at the same time as
   2a and shared its steps, so neither of those two times is clean.
 
 ## eSpeak NG's git fallback

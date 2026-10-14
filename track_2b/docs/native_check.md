@@ -15,7 +15,7 @@ kept as a backup.
 |------|-----|------------|
 | `results/native_check/rater/german_lines.xlsx` | the German checker: **send only this file** | the 50 rows of `step4_sheet_de.csv`, in the same order, with drop-down lists for the three marks, and an instructions tab with three worked examples |
 | `results/native_check/step4_sheet_de.csv` | the German checker, if they prefer CSV | 50 rows: an English sentence and a German translation of it, with empty columns to fill |
-| `results/native_check/step4_key_de.csv` | us only, **never the checker** | which system produced each line, and the verdicts of both NLI models and the judge; the key to the XLSX too, which has the same line numbers |
+| `results/native_check/step4_key_de.csv` | the evaluators only, **never the checker** | which system produced each line, and the verdicts of both NLI models and the judge; the key to the XLSX too, which has the same line numbers |
 | `results/native_check/step2_sheet_de.csv`, `step2_key_de.csv` | backup | the step 2 sheet: a German sentence and a shortened version of it (instructions below) |
 | `results/native_check/controls_de.csv` | a German checker (optional, second task) | 160 control pairs written by Claude, each with the property it should have |
 | `results/native_check/controls_fr.csv` | a French checker (optional) | the same for 80 French pairs |
