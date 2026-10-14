@@ -566,7 +566,7 @@ timing config holds durations only.
 - **Shared by [optional]:** SONALAB
 - **Language(s) (NLP):** English (sources), German and French (references and outputs)
 - **License:** CC BY-SA 4.0 (see [Data Instance Licenses](#data-instance-licenses))
-- **Git repository:** TODO: the public URL of the project's git repository
+- **Git repository:** https://github.com/SONALAB-EU/isochron
 
 ## Uses
 
@@ -638,7 +638,7 @@ differences and the judge's numbers.
 ## Dataset Structure
 
 The template's three components map to nine JSONL configs. Load one with
-`datasets.load_dataset("<repo>", "<config>")`.
+`datasets.load_dataset("sonalab/isochron", "<config>")`.
 
 | Component | Config | Splits and rows | One row per |
 |---|---|---|---|
@@ -1058,4 +1058,4 @@ The isochron team.
 
 ## Dataset Card Contact
 
-TODO: a contact address for questions about this dataset
+soeren.huebner@sonalab.eu
