@@ -77,10 +77,21 @@ def test_every_row_matches_the_declared_features() -> None:
 
 
 def test_dev_is_exploratory_and_test_is_reported() -> None:
-    for config in ("step2_inputs", "step2_responses", "step4_inputs", "step4_responses", "runs"):
+    for config in ("shortening_inputs", "shortening_responses", "translation_inputs", "translation_responses", "runs"):
         for split, role in (("dev", "exploratory"), ("test", "reported")):
             rows = [json.loads(line) for line in (HF / config / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
             assert rows and {r["split_role"] for r in rows} == {role}
+
+
+def test_no_step_names_where_users_see_them() -> None:
+    """Configs, case ids, tasks and used_in name the tasks; only run ids, file paths and recorded configs keep steps."""
+    assert not [p for p in HF.iterdir() if p.name.startswith("step")]
+    for p in HF.rglob("*.jsonl"):
+        for line in p.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            assert not str(row.get("case_id", "")).startswith("step"), p
+            assert "step" not in row, p
+            assert not [u for u in row.get("used_in") or [] if u.startswith("step")], p
 
 
 def test_no_audio_paths_or_secrets() -> None:

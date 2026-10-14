@@ -1,7 +1,7 @@
 {
- "git_commit": "c82c964beea7eed669622c5b1ec8cdeb11eb3566 (with uncommitted changes to tracked files)",
+ "git_commit": "34a9d6a9078ef3366cd6d1dd734a07a4bb429238 (with uncommitted changes to tracked files)",
  "tool": "isochron.hf_export",
- "step2_runs": {
+ "shortening_runs": {
   "dev": [
    "20261009T155640Z_pilot_v1_de_dev",
    "20261009T161226Z_pilot_v2a_de_dev",
@@ -13,7 +13,7 @@
    "hpc_8b_step2_fr_test"
   ]
  },
- "step4_runs": {
+ "translation_runs": {
   "dev": [
    "hpc_8b_step4_dev"
   ],

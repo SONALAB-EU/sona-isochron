@@ -2,8 +2,9 @@
 
 The hackathon template asks for three components; each is a JSONL config with a dev split (exploratory)
 and a test split (the reported numbers):
-- evaluation dataset: step2_inputs and step4_inputs, one row per test case, with the human reference;
-- model response dataset: step2_responses and step4_responses, one row per output of every system,
+- evaluation dataset: shortening_inputs (step 2) and translation_inputs (step 4), one row per test case, with
+  the human reference;
+- model response dataset: shortening_responses and translation_responses, one row per output of every system,
   seed and setting, with its scores (lengths, fit, the NLI checks, the judge, the language check, rounds);
   judge_controls: the planted meaning controls with every check's verdict;
 - metadata: one row per sentence or control pair with its licence and source, and runs: each run's
@@ -50,8 +51,9 @@ STEP4 = {"dev": ["hpc_8b_step4_dev"], "test": ["hpc_8b_step4_test", "hpc_8b_step
 STEP4_TEST_NLI = RAW / "step4_test_nli_cache.jsonl"
 SECOND_NLI = RAW / "meaning_check"
 VALIDATION = "results/judge_validation_{suite}_v3_qwen3-14b_hpc_8b.md"
-CONFIGS = ("step2_inputs", "step2_responses", "step4_inputs", "step4_responses", "judge_controls", "native_check",
-           "timing", "metadata", "runs")
+CONFIGS = ("translation_inputs", "translation_responses", "shortening_inputs", "shortening_responses", "judge_controls",
+           "native_check", "timing", "metadata", "runs")
+TASK = {2: "shortening", 4: "translation"}  # the dataset's names for steps 2 and 4 (run ids keep the step names)
 NATIVE = Path("results/native_check")
 NATIVE_MARKS = NATIVE / "returned/german_lines_rated_part1.xlsx"  # the rater's marks and comments
 NATIVE_AS_RATED = NATIVE / "returned/step4_sheet_de_as_rated.csv"  # the texts as the rater saw them
@@ -116,8 +118,9 @@ def judge_fields(v: dict[str, Any] | None, wrong: bool, step: int) -> dict[str, 
 
 
 def run_row(run: str, step: int, split: str, cfg: dict[str, Any], judge_cfg: dict[str, Any] | None) -> dict[str, Any]:
+    """One run's row; config_json keeps the run's own record as written, step number included."""
     prompts = cfg["prompts"].values() if "prompts" in cfg else [cfg["prompt"], cfg["revise_prompt"]]
-    return {"run": run, "step": step, "split": split, "split_role": ROLE[split], "date": cfg["date"],
+    return {"run": run, "task": TASK[step], "split": split, "split_role": ROLE[split], "date": cfg["date"],
             "git_commit": cfg["git_commit"], "model": cfg["model"], "quantisation": cfg["quantisation"],
             "backend": cfg["backend"].get("build_info") or cfg["backend"].get("type"),
             "langs": cfg.get("langs") or [cfg["lang"]], "seeds": cfg["seeds"],
@@ -130,7 +133,7 @@ def run_row(run: str, step: int, split: str, cfg: dict[str, Any], judge_cfg: dic
 
 
 def step2(split: str) -> tuple[list[dict], list[dict], list[dict]]:
-    """step2_inputs, step2_responses and runs rows for one split."""
+    """shortening_inputs, shortening_responses and runs rows for one split."""
     inputs: dict[str, dict] = {}
     responses, runs = [], []
     for name in STEP2[split]:
@@ -144,7 +147,7 @@ def step2(split: str) -> tuple[list[dict], list[dict], list[dict]]:
         for r in rows:
             it = items[r["id"], r["level"], r["seed"]]
             cand = it["closest_round0"] if r["cond"] == "without" else it["final"]
-            case = f"step2/{split}/{lang}/{r['id']}/L{r['level']}"
+            case = f"shortening/{split}/{lang}/{r['id']}/L{r['level']}"
             inputs.setdefault(case, {
                 "case_id": case, "split": split, "split_role": ROLE[split], "lang": lang, "fleurs_id": r["id"],
                 "level": r["level"], "input_text": it["input"], "input_syllables": size(it["input"], "syllables", lang),
@@ -185,7 +188,7 @@ class CachedOnly:
 
 
 def step4(split: str, nli_cache: Path) -> tuple[list[dict], list[dict], list[dict]]:
-    """step4_inputs, step4_responses and runs rows for one split. nli_cache is a working copy of
+    """translation_inputs, translation_responses and runs rows for one split. nli_cache is a working copy of
     step4_report's test cache (results/raw/ is never written); step 4 dev's pairs are scored into it."""
     from isochron.meaning_check import key, read_cache
     from isochron.metrics.meaning import NLI
@@ -220,7 +223,7 @@ def step4(split: str, nli_cache: Path) -> tuple[list[dict], list[dict], list[dic
     for r in rows:
         it = by_item[r["id"], r["lang"], r["seed"]]
         refs = fleurs(split, r["lang"])
-        case = f"step4/{split}/{r['lang']}/{r['id']}"
+        case = f"translation/{split}/{r['lang']}/{r['id']}"
         inputs.setdefault(case, {
             "case_id": case, "split": split, "split_role": ROLE[split], "lang": r["lang"], "fleurs_id": r["id"],
             "source_en": r["source"], "reference": r["reference"],
@@ -337,7 +340,7 @@ def native_rows() -> list[dict]:
     for k in sorted(key, key=lambda r: int(r["line"])):
         line, m = k["line"], marks.get(k["line"])
         rows.append({
-            "line": int(line), "case_id": f"step4/test/de/{k['id']}", "split": "test", "split_role": "descriptive",
+            "line": int(line), "case_id": f"translation/test/de/{k['id']}", "split": "test", "split_role": "descriptive",
             "run": k["run"], "lang": "de", "fleurs_id": k["id"], "seed": int(k["seed"]), "budget": k["budget"],
             "system": k["system"], "english_source": sheet[line]["english_source"],
             "german_output": sheet[line]["german_output"], "kept_plain": truth(k["kept_plain"]),
@@ -405,12 +408,12 @@ def build(out: Path, nli_cache: Path) -> None:
     for split in ("dev", "test"):
         inputs2, responses2, runs2 = step2(split)
         inputs4, responses4, runs4 = step4(split, nli_cache)
-        write(out, "step2_inputs", split, inputs2)
-        write(out, "step2_responses", split, responses2)
-        write(out, "step4_inputs", split, inputs4)
-        write(out, "step4_responses", split, responses4)
+        write(out, "shortening_inputs", split, inputs2)
+        write(out, "shortening_responses", split, responses2)
+        write(out, "translation_inputs", split, inputs4)
+        write(out, "translation_responses", split, responses4)
         write(out, "runs", split, runs2 + runs4)
-        for m in instance_meta(inputs2, "step2") + instance_meta(inputs4, "step4"):
+        for m in instance_meta(inputs2, TASK[2]) + instance_meta(inputs4, TASK[4]):
             if m["instance_id"] in meta[split]:
                 meta[split][m["instance_id"]]["used_in"] += m["used_in"]
             else:
@@ -427,7 +430,7 @@ def build(out: Path, nli_cache: Path) -> None:
         write(out, "metadata", split, sorted(meta[split].values(), key=lambda m: m["instance_id"]))
     write(out, "metadata", "controls", control_meta)
     (out / "export.json").write_text(json.dumps({"git_commit": git_commit(), "tool": "isochron.hf_export",
-                                                 "step2_runs": STEP2, "step4_runs": STEP4}, indent=1) + "\n",
+                                                 "shortening_runs": STEP2, "translation_runs": STEP4}, indent=1) + "\n",
                                      encoding="utf-8")
 
 
@@ -556,7 +559,7 @@ def check(d: Path, results: Path = Path("results")) -> tuple[Counter, list[str]]
     returns the cells compared per results file and the cells that differ."""
     mismatches: list[str] = []
     counts: Counter = Counter()
-    s4 = {split: read_jsonl(d / "step4_responses" / f"{split}.jsonl") for split in ("dev", "test")}
+    s4 = {split: read_jsonl(d / "translation_responses" / f"{split}.jsonl") for split in ("dev", "test")}
     files4 = {"test": results / "step4_test.md", "dev": results / "hpc_8b_step4_dev.md"}
     for split, rows in s4.items():
         groups = defaultdict(list)
@@ -583,7 +586,7 @@ def check(d: Path, results: Path = Path("results")) -> tuple[Counter, list[str]]
                 for row, c in diffs.items():
                     compare(c, table, header, row, f"{files4[split].name} {t}", mismatches, counts)
                 unmatched(table, diffs, f"{files4[split].name} {t}", mismatches)
-    s2 = {split: read_jsonl(d / "step2_responses" / f"{split}.jsonl") for split in ("dev", "test")}
+    s2 = {split: read_jsonl(d / "shortening_responses" / f"{split}.jsonl") for split in ("dev", "test")}
     for split, rows in s2.items():
         path = results / ("step2_test.md" if split == "test" else "phase2_pilot.md")
         for lang in sorted({r["lang"] for r in rows}):
