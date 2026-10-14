@@ -235,7 +235,7 @@ It **mistranslates rare words** in both systems (native speaker: "Spitze", "Hirs
   (CC BY 4.0) and synthetic speech (Qwen3-TTS; a failed Chatterbox run, MIT) were used only for the timing
   check and the demo (post-hoc). Measures checked: eSpeak matched hand counts on 46 of 50 items and counts
   all 963 references alike on Mac and cluster; the language check flags none of 1,956 German sentences.
-- **Commits:** shortening-task test runs `68492f2`, translation-task test runs `7b22d93`, final result reports `0108111`**
+- **Commits:** shortening-task test runs `68492f2`, translation-task test runs `7b22d93`, final result reports `0108111`
 - **Hardware:** Apple M3 (16 GB); one H100 80 GB per HPC job; 6.48 H100-hours of a budget of 12 (sacct,
   2026-10-13): 6.03 setup and experiments, 0.46 text-to-speech (rounded).
 - **Records:** every results file gives date, commit, model and quantisation, endpoint, TTS (only the
