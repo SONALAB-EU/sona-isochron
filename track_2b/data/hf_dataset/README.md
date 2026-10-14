@@ -562,10 +562,8 @@ files (see [Method and reproducibility](#method-and-reproducibility)).
 | **Funded and shared by** | SONALAB |
 | **Contact** | soeren.huebner@sonalab.eu |
 
-**Naming.** In the project's repository, the translation task is called "step 4" and the shortening task
-"step 2". Run IDs (for example `hpc_8b_step4_test`), repository file paths (for example
-`results/step4_test.md`) and the recorded run configurations (`runs.config_json`) keep those names,
-because they identify where each row comes from.
+**Naming.** In the GitHub repository's code and pre-registered protocol, the translation task appears as
+`step4` and the shortening task as `step2` (internal stage numbers).
 
 ## Quick start
 

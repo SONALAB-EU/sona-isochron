@@ -94,6 +94,18 @@ def test_no_step_names_where_users_see_them() -> None:
             assert not [u for u in row.get("used_in") or [] if u.startswith("step")], p
 
 
+def test_card_names_the_steps_only_in_its_naming_note() -> None:
+    """The card says "step 2" or "step 4" nowhere; the code's `step2` and `step4` appear once, in the Naming note
+    (inside run ids and repository file names they stay, as provenance)."""
+    body = (HF / "README.md").read_text(encoding="utf-8").split("---\n", 2)[2]
+    assert "step 2" not in body.lower() and "step 4" not in body.lower()
+    for name in ("step2", "step4"):
+        hits = re.findall(rf"(?<![\w/.]){name}(?!\w)", body)
+        assert hits == [name], (name, hits)
+    note = next(line for line in body.splitlines() if "`step4`" in line or "`step2`" in line)
+    assert note.startswith("`step4`") or "Naming" in body[body.index(note) - 200:body.index(note) + len(note)]
+
+
 def test_no_audio_paths_or_secrets() -> None:
     files = [p for p in HF.rglob("*") if p.is_file()]
     assert {p.suffix for p in files} <= {".jsonl", ".json", ".md"}
