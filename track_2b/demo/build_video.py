@@ -389,7 +389,7 @@ def slides(n: dict, rec: dict, some: dict) -> dict[str, Path]:
 
     s = Slide()
     s.y = 400
-    s.text("Isochron: dubbing lines that fit their slot", font(70, bold=True), gap=40)
+    s.text("SONA Isochron: dubbing lines that fit their slot", font(62, bold=True), gap=40)  # 62 keeps it on one line
     s.text("SONALAB · Hack Apertus 2026 · Track 2B", font(52), fill=MUTED)
     p["title"] = s.save(d / "01_title.png")
 
@@ -528,7 +528,7 @@ def slides(n: dict, rec: dict, some: dict) -> dict[str, Path]:
     s.text(f"Both NLI meaning checks: meaning {nli}", BODY)
     p["some"] = s.save(d / "13_some.png")
 
-    s = Slide("Isochron")
+    s = Slide("SONA Isochron")
     s.text("SONALAB · Hack Apertus 2026 · Track 2B", font(52), fill=MUTED, gap=50)
     for t in ["FLEURS recordings (CC BY 4.0)", "Apertus 1.5 (Swiss AI Initiative)", "Qwen3-TTS (Apache-2.0)",
               "SONALAB", "github.com/SONALAB-EU/sona-isochron", "huggingface.co/datasets/sonalab/sona-isochron"]:

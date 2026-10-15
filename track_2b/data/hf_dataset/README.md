@@ -4,7 +4,7 @@ language:
 - en
 - de
 - fr
-pretty_name: 'Isochron: dubbing lines that fit their slot, with Apertus 1.5'
+pretty_name: 'SONA Isochron: dubbing lines that fit their slot, with Apertus 1.5'
 task_categories:
 - translation
 tags:
@@ -534,10 +534,10 @@ configs:
     path: runs/test.jsonl
 ---
 
-# Isochron: dubbing lines that fit their slot, with Apertus 1.5
+# SONA Isochron: dubbing lines that fit their slot, with Apertus 1.5
 
 In dubbing, a translated line has to fit the time the original actor speaks, without adding or dropping
-meaning. This dataset holds every test case, every model output and every per-line score of the Isochron
+meaning. This dataset holds every test case, every model output and every per-line score of the SONA Isochron
 project (Hack Apertus 2026, Track 2B). The project uses Apertus 1.5 8B to translate English sentences into
 German and French within a length budget, and to shorten German and French sentences to a length target.
 
@@ -1131,7 +1131,7 @@ When using this dataset, cite it as below, and cite its sources (listed under
 
 ```bibtex
 @misc{sonalab2026isochron,
-  title  = {Isochron: Dubbing lines that fit their slot},
+  title  = {SONA Isochron: Dubbing lines that fit their slot},
   author = {{SONALAB}},
   year   = {2026},
   note   = {Dataset: inputs, outputs and per-line scores of translation to a length budget and same-language
@@ -1139,7 +1139,7 @@ When using this dataset, cite it as below, and cite its sources (listed under
 }
 ```
 
-SONALAB. (2026). *Isochron: Dubbing lines that fit their slot* [Data set]. Hack Apertus 2026, Track 2B.
+SONALAB. (2026). *SONA Isochron: Dubbing lines that fit their slot* [Data set]. Hack Apertus 2026, Track 2B.
 
 ## Contact
 

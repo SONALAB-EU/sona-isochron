@@ -1,10 +1,10 @@
-# Isochron: dubbing lines that fit their slot, with Apertus
+# SONA Isochron: dubbing lines that fit their slot, with Apertus
 
 [![CI](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml)
 [![Dataset on Hugging Face](https://img.shields.io/badge/dataset-sonalab%2Fsona--isochron-yellow?logo=huggingface)](https://huggingface.co/datasets/sonalab/sona-isochron)
 
 Hack Apertus 2026, Track 2B. A dubbed line has to fit the time the original actor speaks (isochrony),
-and translations usually run long. In Isochron, Apertus 1.5 translates English lines into German or French
+and translations usually run long. In SONA Isochron, Apertus 1.5 translates English lines into German or French
 and shortens them to a length budget, in characters or syllables, with a **repair loop**: every candidate
 is checked for length, meaning (NLI, both directions) and language, and Apertus revises with specific
 feedback, at most twice. Apertus is used for inference only.

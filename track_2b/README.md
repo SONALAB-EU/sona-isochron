@@ -1,12 +1,12 @@
 [![CI](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml)
 
-# Isochron: dubbing lines that fit their slot, with Apertus
+# SONA Isochron: dubbing lines that fit their slot, with Apertus
 
 Hack Apertus 2026, Track 2B (own project). Built with Apertus 1.5.
 
 A dubbed line has to fit the time the original actor speaks: that is isochrony. Translations are often
 longer than the original, so a dubbing editor shortens them by hand without changing what they say.
-Isochron does that step with **Apertus 1.5**. It shortens a line to a target length in syllables, as a
+SONA Isochron does that step with **Apertus 1.5**. It shortens a line to a target length in syllables, as a
 proxy for spoken time, and it checks that nothing was dropped or added.
 
 - **Input:** a line, its language (German or French) and a target length, as a percentage of its syllables.

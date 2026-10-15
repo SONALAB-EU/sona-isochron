@@ -1,6 +1,6 @@
-# Isochron: dubbing lines that fit their slot, with Apertus 1.5
+# SONA Isochron: dubbing lines that fit their slot, with Apertus 1.5
 
-Dubbed lines must fit the time the original actor speaks. Isochron translates English lines into German or French with Apertus 1.5 and shortens those that run long, aiming to keep their meaning.
+Dubbed lines must fit the time the original actor speaks. SONA Isochron translates English lines into German or French with Apertus 1.5 and shortens those that run long, aiming to keep their meaning.
 
 - **Track:** Track 2B, own project
 - **Event:** Hack Apertus 2026, online
@@ -13,7 +13,7 @@ Dubbed lines must fit the time the original actor speaks. Isochron translates En
 
 **The problem.** A dubbed line has to fit the time the original actor speaks (isochrony). From English into German and French, the two pairs SONALAB currently focuses on, translations come out longer. On the FLEURS test set, the professional German translations have a median of 22 % more syllables than the English, the French ones 15 % (measured after the test runs). Apertus’s own translations add nearly as much: 19 % (German) and 12 % (French). Voice actors rarely make up for this by speaking faster: in professional English-to-German dubs, they kept their pace and missed the timing instead (Brannon et al., 2023). So the line itself has to get shorter without losing its meaning, which dialogue adapters now do by hand.
 
-**What we built.** Isochron translates first, then shortens with a **repair loop** (Figure 1): Apertus 1.5 (Swiss AI Initiative, 2026) proposes 4 candidates, the app checks each for length, meaning and language, and Apertus revises with specific feedback, at most twice. Length counts characters or syllables. An NLI model checks meaning: each version must imply the other.
+**What we built.** SONA Isochron translates first, then shortens with a **repair loop** (Figure 1): Apertus 1.5 (Swiss AI Initiative, 2026) proposes 4 candidates, the app checks each for length, meaning and language, and Apertus revises with specific feedback, at most twice. Length counts characters or syllables. An NLI model checks meaning: each version must imply the other.
 
 **How we tested it.** The translation task (step 4 in the repo) translates FLEURS English into German and French within a budget and compares three systems: (a) plain translation; (b) one step straight to the budget, as in isometric MT (Lakew et al., 2022); (c) ours: translate, then shorten with the loop. The shortening task (step 2) shortens German and French sentences in their own language, with and without the loop. Dev numbers are exploratory, test numbers final. “Post-hoc” marks analyses added after the test outputs existed.
 
