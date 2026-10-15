@@ -82,7 +82,7 @@ SONALAB (Kaushik Mukherjee, Sören Hübner). Contact: soeren.huebner@sonalab.eu
 
 ## License and acknowledgements
 
-Per the Hack Apertus terms (§6): the code is Apache-2.0 ([LICENSE](LICENSE)), the data files are
+Per the Hack Apertus terms (§6): the code is Apache-2.0 ([LICENSE](LICENSE)), the data files and the demo video are
 CC BY-SA 4.0, and the technical report is CC BY 4.0. Every model, dataset and tool, with its licence:
 [track_2b/docs/licences.md](track_2b/docs/licences.md).
 

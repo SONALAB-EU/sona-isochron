@@ -202,13 +202,19 @@ Other fields, such as `license` and `source` in the sample, are ignored.
 - **Technical report and documentation:** CC BY 4.0, as the organisers' template sets.
 - **Data** (`data/*.jsonl`): CC BY-SA 4.0. The sentences come from FLEURS (CC BY 4.0), whose text comes
   from FLoRes-101 (CC BY-SA 4.0). See `data/README.md`.
+- **Demo video** (`docs/isochron_demo.mp4`): CC BY-SA 4.0, as it shows FLoRes sentences; the FLEURS
+  recordings in it are CC BY 4.0.
 - **Models:**
   - Apertus 1.5: Apache-2.0, plus the Apertus 1.5 Acceptable Use Policy.
   - The NLI model `MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7`: MIT.
   - The evaluation judges Qwen3-14B and Qwen3-8B: Apache-2.0. They never take part in generation.
+  - The second NLI model `MoritzLaurer/bge-m3-zeroshot-v2.0-c`: MIT. Evaluation only.
+  - Qwen3-TTS: Apache-2.0. Chatterbox: MIT. Whisper small: MIT. Timing evaluation and demo only.
 - **Programs:**
   - eSpeak NG 1.52.0: GPL-3.0-or-later. It runs as a separate program; the Docker image builds it from
     its upstream source at build time.
   - llama.cpp: MIT. vLLM: Apache-2.0. py3langid: BSD-3-Clause. PyTorch: BSD-3-Clause.
+- **Python packages** (`uv.lock`): open source, except NVIDIA's CUDA libraries for torch's GPU build, which
+  the Docker image leaves out (it installs the CPU build of torch).
 
 Every item, with source, revision and licence: `docs/licences.md`.

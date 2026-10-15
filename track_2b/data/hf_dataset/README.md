@@ -941,7 +941,8 @@ Every metric is a field of every response row, so each can be recomputed.
 The repository's `docs/licences.md` gives full attribution for each source.
 
 **Licence of the rows.** Every row is CC BY-SA 4.0, because the FLoRes text it contains is ShareAlike.
-- The `license` field of every input, metadata and control row says so.
+- The `license` field of every input row and every metadata row (sentences and control pairs) says so;
+  `judge_controls` rows link to their metadata row by `instance_id`.
 - The model outputs are released under the same licence.
 - Apertus 1.5's Acceptable Use Policy applies to the model's use, not to its outputs' licence.
 

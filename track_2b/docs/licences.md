@@ -35,6 +35,18 @@ licence and source.
 licensed **CC BY-SA 4.0** (see [data/README.md](../data/README.md)). The code
 stays Apache-2.0.
 
+**The demo video** (`docs/isochron_demo.mp4`) is CC BY-SA 4.0, because it
+shows FLoRes sentences. The FLEURS recordings in it are CC BY 4.0, and the
+synthetic speech comes from Qwen3-TTS (Apache-2.0).
+
+**Python packages.** Of the 91 packages in `uv.lock` (licences checked on
+PyPI on 15 October 2026), 76 are open source: almost all under MIT, BSD,
+Apache-2.0, ISC or PSF licences; certifi and tqdm are MPL-2.0 and soxr is
+LGPL-2.1-or-later, all used unmodified as libraries. The other 15 are
+NVIDIA's CUDA packages, which torch's GPU build needs on Linux, under
+NVIDIA's own licences. The `make run` image leaves them out and installs the
+CPU build of torch (`Dockerfile`).
+
 ## Attribution
 
 **FLEURS.** Conneau, A., Ma, M., Khanuja, S., Zhang, Y., Axelrod, V.,
