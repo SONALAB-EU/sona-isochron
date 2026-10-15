@@ -11,11 +11,11 @@ Dubbed lines must fit the time the original actor speaks. Isochron translates En
 
 ## 1. Summary
 
-**The problem.** Translations run long. On the FLEURS test set, human German and French translations have a median 1.18 × the English characters (without spaces), and 75 % are more than 10 % longer (post-hoc: added after the test outputs existed). IBM’s guidance, cited by the W3C, expects about 130 % for English sources over 70 characters. Apertus’s plain translations behave the same (1.16 and 1.19). In dubbing, a line that runs long overlaps the next one: the costly error.
+**The problem.** A dubbed line has to fit the time the original actor speaks (isochrony). From English into German and French, the two pairs SONALAB currently focuses on, translations come out longer. On the FLEURS test set, the professional German translations have a median of 22 % more syllables than the English, the French ones 15 % (measured after the test runs). Apertus’s own translations add nearly as much: 19 % (German) and 12 % (French). Voice actors rarely make up for this by speaking faster: in professional English-to-German dubs, they kept their pace and missed the timing instead (Brannon et al., 2023). So the line itself has to get shorter without losing its meaning, which dialogue adapters now do by hand.
 
 **What we built.** Isochron translates first, then shortens with a **repair loop** (Figure 1): Apertus 1.5 (Swiss AI Initiative, 2026) proposes 4 candidates, the app checks each for length, meaning and language, and Apertus revises with specific feedback, at most twice. Length counts characters or syllables. An NLI model checks meaning: each version must imply the other.
 
-**How we tested it.** The translation task (step 4 in the repo) translates FLEURS English into German and French within a budget and compares three systems: (a) plain translation; (b) one step straight to the budget, as in isometric MT (Lakew et al., 2022); (c) ours: translate, then shorten with the loop. The shortening task (step 2) shortens German and French sentences in their own language, with and without the loop. Dev numbers are exploratory, test numbers final.
+**How we tested it.** The translation task (step 4 in the repo) translates FLEURS English into German and French within a budget and compares three systems: (a) plain translation; (b) one step straight to the budget, as in isometric MT (Lakew et al., 2022); (c) ours: translate, then shorten with the loop. The shortening task (step 2) shortens German and French sentences in their own language, with and without the loop. Dev numbers are exploratory, test numbers final. “Post-hoc” marks analyses added after the test outputs existed.
 
 **Key results** (translation task on the FLEURS test set; Apertus 1.5 8B, BF16; 347 German and 332 French sentences × 3 seeds; ranges over 2 languages × 2 budgets):
 
@@ -170,6 +170,7 @@ This report CC BY 4.0, code Apache-2.0, data files CC BY-SA 4.0 (`docs/licences.
 ## References
 
 - Anastasopoulos et al. (2022), Findings of the IWSLT 2022 Evaluation Campaign, *Proc. IWSLT*.
+- Brannon, Virkar and Thompson (2023), Dubbing in Practice: A Large Scale Study of Human Localization With Insights for Automatic Dubbing, *TACL* 11, 419–435.
 - Conneau et al. (2022), FLEURS, arXiv:2205.12446.
 - Goyal et al. (2022), The Flores-101 Evaluation Benchmark, *TACL* 10.
 - He, Gao and Chen (2021), DeBERTaV3, arXiv:2111.09543.
@@ -182,5 +183,4 @@ This report CC BY 4.0, code Apache-2.0, data files CC BY-SA 4.0 (`docs/licences.
 - Qwen Team, Qwen3-TTS, model card Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice.
 - Radford et al. (2023), Whisper, *ICML*.
 - Swiss AI Initiative (2026), Apertus 1.5, <https://huggingface.co/swiss-ai/Apertus-v1.5-8B>.
-- W3C Internationalization, Text size in translation, <https://www.w3.org/International/articles/article-text-size/>.
 - eSpeak NG, llama.cpp, py3langid, matplotlib, Chatterbox (GitHub).
