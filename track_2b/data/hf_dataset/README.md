@@ -4,7 +4,7 @@ language:
 - en
 - de
 - fr
-pretty_name: 'Isochron: Length-Fitted Dubbing Translations with Apertus 1.5'
+pretty_name: 'Isochron: dubbing lines that fit their slot, with Apertus 1.5'
 task_categories:
 - translation
 tags:
@@ -534,7 +534,7 @@ configs:
     path: runs/test.jsonl
 ---
 
-# Isochron: Length-Fitted Dubbing Translations with Apertus 1.5
+# Isochron: dubbing lines that fit their slot, with Apertus 1.5
 
 In dubbing, a translated line has to fit the time the original actor speaks, without adding or dropping
 meaning. This dataset holds every test case, every model output and every per-line score of the Isochron
@@ -556,8 +556,8 @@ files (see [Method and reproducibility](#method-and-reproducibility)).
 | **Size** | 42,674 rows in 9 configs; about 55 MB of JSONL; no audio |
 | **Licence** | CC BY-SA 4.0 |
 | **Model** | Apertus 1.5 8B (`swiss-ai/Apertus-v1.5-8B`), BF16; a Q4_K_M GGUF for the shortening task's dev pilot |
-| **Repository** | https://github.com/SONALAB-EU/isochron |
-| **Technical report** | https://github.com/SONALAB-EU/isochron/blob/main/track_2b/technical_report.md |
+| **Repository** | https://github.com/SONALAB-EU/sona-isochron |
+| **Technical report** | https://github.com/SONALAB-EU/sona-isochron/blob/main/track_2b/technical_report.md |
 | **Curated by** | SONALAB (Kaushik Mukherjee, Sören Hübner) |
 | **Funded and shared by** | SONALAB |
 | **Contact** | soeren.huebner@sonalab.eu |
@@ -572,14 +572,13 @@ from datasets import load_dataset
 
 configs = ["translation_inputs", "translation_responses", "shortening_inputs", "shortening_responses",
            "judge_controls", "native_check", "timing", "metadata", "runs"]
-data = {name: load_dataset("sonalab/isochron", name) for name in configs}
+data = {name: load_dataset("sonalab/sona-isochron", name) for name in configs}
 
 test = data["translation_responses"]["test"]
 method_c = test.filter(lambda r: r["system"] == "c" and r["lang"] == "de" and r["budget"] == "isometric")
 print(sum(method_c["fit"]) / len(method_c))  # 0.802: fit within ±10 % of the character budget
 ```
 
-While the repository is private, log in first (`hf auth login`) with an account that can read it.
 
 ## Tasks
 
@@ -624,8 +623,8 @@ Both evaluations are post-hoc: they were added after test outputs existed.
 
 ### Native-speaker check
 
-One German native speaker rated 50 German lines from the translation task on test: 25 English sources,
-each with (a) and (c) under the syllable budget, generation seed 0. The rater saw an English source and
+One German native speaker rated 25 German lines from the translation task on test, one per English
+source, on a sheet of 50 lines: (a) and (c) for each of 25 sources, syllable budget, generation seed 0. The rater saw an English source and
 one German line per row, in shuffled order, without the system. For each line, the rater marked:
 - meaning: kept, minor loss or wrong;
 - added information: yes or no;
@@ -966,7 +965,7 @@ The repository's `docs/licences.md` gives full attribution for each source.
   Guzmán, F., & Fan, A. (2022). The Flores-101 evaluation benchmark for low-resource and multilingual
   machine translation. *Transactions of the Association for Computational Linguistics, 10*.
   arXiv:2106.03193.
-- Swiss AI Initiative. (2025). Apertus 1.5 model cards. huggingface.co/swiss-ai/Apertus-v1.5-8B.
+- Swiss AI Initiative. (2026). Apertus 1.5 model cards. huggingface.co/swiss-ai/Apertus-v1.5-8B.
 - Qwen Team. (2025). Qwen3 technical report. arXiv:2505.09388.
 - Laurer, M., et al. (2024). Less annotating, more classifying. *Political Analysis, 32*(1). (The NLI models.)
 - He, P., Gao, J., & Chen, W. (2021). DeBERTaV3. arXiv:2111.09543.
@@ -1074,8 +1073,8 @@ The `dataset_info` block of this card (each field's type) is generated from the 
 
 ### Out of scope
 
-- Training a production dubbing or translation system. The outputs are machine-generated, only 30 of
-  them were rated by a native speaker, and they include outputs that drop or change meaning (by design:
+- Training a production dubbing or translation system. The outputs are machine-generated, only 25 of
+them were rated by a native speaker, and they include outputs that drop or change meaning (by design:
   they are the measured failures).
 - Treating the judge's fit & complete rate or fact recall as a measurement of meaning preservation. They
   are upper bounds (see below).
@@ -1101,8 +1100,8 @@ The `dataset_info` block of this card (each field's type) is generated from the 
     changes within German, so neither model settles the question.
   - Kept vs source is cross-lingual and weaker: on `nli_xl`, the main NLI keeps only 29 of 40 identity
     pairs.
-- **The human check is small and descriptive.** One rater rated 30 lines (14 of (a), 16 of (c)), from
-  different sentences, with partial blinding. Meaning kept: (a) 12 of 14, (c) 12 of 16. Per line, the
+- **The human check is small and descriptive.** One rater rated 25 lines. The 5 identical pairs count for both
+systems, so there are 30 ratings (14 of (a), 16 of (c)), from different sentences, with partial blinding. Meaning kept: (a) 12 of 14, (c) 12 of 16. Per line, the
   rating agrees with the automatic checks at κ −0.15 to 0.44 (`results/native_check_step4_agreement.md`).
 - **Fit is measured in text units, and seconds depend on the voice.** Both tasks count characters and
   eSpeak NG syllables.
@@ -1146,4 +1145,4 @@ SONALAB. (2026). *Isochron: Dubbing lines that fit their slot* [Data set]. Hack 
 
 - **Questions about the dataset:** soeren.huebner@sonalab.eu
 - **Card authors:** Kaushik Mukherjee and Sören Hübner (SONALAB)
-- **Code:** https://github.com/SONALAB-EU/isochron (Apache-2.0)
+- **Code:** https://github.com/SONALAB-EU/sona-isochron (Apache-2.0)

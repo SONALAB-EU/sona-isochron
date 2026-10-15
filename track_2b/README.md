@@ -1,4 +1,4 @@
-[![CI](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml)
+[![CI](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml)
 
 # Isochron: dubbing lines that fit their slot, with Apertus
 

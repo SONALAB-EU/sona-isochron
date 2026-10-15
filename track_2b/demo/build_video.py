@@ -531,7 +531,7 @@ def slides(n: dict, rec: dict, some: dict) -> dict[str, Path]:
     s = Slide("Isochron")
     s.text("SONALAB · Hack Apertus 2026 · Track 2B", font(52), fill=MUTED, gap=50)
     for t in ["FLEURS recordings (CC BY 4.0)", "Apertus 1.5 (Swiss AI Initiative)", "Qwen3-TTS (Apache-2.0)",
-              "SONALAB", "github.com/SONALAB-EU/isochron", "huggingface.co/datasets/sonalab/isochron"]:
+              "SONALAB", "github.com/SONALAB-EU/sona-isochron", "huggingface.co/datasets/sonalab/sona-isochron"]:
         s.text(t, BODY, gap=6)
     p["end"] = s.save(d / "14_end.png")
     return p

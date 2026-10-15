@@ -135,7 +135,7 @@ def style() -> None:
     import matplotlib.pyplot as plt
 
     plt.rcParams.update({
-        "font.family": "DejaVu Sans", "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8,
+        "font.family": "Inter Display", "font.size": 8, "axes.titlesize": 8.5, "axes.labelsize": 8,
         "xtick.labelsize": 7.5, "ytick.labelsize": 7.5, "legend.fontsize": 7, "legend.frameon": False,
         "axes.spines.top": False, "axes.spines.right": False, "axes.linewidth": 0.6,
         "xtick.major.width": 0.6, "ytick.major.width": 0.6, "lines.linewidth": 1.3, "errorbar.capsize": 2,

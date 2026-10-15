@@ -1,7 +1,7 @@
 # Isochron: dubbing lines that fit their slot, with Apertus
 
-[![CI](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/isochron/actions/workflows/ci.yml)
-[![Dataset on Hugging Face](https://img.shields.io/badge/dataset-sonalab%2Fisochron-yellow?logo=huggingface)](https://huggingface.co/datasets/sonalab/isochron)
+[![CI](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml/badge.svg)](https://github.com/SONALAB-EU/sona-isochron/actions/workflows/ci.yml)
+[![Dataset on Hugging Face](https://img.shields.io/badge/dataset-sonalab%2Fsona--isochron-yellow?logo=huggingface)](https://huggingface.co/datasets/sonalab/sona-isochron)
 
 Hack Apertus 2026, Track 2B. A dubbed line has to fit the time the original actor speaks (isochrony),
 and translations usually run long. In Isochron, Apertus 1.5 translates English lines into German or French
@@ -72,13 +72,13 @@ Details, requirements and timings: [track_2b/README.md](track_2b/README.md).
 
 ## Links
 
-- Technical report: [track_2b/technical_report.md](track_2b/technical_report.md)
-- Dataset: [huggingface.co/datasets/sonalab/isochron](https://huggingface.co/datasets/sonalab/isochron)
-- Demo video: **[PLACEHOLDER: link to the demo video]**
+- Technical report: [track_2b/technical_report.md](track_2b/technical_report.md), as PDF: [track_2b/SONALAB_Report.pdf](track_2b/SONALAB_Report.pdf)
+- Dataset: [huggingface.co/datasets/sonalab/sona-isochron](https://huggingface.co/datasets/sonalab/sona-isochron)
+- Demo video: [track_2b/docs/isochron_demo.mp4](track_2b/docs/isochron_demo.mp4) (1:59)
 
 ## Team
 
-SONALAB — Kaushik Mukherjee, Sören Hübner. Contact: soeren.huebner@sonalab.eu
+SONALAB (Kaushik Mukherjee, Sören Hübner). Contact: soeren.huebner@sonalab.eu
 
 ## License and acknowledgements
 
