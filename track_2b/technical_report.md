@@ -48,13 +48,13 @@ The app (`isochron.app`) runs the engine, the repair loop (Figure 1), against an
 | Model | Role | Used in |
 | :--- | :--- | :--- |
 | mDeBERTa-v3-base-xnli-multilingual-nli-2mil7 (He et al., 2021; Laurer et al., 2024) | Main NLI: checks meaning | Repair loop and evaluation |
-| bge-m3-zeroshot-v2.0-c (Laurer et al., 2024) | Second NLI, never seen by the loop (post-hoc) | Evaluation only |
+| bge-m3-zeroshot-v2.0-c (Laurer et al., 2023) | Second NLI, never seen by the loop (post-hoc) | Evaluation only |
 | Qwen3-14B, BF16 (Qwen Team, 2025) | Judge: lists the facts, marks each kept, changed or dropped, lists added ones | Evaluation only: test, controls |
 | Qwen3-8B, Q4_K_M (Qwen Team, 2025) | Judge for the shortening pilot | Evaluation only: dev |
 | Qwen3-TTS-12Hz-1.7B-CustomVoice (Qwen Team) | Synthetic German speech (voices Aiden, Serena) | Timing evaluation, demo |
-| Chatterbox multilingual (Resemble AI) | Synthetic speech for the first timing run, which failed its check | Timing evaluation |
+| Chatterbox Multilingual (Resemble AI) | Synthetic speech for the first timing run, which failed its check | Timing evaluation |
 | Whisper small (Radford et al., 2023) | Rejects takes that do not say their text | Timing evaluation |
-| Claude (Anthropic) | Wrote the planted control pairs; as three agents, annotated 30 go/no-go errors | Evaluation only: controls, error analysis |
+| Claude Opus 5.5 (Anthropic) | Wrote the planted control pairs; as three agents, annotated 30 go/no-go errors | Evaluation only: controls, error analysis |
 
 ## 3. Use of Apertus
 
@@ -68,7 +68,7 @@ FLEURS (Conneau et al., 2022; CC BY 4.0) at `70bb2e8`: dev 147 German and 137 Fr
 
 ## 5. Evaluation
 
-**Go/no-go** (pre-registered; dev, 4-bit, 50 German sentences × 3 seeds, level 80 %). One shortening prompt without the loop failed both thresholds, a null result: fit 40.7 % [31.3, 50.0] (60 % needed), NLI kept among fits 62.3 % (80 % needed). In a random sample of 30 of the 67 outputs that the NLI flagged as dropping information, three Claude agents (not native speakers) found a lost qualifier in 24. This result led to the repair loop.
+**Go/no-go** (pre-registered; dev, 4-bit, 50 German sentences × 3 seeds, level 80 %). One shortening prompt without the loop failed both thresholds, a null result: fit 40.7 % [31.3, 50.0] (60 % needed), NLI kept among fits 62.3 % (80 % needed). In a random sample of 30 of the 67 outputs that the NLI flagged as dropping information, three Claude Opus 5.5 agents (not native speakers) found a lost qualifier in 24. This result led to the repair loop.
 
 **Shortening task** (test set, final; 8B BF16): shorten a sentence in its own language to 90–60 % of its syllables (347 German and 332 French × 4 levels × 3 seeds), without the loop (closest of 4 candidates) and with it. The loop’s effect is a paired difference, pre-registered (v2.12).
 
@@ -153,7 +153,7 @@ For one voice, syllables predict seconds (r = 0.98). Across human readers speed 
 
 </div>
 
-- **Small human checks:** timing uses one TTS voice, not dubbing actors. One rater saw 25 lines, rates come from different sentences, and blinding was partial (both lines of a source were on the sheet, the shorter visible; the rater noted “looks longer” on six lines). Claude wrote the control pairs; no native speaker has reviewed them.
+- **Small human checks:** timing uses one TTS voice, not dubbing actors. One rater saw 25 lines, rates come from different sentences, and blinding was partial (both lines of a source were on the sheet, the shorter visible; the rater noted “looks longer” on six lines). Claude Opus 5.5 wrote the control pairs; no native speaker has reviewed them.
 - **The loop can game the length count** with symbols eSpeak counts as 0 syllables (`"` for “Zoll”). **Tight targets give long lines** (shortening task, with the loop). **No grammar check** (*“den 18. Jahrhundert Markt”*).
 - **Not tested:** Italian; 70B (scripts ready); Docker on an amd64 host (emulation only); the 4-bit development model against the official weights. **Batching** 16 items on the HPC may change outputs slightly.
 
@@ -179,6 +179,7 @@ The code is Apache-2.0 and this report CC BY 4.0. The data files, the dataset an
 - He, Gao and Chen (2021), DeBERTaV3, arXiv:2111.09543.
 - Kwon et al. (2023), PagedAttention (vLLM), *SOSP*.
 - Lakew et al. (2022), Isometric MT, *ICASSP*.
+- Laurer et al. (2023), Building Efficient Universal Classifiers with Natural Language Inference, arXiv:2312.17543.
 - Laurer et al. (2024), Less Annotating, More Classifying, *Political Analysis* 32(1).
 - Lui and Baldwin (2012), langid.py, *ACL Demos*.
 - Pellegrino, Coupé and Marsico (2011), A cross-language perspective on speech information rate, *Language* 87(3), 539–558.
